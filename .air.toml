@@ -2,10 +2,14 @@ root = "."
 testdata_dir = "testdata"
 tmp_dir = "tmp"
 
+[env]
+ APP_ENV   = "dev"
+  HTTP_PORT = "8080"
+
 [build]
   args_bin = []
+  cmd = "go build -o ./tmp/main.exe ./cmd/yapp-server"
   bin = "tmp\\main.exe"
-  cmd = "go build -o ./tmp/main.exe ."
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_file = []
@@ -26,6 +30,7 @@ tmp_dir = "tmp"
   rerun_delay = 500
   send_interrupt = false
   stop_on_error = false
+
 
 [color]
   app = ""
