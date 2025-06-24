@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"os"
@@ -17,17 +18,22 @@ func SetupEnvironment() (config AppConfig, err error) {
 
 	// load the env file
 
-	if os.Getenv("APP_ENV") == "dev" {
+	//if os.Getenv("APP_ENV") == "dev" {
+	//
+	//	if err := godotenv.Load(); err != nil {
+	//
+	//		return AppConfig{}, err
+	//
+	//		//! FOR PRODUCTION, REMOVE RETURN
+	//		//log.Println("⚠️  no .env file found, proceeding with real ENV vars")
+	//
+	//	}
+	//
+	//}
 
-		if err := godotenv.Load(); err != nil {
-
-			return AppConfig{}, err
-
-			//! FOR PRODUCTION, REMOVE RETURN
-			//log.Println("⚠️  no .env file found, proceeding with real ENV vars")
-
-		}
-
+	err = godotenv.Load()
+	if err != nil {
+		fmt.Print("No .env File, proceeding with real ENV vars")
 	}
 
 	// get ENV variables
