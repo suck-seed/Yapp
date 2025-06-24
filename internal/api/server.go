@@ -1,13 +1,13 @@
 package api
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/suck-seed/yapp/config"
+	"github.com/suck-seed/yapp/internal/api/rest"
+	"github.com/suck-seed/yapp/internal/services/user"
 )
 
-// StartServer
+// StartServer : runs up an instance of server, Pass dependency to individual Handlers, Middle ware implemented here
 func StartServer(cfg config.AppConfig) {
 
 	// new app handler
@@ -16,14 +16,12 @@ func StartServer(cfg config.AppConfig) {
 	// use CORS setting
 	router.Use(cfg.CORS)
 
-	// listen to /ping
-	router.GET("/ping", func(c *gin.Context) {
+	// get services
+	userService := user.NewUserService()
 
-		// return JSON
-		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-		})
-	})
+	// rest routes with services injected, can pass cfg too
+	rest.RegisterUserRoutes(router, userService)
+	//TODO Add similar routers for other too
 
 	// runs on 8080 on default
 	err := router.Run("localhost:" + cfg.ServerPort)
