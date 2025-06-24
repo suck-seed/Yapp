@@ -19,11 +19,8 @@ func SetupEnvironment() (config AppConfig, err error) {
 
 	if os.Getenv("APP_ENV") == "dev" {
 
-		// load the local .env file
-		err = godotenv.Load()
+		if err := godotenv.Load(); err != nil {
 
-		// if file doesnt exist
-		if err != nil {
 			return AppConfig{}, err
 
 			//! FOR PRODUCTION, REMOVE RETURN
