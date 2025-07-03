@@ -23,7 +23,7 @@ docker-compose.yml
 
 
 # Editor/IDE
- .idea/
- .vscode/
- .tmp/
+.idea/
+.vscode/
+.tmp/
 !/tmp/
