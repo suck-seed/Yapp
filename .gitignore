@@ -1,88 +1,29 @@
-# BACKEND
-
-
-# Environment files
-backend/.env
-backend/.env.local
-backend/.env.*.local
+# ENV files
+!/.env
 
 # Binaries for programs and plugins
-backend/*.exe
-backend/*.exe~
-backend/*.dll
-backend/*.so
-backend/*.dylib
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 
 # Test binary, build with `go test -c`
-backend/*.test
+*.test
 
-# Output of the go coverage tool
-backend/*.out
-
-# Go workspace file
-backend/go.work
-
-# Build output
-backend/dist/
-backend/build/
-backend/tmp/
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
 
 
-# FRONTEND
+# env file
+.env
+
+Dockerfile
+docker-compose.yml
 
 
-# Dependencies
-frontend/node_modules/
-frontend/.pnp
-frontend/.pnp.*
-frontend/.yarn/*
-!frontend/.yarn/patches
-!frontend/.yarn/plugins
-!frontend/.yarn/releases
-!frontend/.yarn/versions
-
-# Testing
-frontend/coverage/
-
-# Next.js
-frontend/.next/
-frontend/out/
-
-# Production
-frontend/build/
-
-# Environment files
-frontend/.env*
-
-# Vercel
-frontend/.vercel
-
-# TypeScript
-frontend/*.tsbuildinfo
-frontend/next-env.d.ts
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# EDITOR/IDE
+# Editor/IDE
 .idea/
 .vscode/
 .tmp/
-
-# OS FILES
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-*.pem
-
-# DOCKER (These should usually be committed)
-# docker-compose.override.yml
-# .dockerignore
+!/tmp/
