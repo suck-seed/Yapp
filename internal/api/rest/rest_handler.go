@@ -17,6 +17,7 @@ func RegisterUserRoutes(r *gin.Engine, userService user.IUserService) {
 		userGroup.POST("/", userHandler.CreateUser)
 		userGroup.GET("/:id", userHandler.GetUser)
 	}
+
 }
 
 //TODO Make router for halls, messages

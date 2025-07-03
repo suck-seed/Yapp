@@ -1,9 +1,10 @@
 package main
 
 import (
+	"log"
+
 	"github.com/suck-seed/yapp/config"
 	"github.com/suck-seed/yapp/internal/api"
-	"log"
 )
 
 func main() {
@@ -16,4 +17,5 @@ func main() {
 
 	// start server
 	api.StartServer(cfg)
+
 }

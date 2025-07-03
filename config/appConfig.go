@@ -3,17 +3,19 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
+
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"os"
 )
 
+// AppConfig : Stores configurations for server, includes port, db, and middleware
 type AppConfig struct {
 	ServerPort string
 	CORS       gin.HandlerFunc
 }
 
-// Main function
+// SetupEnvironment : Loads ENV variables, creates instance of middleware and returns the configurations
 func SetupEnvironment() (config AppConfig, err error) {
 
 	// load the env file

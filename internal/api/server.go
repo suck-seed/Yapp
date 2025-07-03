@@ -7,7 +7,7 @@ import (
 	"github.com/suck-seed/yapp/internal/services/user"
 )
 
-// StartServer : runs up an instance of server, Pass dependency to individual Handlers, Middle ware implemented here
+// StartServer : Runs up an instance of server, Pass dependency to individual Handlers, Middle ware implemented here
 func StartServer(cfg config.AppConfig) {
 
 	// new app handler
