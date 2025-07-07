@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/suck-seed/yapp/config"
@@ -16,6 +17,7 @@ func main() {
 	}
 
 	// start server
+	fmt.Println(cfg.ServerPort)
 	api.StartServer(cfg)
 
 }

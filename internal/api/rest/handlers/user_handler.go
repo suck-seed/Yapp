@@ -20,6 +20,19 @@ func NewUserHandler(uSvc user.IUserService) *UserHandler {
 	}
 }
 
+func (h *UserHandler) Hello(c *gin.Context) {
+	if c.Request.Method != http.MethodGet {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"error": "Method not allowed",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Hello World",
+	})
+}
+
 // CreateUser : Functions / Methods accessed by UserHandler
 func (h *UserHandler) Register(c *gin.Context) {
 

@@ -48,11 +48,11 @@ func loadEnvVariables() error {
 	}
 
 	// get ENV variables
-	httpPort := os.Getenv("HTTP_PORT")
+	httpPort = os.Getenv("HTTP_PORT")
 	dbUser := os.Getenv("DB_USER")
 	dbPass := os.Getenv("DB_PASS")
 	dbHost := os.Getenv("DB_HOST")
-	dbPort := os.Getenv("DB_PORT")
+	dbPort = os.Getenv("DB_PORT")
 
 	if len(httpPort) < 1 {
 		return errors.New("Forgot to set HTTP_PORT ? ")
