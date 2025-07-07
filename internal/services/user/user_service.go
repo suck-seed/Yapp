@@ -2,8 +2,10 @@ package user
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
+	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 )
 
@@ -21,7 +23,15 @@ type userService struct {
 }
 
 // ! CLASS METHODS
-// ? return *models.User , lets us to return a nil pointer
+
+func (s *userService) RegisterUser(user dto.UserSignup) (string, error) {
+
+	fmt.Println("User created under : ", user)
+
+	return "User created sucesfully", nil
+
+}
+
 func (s *userService) GetUserByID(id string) (*models.User, error) {
 	//TODO implement me
 	s.mu.RLock()
