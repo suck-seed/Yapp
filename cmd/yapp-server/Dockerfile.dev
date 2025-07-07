@@ -1,0 +1,20 @@
+# Use a multi-stage build to keep the image slim
+FROM golang:1.24-alpine
+
+# Install git (required by air) and air for hot-reload
+RUN apk add --no-cache git \
+    && go install github.com/air-verse/air@latest
+
+WORKDIR /app
+
+# Only download modules, source will be bind-mounted
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy air config
+COPY .air.toml ./
+
+# In dev we mount the source directory, so no COPY for source
+
+# Run air to watch, rebuild, and restart
+CMD ["air"]

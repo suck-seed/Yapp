@@ -24,7 +24,7 @@ func StartServer(cfg config.AppConfig) {
 	//TODO Add similar routers for other too
 
 	// runs on 8080 on default
-	err := router.Run("localhost:" + cfg.ServerPort)
+	err := router.Run(":" + cfg.ServerPort)
 	if err != nil {
 		return
 	}
