@@ -31,5 +31,4 @@ docker-compose.yml
 # ignore air's build outputs
 tmp/
 
-#guide file
-guide.md
+
