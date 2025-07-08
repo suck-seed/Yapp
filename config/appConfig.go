@@ -1,12 +1,21 @@
 package config
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+)
+
+var (
+	httpPort string
+	dbUser   string
+	dbPass   string
+	dbHost   string
+	dbPort   string
 )
 
 // AppConfig : Stores configurations for server, includes port, db, and middleware
@@ -18,37 +27,43 @@ type AppConfig struct {
 // SetupEnvironment : Loads ENV variables, creates instance of middleware and returns the configurations
 func SetupEnvironment() (config AppConfig, err error) {
 
-	// load the env file
-
-	//if os.Getenv("APP_ENV") == "dev" {
-	//
-	//	if err := godotenv.Load(); err != nil {
-	//
-	//		return AppConfig{}, err
-	//
-	//		//! FOR PRODUCTION, REMOVE RETURN
-	//		//log.Println("⚠️  no .env file found, proceeding with real ENV vars")
-	//
-	//	}
-	//
-	//}
-
-	err = godotenv.Load()
+	// Load Env Variables
+	err = loadEnvVariables()
 	if err != nil {
-		fmt.Print("No .env File, proceeding with real ENV vars")
-	}
-
-	// get ENV variables
-	httpPort := os.Getenv("HTTP_PORT")
-
-	if len(httpPort) < 1 {
-		return AppConfig{}, errors.New("Forgot to set HTTP_PORT ? ")
+		return AppConfig{}, err
 	}
 
 	return AppConfig{
 		ServerPort: httpPort,
 		CORS:       corsMiddleware(),
 	}, nil
+}
+
+// loadEnvVariables : Loads env variables and injects them into var defined
+func loadEnvVariables() error {
+
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Print("No .env File, proceeding with real ENV vars")
+	}
+
+	// get ENV variables
+	httpPort = os.Getenv("HTTP_PORT")
+	// dbUser := os.Getenv("DB_USER")
+	// dbPass := os.Getenv("DB_PASS")
+	// dbHost := os.Getenv("DB_HOST")
+	dbPort = os.Getenv("DB_PORT")
+
+	if len(httpPort) < 1 {
+		return errors.New("Forgot to set HTTP_PORT ? ")
+	}
+
+	if len(dbPort) < 1 {
+		return errors.New("Forgot to set DB_PORT ? ")
+	}
+
+	return nil
+
 }
 
 // CORS middleware
@@ -68,4 +83,9 @@ func corsMiddleware() gin.HandlerFunc {
 			c.Next()
 		}
 	}
+}
+
+func createDBConnection() (error, *sql.DB) {
+
+	return nil, &sql.DB{}
 }

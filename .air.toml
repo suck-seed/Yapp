@@ -8,9 +8,13 @@ tmp_dir = "tmp"
 
 [build]
   args_bin = []
-  cmd = "go build -o ./tmp/main.exe ./cmd/yapp-server"
-  bin = "tmp\\main.exe"
+  # cmd = "go build -o ./tmp/main.exe ./cmd/yapp-server"
+  cmd = "go build -o ./tmp/main ./cmd/yapp-server"
+  # bin =  "tmp\\main.exe"
+  bin = "tmp/main"
   delay = 1000
+  poll = true
+  poll_interval = 4000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_file = []
   exclude_regex = ["_test.go"]
@@ -22,8 +26,7 @@ tmp_dir = "tmp"
   include_file = []
   kill_delay = "0s"
   log = "build-errors.log"
-  poll = false
-  poll_interval = 0
+
   post_cmd = []
   pre_cmd = []
   rerun = false

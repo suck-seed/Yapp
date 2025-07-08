@@ -27,3 +27,9 @@ docker-compose.yml
 .vscode/
 .tmp/
 !/tmp/
+
+# ignore air's build outputs
+tmp/
+
+
+guide.md

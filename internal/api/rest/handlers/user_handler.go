@@ -1,9 +1,11 @@
 package handlers
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/suck-seed/yapp/internal/services/user"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/suck-seed/yapp/internal/dto"
+	"github.com/suck-seed/yapp/internal/services/user"
 )
 
 // UserHandler : CLASS
@@ -18,16 +20,54 @@ func NewUserHandler(uSvc user.IUserService) *UserHandler {
 	}
 }
 
-// CreateUser : Functions / Methods accessed by UserHandler
-func (h *UserHandler) CreateUser(c *gin.Context) {
-
-	id := c.Param("id")
-	returnUser, err := h.userService.GetUserByID(id)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-
+func (h *UserHandler) Hello(c *gin.Context) {
+	if c.Request.Method != http.MethodGet {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"error": "Method not allowed",
+		})
+		return
 	}
-	c.JSON(http.StatusOK, returnUser)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Hello Everynyan",
+	})
+}
+
+// CreateUser : Functions / Methods accessed by UserHandler
+func (h *UserHandler) Register(c *gin.Context) {
+
+	if c.Request.Method != http.MethodPost {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"error": "Method not allowed",
+		})
+		return
+	}
+
+	user := dto.UserSignup{}
+	err := c.BindJSON(&user)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Bad Request",
+			"message": "Invalid JSON",
+		})
+
+		return
+	}
+
+	// Proceed to service Handlers
+	token, err := h.userService.RegisterUser(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Internal Server Error",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": token,
+	})
 }
 
 func (h *UserHandler) GetUser(c *gin.Context) {
