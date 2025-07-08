@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Yapp",
-  description: "Your App for Collaborartion and Every Conversation",
+  description: "Your App for Collaboration and Every Conversation",
 };
 
 export default function RootLayout({
