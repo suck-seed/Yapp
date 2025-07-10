@@ -1,27 +1,33 @@
 package config
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
+	"github.com/suck-seed/yapp/internal/database"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 )
 
 var (
-	httpPort string
-	dbUser   string
-	dbPass   string
-	dbHost   string
-	dbPort   string
+	httpPort         string
+	postgresUser     string
+	postgresPass     string
+	postgresHost     string
+	postgresHostPort string
+	postgresPort     string
+	postgresDbName   string
 )
 
 // AppConfig : Stores configurations for server, includes port, db, and middleware
 type AppConfig struct {
 	ServerPort string
 	CORS       gin.HandlerFunc
+	Postgres   *pgxpool.Pool
 }
 
 // SetupEnvironment : Loads ENV variables, creates instance of middleware and returns the configurations
@@ -33,38 +39,19 @@ func SetupEnvironment() (config AppConfig, err error) {
 		return AppConfig{}, err
 	}
 
+	pgPool, err := database.PostgresDBConnection()
+	if err != nil {
+		return AppConfig{}, err
+	}
+
 	return AppConfig{
-		ServerPort: httpPort,
+		ServerPort: os.Getenv("HTTP_PORT"),
 		CORS:       corsMiddleware(),
+		Postgres:   pgPool,
 	}, nil
 }
 
 // loadEnvVariables : Loads env variables and injects them into var defined
-func loadEnvVariables() error {
-
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Print("No .env File, proceeding with real ENV vars")
-	}
-
-	// get ENV variables
-	httpPort = os.Getenv("HTTP_PORT")
-	// dbUser := os.Getenv("DB_USER")
-	// dbPass := os.Getenv("DB_PASS")
-	// dbHost := os.Getenv("DB_HOST")
-	dbPort = os.Getenv("DB_PORT")
-
-	if len(httpPort) < 1 {
-		return errors.New("Forgot to set HTTP_PORT ? ")
-	}
-
-	if len(dbPort) < 1 {
-		return errors.New("Forgot to set DB_PORT ? ")
-	}
-
-	return nil
-
-}
 
 // CORS middleware
 func corsMiddleware() gin.HandlerFunc {
@@ -85,7 +72,48 @@ func corsMiddleware() gin.HandlerFunc {
 	}
 }
 
-func createDBConnection() (error, *sql.DB) {
+func loadEnvVariables() error {
 
-	return nil, &sql.DB{}
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Print("No .env File, proceeding with real ENV vars")
+	}
+
+	httpPort = os.Getenv("HTTP_PORT")
+	postgresUser = os.Getenv("POSTGRES_USER")
+	postgresPass = os.Getenv("POSTGRES_PASS")
+
+	// since everything is inside docker container, it used default postgres port
+	// db_host_port is for local app like TablePlus or pgAdmin to connect to postgres
+
+	postgresHostPort = os.Getenv("HOST_POSTGRES_PORT")
+	postgresHost = os.Getenv("POSTGRES_HOST")
+	postgresPort = os.Getenv("POSTGRES_PORT")
+	postgresDbName = os.Getenv("POSTGRES_DB")
+
+	// HANDLING INAPPROPRIATE ENV VARIABLES
+
+	intPort, err := strconv.Atoi(httpPort)
+	if len(httpPort) < 1 {
+
+		if intPort <= 0 {
+			return errors.New("Http Port cannot be <= 0s")
+		}
+
+		return errors.New("Forgot to set HTTP_PORT ? ")
+	}
+
+	intPostgresPort, err := strconv.Atoi(postgresPort)
+	if len(postgresPort) < 1 {
+
+		if intPostgresPort <= 0 {
+			return errors.New("Postgres Port cannot be <= 0s")
+		}
+
+		return errors.New("Forgot to set POSTGRES_PORT ? ")
+	}
+
+	// TODO: Handle further error checking here
+
+	return nil
 }
