@@ -6,5 +6,5 @@ CREATE TABLE halls (
     description text,
     created_at timestamptz NOT NULL DEFAULT now (),
     updated_at timestamptz NOT NULL DEFAULT now (),
-    created_by_id uuid NOT NULL REFERENCES users (user_id) ON DELETE RESTRICT
+    created_by_id uuid NOT NULL REFERENCES users (id) ON DELETE RESTRICT
 );

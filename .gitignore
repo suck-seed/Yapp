@@ -22,6 +22,7 @@
 # Editor/IDE
 .idea/
 .vscode/
+.zed/
 .tmp/
 !/tmp/
 
