@@ -1,0 +1,67 @@
+version: "2.1"
+
+services:
+  postgres:
+    image: postgres:15
+    restart: always
+    env_file:
+      - ./.env
+    ports:
+      - "${HOST_POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      retries: 5
+
+  migrate:
+    image: migrate/migrate:latest
+    restart: on-failure:5
+    env_file:
+      - ./.env
+    volumes:
+      - ./infra/migrations:/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      [
+        "-path",
+        "/migrations",
+        "-database",
+        "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable",
+        "up",
+      ]
+
+  yapp-server:
+    build:
+      context: .
+      dockerfile: cmd/yapp-server/Dockerfile.dev
+    env_file:
+      - ./.env
+    volumes:
+      - ./:/app
+    ports:
+      - "${HTTP_PORT}:${HTTP_PORT}"
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: >
+      sh -c "
+        echo '⏱  Waiting 10s for service to complete';
+        sleep 10;
+        echo '🚀 Starting Yapp server';
+        air
+      "
+
+volumes:
+  postgres_data:
+  cassandra_data:
+
+networks:
+  yapp-net:
+    driver: bridge
