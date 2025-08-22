@@ -9,7 +9,8 @@ import (
 	"github.com/suck-seed/yapp/internal/models"
 )
 
-// ! INTERFACE
+// cannot directly ever access IUserService, but we can create one
+// and access all the methods in this file
 func NewUserService() IUserService {
 	return &userService{
 		users: make(map[string]*models.User),

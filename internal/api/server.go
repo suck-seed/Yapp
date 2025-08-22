@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/suck-seed/yapp/config"
 	"github.com/suck-seed/yapp/internal/api/rest"
@@ -26,6 +28,7 @@ func StartServer(cfg config.AppConfig) {
 	// runs on 8080 on default
 	err := router.Run(":" + cfg.ServerPort)
 	if err != nil {
+		fmt.Printf("error: %v\n", err)
 		return
 	}
 }

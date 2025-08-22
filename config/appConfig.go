@@ -39,6 +39,7 @@ func SetupEnvironment() (config AppConfig, err error) {
 		return AppConfig{}, err
 	}
 
+	// load postgres instance
 	pgPool, err := database.PostgresDBConnection()
 	if err != nil {
 		return AppConfig{}, err
@@ -51,9 +52,7 @@ func SetupEnvironment() (config AppConfig, err error) {
 	}, nil
 }
 
-// loadEnvVariables : Loads env variables and injects them into var defined
-
-// CORS middleware
+// corsMiddleware : Inject CORS settings into app
 func corsMiddleware() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
@@ -72,6 +71,7 @@ func corsMiddleware() gin.HandlerFunc {
 	}
 }
 
+// loadEnvVariables : Loads env variables and injects them into var defined
 func loadEnvVariables() error {
 
 	err := godotenv.Load()
