@@ -1,5 +1,5 @@
 CREATE TABLE reactions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY ,
     message_id uuid NOT NULL REFERENCES messages (id) ON DELETE CASCADE,
     user_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     emoji text NOT NULL,

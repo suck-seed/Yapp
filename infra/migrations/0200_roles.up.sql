@@ -1,5 +1,5 @@
 CREATE TABLE roles (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY,
     hall_id uuid NOT NULL REFERENCES halls (id) ON DELETE CASCADE,
     name text NOT NULL,
     color text,

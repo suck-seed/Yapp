@@ -1,5 +1,5 @@
 CREATE TABLE attachments (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY ,
     message_id uuid NOT NULL REFERENCES messages (id) ON DELETE CASCADE,
     filename text NOT NULL,
     size_bytes bigint NOT NULL,

@@ -1,5 +1,5 @@
 CREATE TABLE user_app_links (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY,
     user_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     provider app_provider NOT NULL,
     url text NOT NULL,

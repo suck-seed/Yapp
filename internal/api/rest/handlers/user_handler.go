@@ -5,16 +5,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/suck-seed/yapp/internal/dto"
-	"github.com/suck-seed/yapp/internal/services/user"
+	"github.com/suck-seed/yapp/internal/services"
 )
 
 // UserHandler : CLASS
 type UserHandler struct {
 	// inject IUserService
-	userService user.IUserService
+	userService services.IUserService
 }
 
-func NewUserHandler(uSvc user.IUserService) *UserHandler {
+func NewUserHandler(uSvc services.IUserService) *UserHandler {
 	return &UserHandler{
 		userService: uSvc,
 	}

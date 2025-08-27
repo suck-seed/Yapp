@@ -1,4 +1,4 @@
-package user
+package services
 
 import (
 	"github.com/suck-seed/yapp/internal/dto"

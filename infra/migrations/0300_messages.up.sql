@@ -1,5 +1,5 @@
 CREATE TABLE messages (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY ,
     room_id uuid NOT NULL REFERENCES rooms (id) ON DELETE CASCADE,
     author_id uuid NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
     content text NOT NULL,

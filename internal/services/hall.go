@@ -1,4 +1,4 @@
-package hall
+package services
 
 type IHallService interface {
 

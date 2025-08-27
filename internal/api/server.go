@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/suck-seed/yapp/config"
 	"github.com/suck-seed/yapp/internal/api/rest"
-	"github.com/suck-seed/yapp/internal/services/user"
+	"github.com/suck-seed/yapp/internal/services"
 )
 
 // StartServer : Runs up an instance of server, Pass dependency to individual Handlers, Middle ware implemented here
@@ -19,7 +19,7 @@ func StartServer(cfg config.AppConfig) {
 	router.Use(cfg.CORS)
 
 	// get services
-	userService := user.NewUserService()
+	userService := services.NewUserService()
 
 	// rest routes with services injected, can pass cfg too
 	rest.RegisterUserRoutes(router, userService)

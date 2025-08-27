@@ -1,5 +1,5 @@
 CREATE TABLE user_devices (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY,
     user_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     device_id text NOT NULL,
     device_name text,

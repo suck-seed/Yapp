@@ -1,5 +1,5 @@
 CREATE TABLE halls (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY,
     name text NOT NULL,
     icon_url text,
     banner_color text NOT NULL, -- 10 colors in frontend
