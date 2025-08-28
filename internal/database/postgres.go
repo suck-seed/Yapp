@@ -31,7 +31,8 @@ func PostgresDBConnection() (*pgxpool.Pool, error) {
 
 	// tuning
 	config.MaxConns = 10
-	config.MaxConnLifetime = 30 * time.Minute
+	config.MaxConnLifetime = time.Hour
+	config.MaxConnIdleTime = 30 * time.Minute
 
 	//	turning this config to a dbPool
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)

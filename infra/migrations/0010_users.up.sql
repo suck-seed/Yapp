@@ -4,7 +4,7 @@ CREATE TABLE users (
     display_name text NOT NULL,
     email text NOT NULL UNIQUE,
     password_hash text NOT NULL,
-    phone_number text,
+    phone_number text UNIQUE,
     avatar_url text,
     friend_policy friend_policy DEFAULT 'everyone',
     active boolean NOT NULL DEFAULT false, -- consider derived via Redis; keep for compatibility

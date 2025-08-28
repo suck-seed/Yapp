@@ -13,6 +13,11 @@ import (
 // ────────────────────────────────
 //
 
+type CreateUserRes struct {
+	ID       string `json:"id"`
+	Username string `json:"username" validate:"required,min=3,max=32"`
+}
+
 type UserPublic struct {
 	ID          string `json:"id"`
 	Username    string `json:"username"`
