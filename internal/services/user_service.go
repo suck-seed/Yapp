@@ -9,22 +9,25 @@ import (
 	"github.com/suck-seed/yapp/internal/models"
 )
 
-// cannot directly ever access IUserService, but we can create one
-// and access all the methods in this file
+type IUserService interface {
+	RegisterUser(user dto.UserSignup) (string, error)
+	GetUserByID(id string) (*models.User, error)
+}
+
+// userService : Behaves like a class, and implements IUserService's methods
+type userService struct {
+	mu    sync.RWMutex
+	users map[string]*models.User
+}
+
+// NewUserService : Constructor to return a new IUserService with all the user service methods
 func NewUserService() IUserService {
 	return &userService{
 		users: make(map[string]*models.User),
 	}
 }
 
-// ! CLASS
-type userService struct {
-	mu    sync.RWMutex
-	users map[string]*models.User
-}
-
-// ! CLASS METHODS
-
+// Methods
 func (s *userService) RegisterUser(user dto.UserSignup) (string, error) {
 
 	fmt.Println("User created under : ", user)

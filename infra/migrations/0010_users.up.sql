@@ -1,12 +1,12 @@
 CREATE TABLE users (
     id uuid PRIMARY KEY,
     username text NOT NULL UNIQUE,
-    display_name text,
+    display_name text NOT NULL,
     email text NOT NULL UNIQUE,
     password_hash text NOT NULL,
     phone_number text,
     avatar_url text,
-    friend_policy friend_policy NOT NULL DEFAULT 'everyone',
+    friend_policy friend_policy DEFAULT 'everyone',
     active boolean NOT NULL DEFAULT false, -- consider derived via Redis; keep for compatibility
     last_seen timestamptz,
     created_at timestamptz NOT NULL DEFAULT now (),
