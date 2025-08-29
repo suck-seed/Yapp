@@ -18,13 +18,11 @@
 # env file
 .env
 
-Dockerfile
-docker-compose.yml
-
 
 # Editor/IDE
 .idea/
 .vscode/
+.zed/
 .tmp/
 !/tmp/
 

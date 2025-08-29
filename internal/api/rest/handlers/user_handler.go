@@ -5,72 +5,47 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/suck-seed/yapp/internal/dto"
-	"github.com/suck-seed/yapp/internal/services/user"
+	"github.com/suck-seed/yapp/internal/services"
 )
 
 // UserHandler : CLASS
 type UserHandler struct {
 	// inject IUserService
-	userService user.IUserService
+	userService services.IUserService
 }
 
-func NewUserHandler(uSvc user.IUserService) *UserHandler {
+func NewUserHandler(userService services.IUserService) *UserHandler {
 	return &UserHandler{
-		userService: uSvc,
+		userService: userService,
 	}
 }
 
-func (h *UserHandler) Hello(c *gin.Context) {
-	if c.Request.Method != http.MethodGet {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"error": "Method not allowed",
-		})
-		return
-	}
+func (h *UserHandler) CreateUser(c *gin.Context) {
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Hello Everynyan",
-	})
-}
+	// fetch json and bind into CreateUserReq
 
-// CreateUser : Functions / Methods accessed by UserHandler
-func (h *UserHandler) Register(c *gin.Context) {
+	var u dto.CreateUserReq
 
-	if c.Request.Method != http.MethodPost {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"error": "Method not allowed",
-		})
-		return
-	}
+	if err := c.ShouldBindJSON(&u); err != nil {
 
-	user := dto.UserSignup{}
-	err := c.BindJSON(&user)
-
-	if err != nil {
+		// bad request
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Bad Request",
-			"message": "Invalid JSON",
-		})
-
-		return
-	}
-
-	// Proceed to service Handlers
-	token, err := h.userService.RegisterUser(user)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Internal Server Error",
 			"message": err.Error(),
 		})
 		return
+
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": token,
-	})
-}
+	res, err := h.userService.CreateUser(c.Request.Context(), &u)
+	if err != nil {
 
-func (h *UserHandler) GetUser(c *gin.Context) {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{"id": c.Param("id")})
+	// no errors, so return
+	c.JSON(http.StatusOK, res)
+
 }

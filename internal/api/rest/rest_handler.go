@@ -3,20 +3,39 @@ package rest
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/suck-seed/yapp/internal/api/rest/handlers"
-	"github.com/suck-seed/yapp/internal/services/user"
+	"github.com/suck-seed/yapp/internal/services"
 )
 
 // RegisterUserRoutes : Group routes proceeding from /user/ and more
-func RegisterUserRoutes(r *gin.Engine, userService user.IUserService) {
+func RegisterUserRoutes(r *gin.Engine, userService services.IUserService) {
 
 	// make instance of userHandler
 	userHandler := handlers.NewUserHandler(userService)
 
-	userGroup := r.Group("/user")
+	// for public
+	userGroup := r.Group("/users")
 	{
-		userGroup.GET("/", userHandler.Hello)
-		userGroup.POST("/register", userHandler.Register)
-		userGroup.GET("/:id", userHandler.GetUser)
+		userGroup.GET("/")
+		userGroup.GET("/{user_id}")
+		userGroup.GET("/{user_id}/mutual")
+
+		userGroup.POST("/", userHandler.CreateUser)
+	}
+
+	// private (me operation)
+
+	meGroup := r.Group("/me")
+	{
+		// get my profile
+		meGroup.GET("/")
+		// update my profile (display, phone, avatar, friend_policy)
+		meGroup.PATCH("/")
+		// soft delete my profile
+		meGroup.DELETE("/")
+
+		meGroup.PATCH("/username")
+		meGroup.PATCH("/email")
+
 	}
 
 }
