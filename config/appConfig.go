@@ -21,6 +21,7 @@ var (
 	postgresHostPort string
 	postgresPort     string
 	postgresDbName   string
+	secretKey        string
 )
 
 // AppConfig : Stores configurations for server, includes port, db, and middleware
@@ -90,6 +91,7 @@ func loadEnvVariables() error {
 	postgresHost = os.Getenv("POSTGRES_HOST")
 	postgresPort = os.Getenv("POSTGRES_PORT")
 	postgresDbName = os.Getenv("POSTGRES_DB")
+	secretKey = os.Getenv("JWT_SECRET_KEY")
 
 	// HANDLING INAPPROPRIATE ENV VARIABLES
 
@@ -116,4 +118,16 @@ func loadEnvVariables() error {
 	// TODO: Handle further error checking here
 
 	return nil
+}
+
+func GetSecretKey() string {
+
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Print("No .env File, proceeding with real ENV vars")
+	}
+
+	secretKey = os.Getenv("JWT_SECRET_KEY")
+	return secretKey
+
 }

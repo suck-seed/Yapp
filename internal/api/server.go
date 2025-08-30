@@ -27,6 +27,7 @@ func StartServer(cfg config.AppConfig) {
 
 	// rest routes with services injected, can pass cfg too
 	rest.RegisterUserRoutes(router, userService)
+	rest.RegisterAuthRoutes(router, userService)
 	//TODO Add similar routers for other too
 
 	start(router, cfg)

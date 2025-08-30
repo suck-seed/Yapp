@@ -15,7 +15,13 @@ import (
 
 type CreateUserRes struct {
 	ID       string `json:"id"`
-	Username string `json:"username" validate:"required,min=3,max=32"`
+	Username string `json:"username" binding:"required,min=3,max=32"`
+}
+
+type LoginUserRes struct {
+	AccessToken string
+	ID          string `json:"id" db:"id"`
+	Username    string `json:"username" db:"username"`
 }
 
 type UserPublic struct {

@@ -15,11 +15,11 @@ func RegisterUserRoutes(r *gin.Engine, userService services.IUserService) {
 	// for public
 	userGroup := r.Group("/users")
 	{
-		userGroup.GET("/")
+		userGroup.GET("/", userHandler.Ping)
 		userGroup.GET("/{user_id}")
 		userGroup.GET("/{user_id}/mutual")
 
-		userGroup.POST("/", userHandler.CreateUser)
+		userGroup.POST("/")
 	}
 
 	// private (me operation)
@@ -40,4 +40,15 @@ func RegisterUserRoutes(r *gin.Engine, userService services.IUserService) {
 
 }
 
-//TODO Make router for halls, messages
+// TODO Make router for halls, messages
+func RegisterAuthRoutes(r *gin.Engine, userService services.IUserService) {
+
+	authHandler := handlers.NewAuthHandler(userService)
+
+	authGroup := r.Group("/auth")
+	{
+		authGroup.POST("/signup", authHandler.CreateUser)
+		authGroup.POST("/login", authHandler.Login)
+		authGroup.GET("/logout", authHandler.Logout)
+	}
+}
