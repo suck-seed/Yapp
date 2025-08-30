@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/repositories"
@@ -13,7 +14,8 @@ import (
 )
 
 type IUserService interface {
-	CreateUser(c context.Context, user *dto.CreateUserReq) (*dto.CreateUserRes, error)
+	CreateUser(c context.Context, req *dto.CreateUserReq) (*dto.CreateUserRes, error)
+	Login(c context.Context, req *dto.LoginUserReq) (*dto.LoginUserRes, error)
 }
 
 // userService : Behaves like a class, and implements IUserService's methods
@@ -39,43 +41,127 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
+	// sanitize the inputs
+	canonUsername, err := utils.SanatizeUsername(req.Username)
+	if err != nil {
+		return nil, utils.ErrorInvalidUsername
+	}
+	canonPassword, err := utils.SanatizePasswordPolicy(req.Password)
+	if err != nil {
+		return nil, utils.ErrorInvalidPassword
+	}
+	canonEmail, err := utils.SanatizeEmail(req.Email)
+	if err != nil {
+		return nil, utils.ErrorInvalidEmail
+	}
+	canonPhone, err := utils.SanatizePhoneE164(req.PhoneNumber)
+	if err != nil {
+		return nil, utils.ErrorInvalidPhoneNumber
+	}
+	canonDisplayName, err := utils.SanatizeDisplayName(req.DisplayName)
+	if err != nil {
+		return nil, utils.ErrorInvalidDisplayName
+	}
+
+	// to assign username to displayName if null
+	if canonDisplayName == nil {
+		canonDisplayName = &canonUsername
+	}
+
+	// check username, email and number for existing records
+	userByUsername, _ := s.IUserRepository.GetUserByUsername(ctx, canonUsername)
+	userByEmail, _ := s.IUserRepository.GetUserByEmail(ctx, canonEmail)
+	userByNumber, _ := s.IUserRepository.GetUserByNumber(ctx, canonPhone)
+
+	if userByUsername != nil {
+		return nil, utils.ErrorUsernameExists
+	}
+	if userByEmail != nil {
+		return nil, utils.ErrorEmailExists
+	}
+	if userByNumber != nil {
+		return nil, utils.ErrorNumberExists
+	}
+
 	// generate id
 	id, err := uuid.NewV7()
 	if err != nil {
-		return nil, err
+		return nil, utils.ErrorInternal
 	}
 
 	// hash password
-	password_hash, err := utils.HashPassword(req.Password)
+	password_hash, err := utils.HashPassword(canonPassword)
 
 	if err != nil {
-		return &dto.CreateUserRes{}, err
+		return nil, utils.ErrorInternal
 	}
 
-	//
-	// a model.User{
-	//
 	user := &models.User{
 		ID:           id,
-		Username:     req.Username,
-		Email:        req.Email,
-		PhoneNumber:  &req.PhoneNumber,
+		Username:     canonUsername,
+		Email:        canonEmail,
+		PhoneNumber:  canonPhone,
 		PasswordHash: password_hash,
-		DisplayName:  &req.DisplayName,
+		DisplayName:  canonDisplayName,
 	}
 
 	// calling the repo
 	r, err := s.IUserRepository.CreateUser(ctx, user)
 	if err != nil {
-		return &dto.CreateUserRes{}, err
+		return nil, utils.ErrorCreatingUser
 	}
 
 	// create a response
-	res := &dto.CreateUserRes{
+
+	return &dto.CreateUserRes{
 		ID:       r.ID.String(),
 		Username: r.Username,
+	}, nil
+
+}
+
+func (s *userService) Login(c context.Context, req *dto.LoginUserReq) (*dto.LoginUserRes, error) {
+
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	user := &models.User{}
+
+	canonEmail, err := utils.SanatizeEmail(req.UsernameOrEmail)
+	if err == nil {
+		user, _ = s.IUserRepository.GetUserByEmail(ctx, canonEmail)
 	}
 
-	return res, nil
+	canonUsername, err := utils.SanatizeUsername(req.UsernameOrEmail)
+	if err == nil {
+		user, _ = s.IUserRepository.GetUserByUsername(ctx, canonUsername)
+	}
 
+	canonPassword, err := utils.SanatizePasswordPolicy(req.Password)
+	if err != nil {
+		return nil, utils.ErrorInvalidPassword
+	}
+
+	// Handle user not existing
+	if user == nil {
+		return nil, utils.ErrorUserNotFound
+	}
+
+	// hash req.Password and check if matches with pass from user
+	err = utils.VerifyPassword(user.PasswordHash, canonPassword)
+	if err != nil {
+		return nil, utils.ErrorWrongPassword
+	}
+
+	// jwt
+	signedToken, err := auth.GetSignedToken(user)
+	if err != nil {
+		return nil, utils.ErrorCreatingUser
+	}
+
+	return &dto.LoginUserRes{
+		AccessToken: signedToken,
+		ID:          user.ID.String(),
+		Username:    user.Username,
+	}, nil
 }

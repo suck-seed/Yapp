@@ -1,8 +1,8 @@
 package dto
 
 type CreateHall struct {
-	Name        string `json:"name" validate:"required"`
-	IconURL     string `json:"icon_url" validate:"omitempty,url"`
-	BannerColor string `json:"banner_color" validate:"omitempty"`
-	Description string `json:"description" validate:"omitempty,max=500"`
+	Name        string `json:"name" binding:"required"`
+	IconURL     string `json:"icon_url" binding:"omitempty,url"`
+	BannerColor string `json:"banner_color" binding:"omitempty"`
+	Description string `json:"description" binding:"omitempty,max=500"`
 }
