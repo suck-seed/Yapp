@@ -127,7 +127,19 @@ func GetSecretKey() string {
 		fmt.Print("No .env File, proceeding with real ENV vars")
 	}
 
-	secretKey = os.Getenv("JWT_SECRET_KEY")
+	secretKey = string(os.Getenv("JWT_SECRET_KEY"))
 	return secretKey
+
+}
+
+func FrontEndOrigin() string {
+
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Print("No .env File, proceeding with real ENV vars")
+	}
+
+	origin := string(os.Getenv("FRONTEND_ORIGIN"))
+	return origin
 
 }
