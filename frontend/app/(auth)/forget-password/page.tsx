@@ -42,7 +42,7 @@ export default function ForgetPassword(){
                     </div> */}
 
                     <div className='flex justify-center items-center'>
-                        <MdLockReset className='w-20 h-20 text-[#73726e]'/>
+                        <MdLockReset size={80} color="#73726e" />
                     </div>
 
                     <section className='flex flex-col justify-center m-4 items-center'>
@@ -70,7 +70,7 @@ export default function ForgetPassword(){
                             <div className="flex flex-col mb-4">
                                 <button 
                                     type='submit'
-                                    className='bg-[#2383E2] text-xl text-white py-3 rounded-lg text-lg w-100 cursor-pointer hover:bg-[#0077d4] font-medium'
+                                    className='bg-[#2383E2] text-white py-3 rounded-lg text-lg w-100 cursor-pointer hover:bg-[#0077d4] font-medium'
                                 >
                                     Send Code
                                 </button>
@@ -83,7 +83,7 @@ export default function ForgetPassword(){
 
                         <Link href="/signin">
                             <div className='flex justify-center items-center gap-4 mt-2'>
-                            <IoIosArrowBack className='w-6 h-6 text-black'/>
+                            <IoIosArrowBack size={24} color="#1e1e1e" />
                             <p className='text-[#1e1e1e]'>Back to Login</p>
                         </div>
                         </Link>
