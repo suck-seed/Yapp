@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/suck-seed/yapp/internal/models"
 )
@@ -31,9 +30,11 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 	query := `
   				INSERT INTO users (id, username, display_name, email, password_hash, phone_number)
       			VALUES ($1, $2, $3, $4, $5, $6)
+         		RETURNING id, username, display_name, email, phone_number,avatar_url, friend_policy ,created_at, updated_at
+
    			`
 
-	tag, err := userRepository.db.Exec(ctx, query,
+	row := userRepository.db.QueryRow(ctx, query,
 		user.ID,
 		user.Username,
 		user.DisplayName,
@@ -42,13 +43,15 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 		user.PhoneNumber,
 	)
 
+	saved := &models.User{}
+
+	err := row.Scan(&saved.ID, &saved.Username, &saved.DisplayName, &saved.Email, &saved.PhoneNumber, &saved.AvatarURL, &saved.FriendPolicy, &saved.CreatedAt, &saved.UpdatedAt)
+
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("Rows effected : ", tag.RowsAffected())
-
-	return user, nil
+	return saved, nil
 }
 
 func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
