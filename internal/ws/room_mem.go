@@ -1,4 +1,4 @@
-package models
+package ws
 
 import (
 	"time"
@@ -22,4 +22,6 @@ type Room struct {
 	IsPrivate bool       `json:"is_private" db:"is_private"`
 	CreatedAt time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`
+
+	Client []*Client
 }

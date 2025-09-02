@@ -14,25 +14,25 @@ import (
 //
 
 type CreateUserRes struct {
-	ID       string `json:"id"`
+	UserId   string `json:"user_id"`
 	Username string `json:"username" binding:"required,min=3,max=32"`
 }
 
 type LoginUserRes struct {
 	AccessToken string
-	ID          string `json:"id" db:"id"`
+	UserId      string `json:"user_id" db:"user_id"`
 	Username    string `json:"username" db:"username"`
 }
 
 type UserPublic struct {
-	ID          string `json:"id"`
+	UserId      string `json:"user_id"`
 	Username    string `json:"username"`
 	DisplayName string `json:"display_name"`
 	AvatarURL   string `json:"avatar_url,omitempty"`
 }
 
 type UserMe struct {
-	ID           string              `json:"id"`
+	UserId       string              `json:"user_idd"`
 	Username     string              `json:"username"`
 	DisplayName  *string             `json:"display_name,omitempty"`
 	Email        string              `json:"email"`
@@ -70,21 +70,11 @@ type UsernameAvailabilityResponse struct {
 	Available bool   `json:"available"`
 }
 
-// Generic ok / error
-type OKResponse struct {
-	Message string `json:"message"`
-}
-
-type ErrorResponse struct {
-	Code    string `json:"code"`    // e.g., "conflict_username"
-	Message string `json:"message"` // human-readable
-}
-
 // Func to convert model.User to public and private
 func ToUserPublic(u models.User) UserPublic {
-	id := u.ID.String()
+	id := u.UserId.String()
 	return UserPublic{
-		ID:          id,
+		UserId:      id,
 		Username:    u.Username,
 		DisplayName: *u.DisplayName,
 		AvatarURL:   *u.AvatarURL,
@@ -93,7 +83,7 @@ func ToUserPublic(u models.User) UserPublic {
 
 func ToUserMe(u models.User) UserMe {
 	return UserMe{
-		ID:           uuid.UUID(u.ID).String(),
+		UserId:       uuid.UUID(u.UserId).String(),
 		Username:     u.Username,
 		DisplayName:  u.DisplayName,
 		Email:        u.Email,

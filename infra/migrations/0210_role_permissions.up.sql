@@ -1,5 +1,5 @@
 CREATE TABLE role_permissions (
-    role_id uuid PRIMARY KEY REFERENCES roles (id) ON DELETE CASCADE,
+    role_id uuid PRIMARY KEY REFERENCES roles (role_id) ON DELETE CASCADE,
     -- General
     view_channels boolean NOT NULL DEFAULT true,
     manage_channels boolean NOT NULL DEFAULT false,

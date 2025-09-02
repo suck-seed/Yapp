@@ -1,6 +1,6 @@
 CREATE TABLE roles (
-    id uuid PRIMARY KEY,
-    hall_id uuid NOT NULL REFERENCES halls (id) ON DELETE CASCADE,
+    role_id uuid PRIMARY KEY,
+    hall_id uuid NOT NULL REFERENCES halls (hall_id) ON DELETE CASCADE,
     name text NOT NULL,
     color text,
     icon_url text,

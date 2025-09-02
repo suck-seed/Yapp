@@ -1,9 +1,17 @@
 package ws
 
-import "github.com/suck-seed/yapp/internal/models"
+type Hub struct {
+	// maps roomID to roomStruct
+	Rooms map[string]*Room
 
-func NewHub() *models.Hub {
-	return &models.Hub{
-		Rooms: make(map[string]*models.Room),
+	// WebSocket channels for managing clients and messages
+	Register   chan *Client
+	Unregister chan *Client
+	Broadcast  chan *WebsocketMessage
+}
+
+func NewHub() Hub {
+	return Hub{
+		Rooms: make(map[string]*Room),
 	}
 }

@@ -7,7 +7,7 @@ import (
 )
 
 type Floor struct {
-	ID        uuid.UUID `json:"id" db:"id"`
+	ID        uuid.UUID `json:"floor_id" db:"floor_id"`
 	HallID    uuid.UUID `json:"hall_id" db:"hall_id"`
 	Name      string    `json:"name" db:"name"`
 	IsPrivate bool      `json:"is_private" db:"is_private"`

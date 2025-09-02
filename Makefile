@@ -16,8 +16,12 @@ removeContainerData:
 	docker compose down --volumes
 
 
+startApp:
+	docker compose up -d
+	cd frontend && npm run dev
 
 
 
 
-.PHONY: build start startNoLogs removeContainer removeContainerData
+
+.PHONY: build start startNoLogs removeContainer removeContainerData startApp

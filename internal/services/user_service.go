@@ -97,7 +97,7 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	}
 
 	user := &models.User{
-		ID:           id,
+		UserId:       id,
 		Username:     canonUsername,
 		Email:        canonEmail,
 		PhoneNumber:  canonPhone,
@@ -114,7 +114,7 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	// create a response
 
 	return &dto.CreateUserRes{
-		ID:       r.ID.String(),
+		UserId:   r.UserId.String(),
 		Username: r.Username,
 	}, nil
 
@@ -161,7 +161,7 @@ func (s *userService) Login(c context.Context, req *dto.LoginUserReq) (*dto.Logi
 
 	return &dto.LoginUserRes{
 		AccessToken: signedToken,
-		ID:          user.ID.String(),
+		UserId:      user.UserId.String(),
 		Username:    user.Username,
 	}, nil
 }

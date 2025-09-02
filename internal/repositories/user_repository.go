@@ -35,7 +35,7 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
    			`
 
 	row := userRepository.db.QueryRow(ctx, query,
-		user.ID,
+		user.UserId,
 		user.Username,
 		user.DisplayName,
 		user.Email,
@@ -45,7 +45,7 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 
 	saved := &models.User{}
 
-	err := row.Scan(&saved.ID, &saved.Username, &saved.DisplayName, &saved.Email, &saved.PhoneNumber, &saved.AvatarURL, &saved.FriendPolicy, &saved.CreatedAt, &saved.UpdatedAt)
+	err := row.Scan(&saved.UserId, &saved.Username, &saved.DisplayName, &saved.Email, &saved.PhoneNumber, &saved.AvatarURL, &saved.FriendPolicy, &saved.CreatedAt, &saved.UpdatedAt)
 
 	if err != nil {
 		return nil, err
@@ -67,7 +67,15 @@ func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email 
 
 	row := userRepository.db.QueryRow(ctx, query, email)
 
-	err := row.Scan(&user.ID, &user.Username, &user.DisplayName, &user.Email, &user.PhoneNumber, &user.AvatarURL, &user.PasswordHash)
+	err := row.Scan(
+		&user.UserId,
+		&user.Username,
+		&user.DisplayName,
+		&user.Email,
+		&user.PhoneNumber,
+		&user.AvatarURL,
+		&user.PasswordHash,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +97,15 @@ func (userRepository *userRepository) GetUserByUsername(ctx context.Context, use
 
 	row := userRepository.db.QueryRow(ctx, query, username)
 
-	err := row.Scan(&user.ID, &user.Username, &user.DisplayName, &user.Email, &user.PhoneNumber, &user.AvatarURL, &user.PasswordHash)
+	err := row.Scan(
+		&user.UserId,
+		&user.Username,
+		&user.DisplayName,
+		&user.Email,
+		&user.PhoneNumber,
+		&user.AvatarURL,
+		&user.PasswordHash,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +127,15 @@ func (userRepository *userRepository) GetUserByNumber(ctx context.Context, numbe
 
 	row := userRepository.db.QueryRow(ctx, query, number)
 
-	err := row.Scan(&user.ID, &user.Username, &user.DisplayName, &user.Email, &user.PhoneNumber, &user.AvatarURL, &user.PasswordHash)
+	err := row.Scan(
+		&user.UserId,
+		&user.Username,
+		&user.DisplayName,
+		&user.Email,
+		&user.PhoneNumber,
+		&user.AvatarURL,
+		&user.PasswordHash,
+	)
 	if err != nil {
 		return nil, err
 	}

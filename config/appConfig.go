@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/suck-seed/yapp/internal/database"
@@ -48,28 +50,31 @@ func SetupEnvironment() (config AppConfig, err error) {
 
 	return AppConfig{
 		ServerPort: os.Getenv("HTTP_PORT"),
-		CORS:       corsMiddleware(),
+		CORS:       buildCORS(),
 		Postgres:   pgPool,
 	}, nil
 }
 
 // corsMiddleware : Inject CORS settings into app
-func corsMiddleware() gin.HandlerFunc {
+func buildCORS() gin.HandlerFunc {
 
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Content-Type", "application/json")
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, UPDATE")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Max")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+	_ = godotenv.Load()
 
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(200)
-		} else {
-			c.Next()
-		}
+	origin := os.Getenv("FRONTEND_ORIGIN")
+	if origin == "" {
+		origin = "http://localhost:3000"
 	}
+
+	cfg := cors.Config{
+		AllowOrigins:     []string{origin},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposeHeaders:    []string{"Set-Cookie"},
+		AllowCredentials: true, // <- required for cookies
+		MaxAge:           12 * time.Hour,
+	}
+
+	return cors.New(cfg)
 }
 
 // loadEnvVariables : Loads env variables and injects them into var defined

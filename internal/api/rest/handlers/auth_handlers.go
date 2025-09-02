@@ -11,12 +11,12 @@ import (
 
 type AuthHandler struct {
 	// inject IUserService
-	userService services.IUserService
+	services.IUserService
 }
 
 func NewAuthHandler(userService services.IUserService) *AuthHandler {
 	return &AuthHandler{
-		userService: userService,
+		userService,
 	}
 }
 
@@ -31,14 +31,14 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 
 	}
 
-	res, err := h.userService.CreateUser(c.Request.Context(), &u)
+	res, err := h.IUserService.CreateUser(c.Request.Context(), &u)
 	if err != nil {
 
 		utils.WriteError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusCreated, res)
 
 }
 
@@ -52,7 +52,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	u, err := h.userService.Login(c.Request.Context(), &user)
+	u, err := h.IUserService.Login(c.Request.Context(), &user)
 	if err != nil {
 
 		utils.WriteError(c, err)
@@ -61,11 +61,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// setcookie
-	c.SetCookie("jwt", u.AccessToken, 3600, "/", "localhost", false, true)
+	const cookieSecond = 24 * 60 * 60
+
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("jwt", u.AccessToken, cookieSecond, "/", "localhost", false, true)
 
 	// a filtered req as we do not want to implicitely pass accessToken to client
 	res := &dto.LoginUserRes{
-		ID:       u.ID,
+		UserId:   u.UserId,
 		Username: u.Username,
 	}
 
@@ -74,7 +77,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
+
+	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("jwt", "", -1, "", "", false, true)
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Logout successful",
 	})

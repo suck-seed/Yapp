@@ -52,3 +52,19 @@ func RegisterAuthRoutes(r *gin.Engine, userService services.IUserService) {
 		authGroup.GET("/logout", authHandler.Logout)
 	}
 }
+
+func RegisterHallRoutes(r *gin.Engine, hallService services.IHallService) {
+
+}
+
+func RegisterFloorRoutes(r *gin.Engine, floorService services.IFloorService) {
+
+}
+
+func RegisterRoomRoutes(r *gin.Engine, roomService services.IRoomService) {
+
+}
+
+func RegisterMessageRoutes(r *gin.Engine, messageService services.IMessageService) {
+
+}

@@ -21,13 +21,25 @@ func StartServer(cfg config.AppConfig) {
 
 	// repositories
 	userRepository := repositories.NewUserRepository(cfg.Postgres)
+	hallRepository := repositories.NewHallReposiroty(cfg.Postgres)
+	floorRepository := repositories.NewFloorRepository(cfg.Postgres)
+	roomRepository := repositories.NewRoomReposiroty(cfg.Postgres)
+	messageRepository := repositories.NewMessageReposiroty(cfg.Postgres)
 
-	// get services
+	// Service & Dependency Injection for services
 	userService := services.NewUserService(userRepository)
+	hallService := services.NewHallService(hallRepository)
+	floorService := services.NewFloorService(hallRepository, floorRepository)
+	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository)
+	messageService := services.NewMessageService(roomRepository, messageRepository)
 
-	// rest routes with services injected, can pass cfg too
+	// Routes Handler
 	rest.RegisterUserRoutes(router, userService)
 	rest.RegisterAuthRoutes(router, userService)
+	rest.RegisterHallRoutes(router, hallService)
+	rest.RegisterFloorRoutes(router, floorService)
+	rest.RegisterRoomRoutes(router, roomService)
+	rest.RegisterMessageRoutes(router, messageService)
 	//TODO Add similar routers for other too
 
 	start(router, cfg)

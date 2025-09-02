@@ -8,6 +8,8 @@ import (
 	"github.com/suck-seed/yapp/internal/models"
 )
 
+const CookieJWTTImeSeconds = 24 * 60 * 60
+
 type MyJWTClaims struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
@@ -17,10 +19,10 @@ type MyJWTClaims struct {
 func GetSignedToken(user *models.User) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, MyJWTClaims{
-		ID:       user.ID.String(),
+		ID:       user.UserId.String(),
 		Username: user.Username,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    user.ID.String(),
+			Issuer:    user.UserId.String(),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 		},
 	})
@@ -31,4 +33,17 @@ func GetSignedToken(user *models.User) (string, error) {
 
 	return signedString, err
 
+}
+
+func ParseAndVerify(token string) (*MyJWTClaims, error) {
+	secretKey := config.GetSecretKey()
+	claims := &MyJWTClaims{}
+
+	_, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (any, error) { return []byte(secretKey), nil })
+
+	if err != nil {
+		return nil, err
+	}
+
+	return claims, nil
 }

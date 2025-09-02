@@ -1,5 +1,5 @@
 CREATE TABLE users (
-    id uuid PRIMARY KEY,
+    user_id uuid PRIMARY KEY,
     username text NOT NULL UNIQUE,
     display_name text NOT NULL,
     email text NOT NULL UNIQUE,

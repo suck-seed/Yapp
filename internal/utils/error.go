@@ -37,6 +37,18 @@ var (
 	// INTERNAL ERRROS
 	ErrorInternal     = &CustomError{Code: http.StatusInternalServerError, Message: "Internal server error"}
 	ErrorCreatingUser = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating user"}
+
+	// WEBSOCKET ERRORS
+	ErrorFailedUpgrade = &CustomError{Code: http.StatusBadRequest, Message: "Failed to upgrade connection"}
+	ErrorInvalidRoomId = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Room Id, can not join room"}
+
+	// CONTEXT ERRORS
+	ErrorNoUserIdInContext    = &CustomError{Code: http.StatusBadRequest, Message: "No UserId in context"}
+	ErrorEmptyUserIdInContext = &CustomError{Code: http.StatusBadRequest, Message: "Empty UserId in context"}
+
+	// TOKENS
+	ErrorMissingToken = &CustomError{Code: http.StatusUnauthorized, Message: "Missing Token"}
+	ErrorInvalidToken = &CustomError{Code: http.StatusUnauthorized, Message: "Invalid Token"}
 )
 
 // Writting Errors from handlers to client

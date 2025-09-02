@@ -8,12 +8,12 @@ import (
 // UserHandler : CLASS
 type UserHandler struct {
 	// inject IUserService
-	userService services.IUserService
+	services.IUserService
 }
 
 func NewUserHandler(userService services.IUserService) *UserHandler {
 	return &UserHandler{
-		userService: userService,
+		userService,
 	}
 }
 

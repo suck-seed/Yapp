@@ -7,7 +7,7 @@ import (
 )
 
 type Hall struct {
-	ID          uuid.UUID `json:"id" db:"id"`
+	HallId      uuid.UUID `json:"hall_id" db:"hall_id"`
 	Name        string    `json:"name" db:"name"`
 	IconURL     *string   `json:"icon_url,omitempty" db:"icon_url"`
 	BannerColor *string   `json:"banner_color,omitempty" db:"banner_color"`

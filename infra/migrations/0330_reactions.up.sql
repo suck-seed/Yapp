@@ -1,7 +1,7 @@
 CREATE TABLE reactions (
-    id uuid PRIMARY KEY ,
-    message_id uuid NOT NULL REFERENCES messages (id) ON DELETE CASCADE,
-    user_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    reaction_id uuid PRIMARY KEY ,
+    message_id uuid NOT NULL REFERENCES messages (message_id) ON DELETE CASCADE,
+    user_id uuid NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
     emoji text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now (),
     updated_at timestamptz NOT NULL DEFAULT now (),
