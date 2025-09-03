@@ -9,7 +9,6 @@ import (
 	"github.com/suck-seed/yapp/config"
 	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/dto"
-	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/services"
 	"github.com/suck-seed/yapp/internal/utils"
 )
@@ -122,46 +121,37 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 		return
 	}
 
-	// now we duplicate the room inMemory and add current cllient in that struct
-	// check if it already exists or not, if it doesnt add it in room
+	// Do this during registiring not here, race condition aauxa
+	// if _, exists := h.hub.Rooms[room.RoomId]; !exists {
 
-	if _, exists := h.hub.Rooms[room.RoomId]; !exists {
+	// 	// add in the collection of rooms in hub
+	// 	h.hub.Rooms[room.RoomId] = &Room{
+	// 		RoomId:    room.RoomId,
+	// 		HallID:    room.HallId,
+	// 		FloorID:   room.FloorId,
+	// 		Name:      room.Name,
+	// 		RoomType:  RoomType(room.RoomType),
+	// 		IsPrivate: room.IsPrivate,
+	// 		CreatedAt: room.CreatedAt,
+	// 		UpdatedAt: room.UpdatedAt,
 
-		// add in the collection of rooms in hub
-		h.hub.Rooms[room.RoomId] = &Room{
-			RoomId:    room.RoomId,
-			HallID:    room.HallId,
-			FloorID:   room.FloorId,
-			Name:      room.Name,
-			RoomType:  RoomType(room.RoomType),
-			IsPrivate: room.IsPrivate,
-			CreatedAt: room.CreatedAt,
-			UpdatedAt: room.UpdatedAt,
-
-			// initialize a client list
-			Clients: make(map[uuid.UUID]*Client),
-		}
-	}
+	// 		// initialize a client list
+	// 		Clients: make(map[uuid.UUID]*Client),
+	// 	}
+	// }
 
 	// register client
 	client := &Client{
-		Conn:        conn,
-		Message:     make(chan *models.Message, 50),
-		UserId:      user.UserId,
-		RoomId:      room.RoomId,
-		Username:    user.Username,
-		DisplayName: user.DisplayName,
-		AvatarURL:   user.AvatarURL,
-		Description: user.Description,
-		Active:      user.Active,
-		CreatedAt:   user.CreatedAt,
+		Conn:   conn,
+		UserId: user.UserId,
+		RoomId: room.RoomId,
 	}
 
 	h.hub.Register <- client
 
 	// write message & read for message
-	go client.writeMessage()
-	client.readMessage(h.hub)
+	go client.writePump()
+	client.readPump(h.hub)
 
 }
 
@@ -170,6 +160,8 @@ type GetClientRes struct {
 	Username string `json:"username"`
 }
 
+// ws/clients/roomId
+// can be used for listing joined members, for @ tagging
 func (h *WebsocketHandler) GetClients(c *gin.Context) {
 
 	var clients []GetClientRes
@@ -188,8 +180,7 @@ func (h *WebsocketHandler) GetClients(c *gin.Context) {
 
 	for _, client := range h.hub.Rooms[roomId].Clients {
 		clients = append(clients, GetClientRes{
-			ID:       client.UserId.String(),
-			Username: client.Username,
+			ID: client.UserId.String(),
 		})
 	}
 

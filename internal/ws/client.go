@@ -6,57 +6,83 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/suck-seed/yapp/internal/models"
 )
 
+// Represents a Websocket connection
 type Client struct {
-	Conn    *websocket.Conn
-	Message chan *models.Message
+	// Connection essentials
+	Conn *websocket.Conn
+	Send chan *OutboundMessage
 
-	RoomId uuid.UUID `json:"room_id"`
+	// Identity - only what's needed for routing
+	UserId uuid.UUID
+	RoomId uuid.UUID
 
-	UserId      uuid.UUID `json:"user_id"`
-	Username    string    `json:"username"`
-	DisplayName *string   `json:"display_name,omitempty" db:"display_name"`
-	AvatarURL   *string   `json:"avatar_url,omitempty" db:"avatar_url"`
-	Description *string   `json:"description,omitempty" db:"description"`
-	Active      bool      `json:"active" db:"active"`
-	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	// Connection metadata
+	ConnectedAt time.Time
+	LastPing    time.Time
 }
 
-func (c *Client) writeMessage() {
+func (c *Client) writePump() {
 
-	defer c.Conn.Close()
-
-	for {
-
-		message, ok := <-c.Message
-		if !ok {
-			return
-		}
-
-		// TODO check profanity
-		// TODO send to messageService to
-		//
-
-		c.Conn.WriteJSON(message)
-
-	}
-
-}
-
-func (c *Client) readMessage(hub *Hub) {
+	ticker := time.NewTicker(60 * time.Second)
 	defer func() {
-		hub.Unregister <- c
+		ticker.Stop()
 		c.Conn.Close()
 	}()
 
 	for {
 
-		msg := &models.Message{}
+		select {
 
-		err := c.Conn.ReadJSON(&msg)
-		if err != nil {
+		case message, ok := <-c.Send:
+			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+
+			if !ok {
+				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+
+			if err := c.Conn.WriteJSON(message); err != nil {
+				log.Printf("Websocket write wrror %v", err)
+				return
+			}
+
+		case <-ticker.C:
+			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+
+			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+
+				return
+			}
+
+		}
+
+	}
+
+}
+
+func (c *Client) readPump(hub *Hub) {
+	defer func() {
+		hub.Unregister <- c
+		c.Conn.Close()
+	}()
+
+	c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	c.Conn.SetPongHandler(func(string) error {
+
+		c.LastPing = time.Now()
+		c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+
+	})
+
+	for {
+
+		msg := &InboundMessage{}
+
+		if err := c.Conn.ReadJSON(&msg); err != nil {
+
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
 			}
@@ -64,10 +90,10 @@ func (c *Client) readMessage(hub *Hub) {
 
 		}
 
-		msg.AuthorId = c.UserId
+		msg.UserId = c.UserId
 		msg.RoomId = c.RoomId
 
-		hub.Broadcast <- msg
+		hub.Inbound <- msg
 	}
 
 }
