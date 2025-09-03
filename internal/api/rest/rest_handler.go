@@ -6,8 +6,21 @@ import (
 	"github.com/suck-seed/yapp/internal/services"
 )
 
+// TODO Make router for halls, messages
+func RegisterAuthRoutes(r *gin.Engine, userService services.IUserService) {
+
+	authHandler := handlers.NewAuthHandler(userService)
+
+	authGroup := r.Group("/auth")
+	{
+		authGroup.POST("/signup", authHandler.CreateUser)
+		authGroup.POST("/login", authHandler.Login)
+		authGroup.GET("/logout", authHandler.Logout)
+	}
+}
+
 // RegisterUserRoutes : Group routes proceeding from /user/ and more
-func RegisterUserRoutes(r *gin.Engine, userService services.IUserService) {
+func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 
 	// make instance of userHandler
 	userHandler := handlers.NewUserHandler(userService)
@@ -40,31 +53,18 @@ func RegisterUserRoutes(r *gin.Engine, userService services.IUserService) {
 
 }
 
-// TODO Make router for halls, messages
-func RegisterAuthRoutes(r *gin.Engine, userService services.IUserService) {
-
-	authHandler := handlers.NewAuthHandler(userService)
-
-	authGroup := r.Group("/auth")
-	{
-		authGroup.POST("/signup", authHandler.CreateUser)
-		authGroup.POST("/login", authHandler.Login)
-		authGroup.GET("/logout", authHandler.Logout)
-	}
-}
-
-func RegisterHallRoutes(r *gin.Engine, hallService services.IHallService) {
+func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 
 }
 
-func RegisterFloorRoutes(r *gin.Engine, floorService services.IFloorService) {
+func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService) {
 
 }
 
-func RegisterRoomRoutes(r *gin.Engine, roomService services.IRoomService) {
+func RegisterRoomRoutes(r *gin.RouterGroup, roomService services.IRoomService) {
 
 }
 
-func RegisterMessageRoutes(r *gin.Engine, messageService services.IMessageService) {
+func RegisterMessageRoutes(r *gin.RouterGroup, messageService services.IMessageService) {
 
 }

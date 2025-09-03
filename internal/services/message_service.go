@@ -40,36 +40,60 @@ func NewMessageService(roomRepo repositories.IRoomRepository, messageRepo reposi
 
 // TODO Properly fill in these methods
 
-func (r *messageService) CreateMessage(c context.Context, req *dto.CreateMessageReq) (*models.Message, error) {
+func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessageReq) (*models.Message, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	print(ctx)
 
 	return &models.Message{}, nil
 
 }
 
-func (r *messageService) GetMessageByID(c context.Context, req *dto.FetchMessageByIdReq) (*models.Message, error) {
+func (s *messageService) GetMessageByID(c context.Context, req *dto.FetchMessageByIdReq) (*models.Message, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	print(ctx)
 
 	return &models.Message{}, nil
 
 }
 
-func (r *messageService) GetMessagesByRoomID(c context.Context, req *dto.FetchMessageByRoomIDReq) ([]*models.Message, error) {
+func (s *messageService) GetMessagesByRoomID(c context.Context, req *dto.FetchMessageByRoomIDReq) ([]*models.Message, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	print(ctx)
 
 	return []*models.Message{}, nil
 
 }
-func (r *messageService) GetRoomMessages(c context.Context, req *dto.FetchRoomMessageReq) ([]*models.Message, error) {
+func (s *messageService) GetRoomMessages(c context.Context, req *dto.FetchRoomMessageReq) ([]*models.Message, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	print(ctx)
 
 	return []*models.Message{}, nil
 
 }
 
-func (r *messageService) UpdateMessage(c context.Context, req *dto.UpdateMessageReq) (*models.Message, error) {
+func (s *messageService) UpdateMessage(c context.Context, req *dto.UpdateMessageReq) (*models.Message, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	print(ctx)
 
 	return &models.Message{}, nil
 
 }
 
-func (r *messageService) DeleteMessage(c context.Context, req *dto.DeleteMessageReq) error {
+func (s *messageService) DeleteMessage(c context.Context, req *dto.DeleteMessageReq) error {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	print(ctx)
 
 	return nil
 

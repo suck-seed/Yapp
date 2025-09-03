@@ -8,8 +8,8 @@ import (
 
 type Message struct {
 	MessageId       uuid.UUID  `json:"message_id" db:"message_id"`
-	RoomID          uuid.UUID  `json:"room_id" db:"room_id"`
-	AuthorID        uuid.UUID  `json:"author_id" db:"author_id"`
+	RoomId          uuid.UUID  `json:"room_id" db:"room_id"`
+	AuthorId        uuid.UUID  `json:"author_id" db:"author_id"`
 	Content         string     `json:"content" db:"content"`
 	SentAt          time.Time  `json:"sent_at" db:"sent_at"`
 	EditedAt        *time.Time `json:"edited_at" db:"edited_at"`

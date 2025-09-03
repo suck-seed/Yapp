@@ -43,12 +43,19 @@ var (
 	ErrorInvalidRoomId = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Room Id, can not join room"}
 
 	// CONTEXT ERRORS
-	ErrorNoUserIdInContext    = &CustomError{Code: http.StatusBadRequest, Message: "No UserId in context"}
-	ErrorEmptyUserIdInContext = &CustomError{Code: http.StatusBadRequest, Message: "Empty UserId in context"}
+	ErrorNoUserIdInContext        = &CustomError{Code: http.StatusBadRequest, Message: "No UserId in context"}
+	ErrorEmptyUserIdInContext     = &CustomError{Code: http.StatusBadRequest, Message: "Empty UserId in context"}
+	ErrorInvalidUserIdInContext   = &CustomError{Code: http.StatusUnauthorized, Message: "Bad Token user_id format (not uuid)"}
+	ErrorInvalidUsernameInContext = &CustomError{Code: http.StatusUnauthorized, Message: "Bad Token username format"}
 
 	// TOKENS
 	ErrorMissingToken = &CustomError{Code: http.StatusUnauthorized, Message: "Missing Token"}
 	ErrorInvalidToken = &CustomError{Code: http.StatusUnauthorized, Message: "Invalid Token"}
+
+	// ROOM/FLOOR/MESSAGE DOESNT EXIST
+	ErrorRoomDoesntExist      = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}
+	ErrorUserDoesntBelongRoom = &CustomError{Code: http.StatusBadRequest, Message: "User is not allowded in this room"}
+	ErrorUserDoesntBelongHall = &CustomError{Code: http.StatusBadRequest, Message: "User is not allowded in this hall"}
 )
 
 // Writting Errors from handlers to client

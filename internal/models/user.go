@@ -20,6 +20,7 @@ type User struct {
 	Username     string       `json:"username" db:"username"`
 	DisplayName  *string      `json:"display_name,omitempty" db:"display_name"`
 	Email        string       `json:"email" db:"email"`
+	Description  *string      `json:"description,omitempty" db:"description"`
 	PasswordHash string       `json:"password_hash" db:"password_hash"`
 	PhoneNumber  *string      `json:"phone_number,omitempty" db:"phone_number"`
 	AvatarURL    *string      `json:"avatar_url,omitempty" db:"avatar_url"`

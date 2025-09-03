@@ -16,6 +16,8 @@ import (
 type IUserService interface {
 	CreateUser(c context.Context, req *dto.CreateUserReq) (*dto.CreateUserRes, error)
 	Login(c context.Context, req *dto.LoginUserReq) (*dto.LoginUserRes, error)
+
+	GetUserByID(c context.Context, userId *uuid.UUID) (*models.User, error)
 }
 
 // userService : Behaves like a class, and implements IUserService's methods
@@ -164,4 +166,15 @@ func (s *userService) Login(c context.Context, req *dto.LoginUserReq) (*dto.Logi
 		UserId:      user.UserId.String(),
 		Username:    user.Username,
 	}, nil
+}
+
+func (s *userService) GetUserByID(c context.Context, userId *uuid.UUID) (*models.User, error) {
+
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	print(ctx)
+
+	return &models.User{}, nil
+
 }

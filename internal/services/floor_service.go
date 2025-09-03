@@ -25,3 +25,6 @@ func NewFloorService(hallRepo repositories.IHallRepository, floorRepo repositori
 		sync.RWMutex{},
 	}
 }
+
+// ctx, cancel := context.WithTimeout(c, s.timeout)
+// 	defer cancel()

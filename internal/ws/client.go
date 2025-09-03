@@ -1,26 +1,73 @@
 package ws
 
 import (
+	"log"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/suck-seed/yapp/internal/models"
 )
 
 type Client struct {
-	Conn             *websocket.Conn
-	Message          chan *models.Message
-	WebsocketMessage chan *WebsocketMessage
-	ID               uuid.UUID `json:"id"`
-	RoomID           uuid.UUID `json:"room_id"`
-	Username         string    `json:"username"`
+	Conn    *websocket.Conn
+	Message chan *models.Message
+
+	RoomId uuid.UUID `json:"room_id"`
+
+	UserId      uuid.UUID `json:"user_id"`
+	Username    string    `json:"username"`
+	DisplayName *string   `json:"display_name,omitempty" db:"display_name"`
+	AvatarURL   *string   `json:"avatar_url,omitempty" db:"avatar_url"`
+	Description *string   `json:"description,omitempty" db:"description"`
+	Active      bool      `json:"active" db:"active"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 }
 
-type WebsocketMessage struct {
-	Type      string    `json:"type"` // "message", "user_joined", "user_left", etc.
-	Content   string    `json:"content"`
-	RoomID    uuid.UUID `json:"room_id"`
-	AuthorID  uuid.UUID `json:"author_id"`
-	Username  string    `json:"username"`
-	MessageID uuid.UUID `json:"message_id,omitempty"` // Only for actual messages
-	Timestamp string    `json:"timestamp"`
+func (c *Client) writeMessage() {
+
+	defer c.Conn.Close()
+
+	for {
+
+		message, ok := <-c.Message
+		if !ok {
+			return
+		}
+
+		// TODO check profanity
+		// TODO send to messageService to
+		//
+
+		c.Conn.WriteJSON(message)
+
+	}
+
+}
+
+func (c *Client) readMessage(hub *Hub) {
+	defer func() {
+		hub.Unregister <- c
+		c.Conn.Close()
+	}()
+
+	for {
+
+		msg := &models.Message{}
+
+		err := c.Conn.ReadJSON(&msg)
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("error: %v", err)
+			}
+			break
+
+		}
+
+		msg.AuthorId = c.UserId
+		msg.RoomId = c.RoomId
+
+		hub.Broadcast <- msg
+	}
+
 }

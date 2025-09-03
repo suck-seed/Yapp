@@ -42,8 +42,8 @@ func (r *messageRepository) CreateMessage(ctx context.Context, message *models.M
 		ctx,
 		query,
 		message.MessageId,
-		message.RoomID,
-		message.AuthorID,
+		message.RoomId,
+		message.AuthorId,
 		message.Content,
 		message.SentAt,
 		message.EditedAt,
@@ -57,8 +57,8 @@ func (r *messageRepository) CreateMessage(ctx context.Context, message *models.M
 
 	err := row.Scan(
 		&createdMessage.MessageId,
-		&createdMessage.RoomID,
-		&createdMessage.AuthorID,
+		&createdMessage.RoomId,
+		&createdMessage.AuthorId,
 		&createdMessage.Content,
 		&createdMessage.SentAt,
 		&createdMessage.EditedAt,
@@ -88,8 +88,8 @@ func (r *messageRepository) GetMessageByID(ctx context.Context, messageID uuid.U
 
 	err := r.db.QueryRow(ctx, query, messageID).Scan(
 		&message.MessageId,
-		&message.RoomID,
-		&message.AuthorID,
+		&message.RoomId,
+		&message.AuthorId,
 		&message.Content,
 		&message.SentAt,
 		&message.EditedAt,
@@ -128,8 +128,8 @@ func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, roomID uuid
 
 		err := rows.Scan(
 			&message.MessageId,
-			&message.RoomID,
-			&message.AuthorID,
+			&message.RoomId,
+			&message.AuthorId,
 			&message.Content,
 			&message.SentAt,
 			&message.EditedAt,
@@ -194,8 +194,8 @@ func (r *messageRepository) GetRoomMessages(ctx context.Context, roomID uuid.UUI
 
 		err := rows.Scan(
 			&message.MessageId,
-			&message.RoomID,
-			&message.AuthorID,
+			&message.RoomId,
+			&message.AuthorId,
 			&message.Content,
 			&message.SentAt,
 			&message.EditedAt,

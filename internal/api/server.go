@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/suck-seed/yapp/config"
 	"github.com/suck-seed/yapp/internal/api/rest"
+	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/services"
 )
@@ -34,12 +35,20 @@ func StartServer(cfg config.AppConfig) {
 	messageService := services.NewMessageService(roomRepository, messageRepository)
 
 	// Routes Handler
-	rest.RegisterUserRoutes(router, userService)
 	rest.RegisterAuthRoutes(router, userService)
-	rest.RegisterHallRoutes(router, hallService)
-	rest.RegisterFloorRoutes(router, floorService)
-	rest.RegisterRoomRoutes(router, roomService)
-	rest.RegisterMessageRoutes(router, messageService)
+
+	// Proteched API routed (JWT required)
+
+	api := router.Group("/api")
+	api.Use(auth.AuthMiddleware())
+	{
+		rest.RegisterUserRoutes(api, userService)
+		rest.RegisterHallRoutes(api, hallService)
+		rest.RegisterFloorRoutes(api, floorService)
+		rest.RegisterRoomRoutes(api, roomService)
+		rest.RegisterMessageRoutes(api, messageService)
+
+	}
 	//TODO Add similar routers for other too
 
 	start(router, cfg)
