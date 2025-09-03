@@ -1,13 +1,10 @@
 package ws
 
 import (
-	"context"
 	"sync"
 
 	"github.com/google/uuid"
 )
-
-type PersistFunc func(ctx context.Context, in *InboundMessage) (*OutboundMessage, error)
 
 type Hub struct {
 	// maps roomID to roomStruct
