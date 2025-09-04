@@ -46,22 +46,6 @@ func (h *Hub) Run() {
 	go h.handleInboundMessage()
 	go h.handleOutbound()
 
-	// Handles Presistent handling on incoming messages, and returns a full fiedged cononical outbound message
-	// go func() {
-	// 	for inboundedMessage := range h.Presist {
-
-	// 		outboundedMessage, err := presist(context.Background(), inboundedMessage)
-	// 		if err != nil {
-
-	// 			// Send error to the user
-	// 			continue
-	// 		}
-
-	// 		h.Broadcast <- outboundedMessage
-	// 	}
-	// }()
-
-	//
 	for {
 		select {
 		case cl := <-h.Register:
@@ -69,9 +53,6 @@ func (h *Hub) Run() {
 
 		case cl := <-h.Unregister:
 			h.unregisterClient(cl)
-
-			// case m := <-h.Broadcast:
-
 		}
 	}
 }

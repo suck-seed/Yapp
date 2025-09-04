@@ -34,5 +34,7 @@ frontend/.next
 # ignore air's build outputs
 tmp/
 
+# ignore out from linecount
+/out
 
 guide.md
