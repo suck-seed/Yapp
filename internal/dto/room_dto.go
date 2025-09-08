@@ -15,7 +15,7 @@ type CreateRoomReq struct {
 }
 
 type CreateRoomRes struct {
-	RoomId    string  `json:"room_id"`
+	ID        string  `json:"id"`
 	HallID    string  `json:"hall_id"`
 	FloorID   *string `json:"floor_id,omitempty"`
 	Name      string  `json:"name"`
@@ -25,13 +25,13 @@ type CreateRoomRes struct {
 }
 
 type UpdateRoomReq struct {
-	RoomId    string  `json:"room_id"`
+	ID        string  `json:"id"`
 	Name      *string `json:"name" binding:"omitempty,min=1,max=64"`
 	IsPrivate *bool   `json:"is_private" bindling:"omitempty"`
 }
 
 type GetRoomRes struct {
-	RoomId    string  `json:"room_id"`
+	ID        string  `json:"id"`
 	HallID    string  `json:"hall_id"`
 	FloorID   *string `json:"floor_id,omitempty"`
 	Name      string  `json:"name"`

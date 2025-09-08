@@ -19,7 +19,7 @@ type CreateMessageRes struct {
 }
 
 type FetchMessageByIdReq struct {
-	MessageId uuid.UUID `json:"message_id" binding:"required"`
+	ID uuid.UUID `json:"id" binding:"required"`
 }
 
 type FetchMessageByRoomIDReq struct {
@@ -38,7 +38,7 @@ type FetchRoomMessageReq struct {
 // Fetch 1. Message , check if AuthorId == userId
 
 type UpdateMessageReq struct {
-	MessageId       string `json:"message_id" binding:"required"`
+	ID              string `json:"id" binding:"required"`
 	Content         string `json:"content" binding:"required,min=1,max=8000"`
 	MentionEveryone bool   `json:"mention_everyone" binding:"omitempty"`
 }
@@ -48,5 +48,5 @@ type UpdateMessageReq struct {
 // Or 2. Message, Find user in hall_members, fetch role_id from it, ani check role_permissions ma if text_manage_message is available or not
 
 type DeleteMessageReq struct {
-	MessageId string `json:"message_id" binding:"required"`
+	ID string `json:"id" binding:"required"`
 }

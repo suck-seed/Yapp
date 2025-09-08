@@ -19,10 +19,10 @@ type MyJWTClaims struct {
 func GetSignedToken(user *models.User) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, MyJWTClaims{
-		ID:       user.UserId.String(),
+		ID:       user.ID.String(),
 		Username: user.Username,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    user.UserId.String(),
+			Issuer:    user.ID.String(),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 		},
 	})

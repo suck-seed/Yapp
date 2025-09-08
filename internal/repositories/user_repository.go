@@ -30,12 +30,12 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 	query := `
   				INSERT INTO users (id, username, display_name, email, password_hash, phone_number)
       			VALUES ($1, $2, $3, $4, $5, $6)
-         		RETURNING id, username, display_name, email, phone_number,avatar_url, friend_policy ,created_at, updated_at
+         		RETURNING id, username, display_name, email, phone_number, avatar_url, friend_policy, created_at, updated_at
 
    			`
 
 	row := userRepository.db.QueryRow(ctx, query,
-		user.UserId,
+		user.ID,
 		user.Username,
 		user.DisplayName,
 		user.Email,
@@ -45,7 +45,7 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 
 	saved := &models.User{}
 
-	err := row.Scan(&saved.UserId, &saved.Username, &saved.DisplayName, &saved.Email, &saved.PhoneNumber, &saved.AvatarURL, &saved.FriendPolicy, &saved.CreatedAt, &saved.UpdatedAt)
+	err := row.Scan(&saved.ID, &saved.Username, &saved.DisplayName, &saved.Email, &saved.PhoneNumber, &saved.AvatarURL, &saved.FriendPolicy, &saved.CreatedAt, &saved.UpdatedAt)
 
 	if err != nil {
 		return nil, err
@@ -60,15 +60,15 @@ func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email 
 	user := &models.User{}
 
 	query := `
-				SELECT id,username,display_name, email, phone_number, avatar_url, password_hash
+				SELECT id, username, display_name, email, phone_number, avatar_url, password_hash
 				FROM users
-				WHERE email = $1
+				WHERE lower(email) = lower($1)
 			`
 
 	row := userRepository.db.QueryRow(ctx, query, email)
 
 	err := row.Scan(
-		&user.UserId,
+		&user.ID,
 		&user.Username,
 		&user.DisplayName,
 		&user.Email,
@@ -90,15 +90,15 @@ func (userRepository *userRepository) GetUserByUsername(ctx context.Context, use
 	user := &models.User{}
 
 	query := `
-				SELECT id,username,display_name, email, phone_number, avatar_url, password_hash
+				SELECT id, username, display_name, email, phone_number, avatar_url, password_hash
 				FROM users
-				WHERE username = $1
+				WHERE lower(username) = lower($1)
 			`
 
 	row := userRepository.db.QueryRow(ctx, query, username)
 
 	err := row.Scan(
-		&user.UserId,
+		&user.ID,
 		&user.Username,
 		&user.DisplayName,
 		&user.Email,
@@ -120,7 +120,7 @@ func (userRepository *userRepository) GetUserByNumber(ctx context.Context, numbe
 	user := &models.User{}
 
 	query := `
-				SELECT id,username,display_name, email, phone_number, avatar_url, password_hash
+				SELECT id, username, display_name, email, phone_number, avatar_url, password_hash
 				FROM users
 				WHERE phone_number = $1
 			`
@@ -128,7 +128,7 @@ func (userRepository *userRepository) GetUserByNumber(ctx context.Context, numbe
 	row := userRepository.db.QueryRow(ctx, query, number)
 
 	err := row.Scan(
-		&user.UserId,
+		&user.ID,
 		&user.Username,
 		&user.DisplayName,
 		&user.Email,

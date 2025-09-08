@@ -94,7 +94,7 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	}
 
 	// check if user is in the hall or not
-	belongs, err := h.IHallService.IsMember(c, &room.HallId, &user.UserId)
+	belongs, err := h.IHallService.IsMember(c, &room.HallId, &user.ID)
 	if err != nil || !belongs {
 		utils.WriteError(c, utils.ErrorUserDoesntBelongHall)
 		return
@@ -104,7 +104,7 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	if room.IsPrivate {
 
 		// check on room_member table
-		belongs, err := h.IRoomService.IsMember(c, &room.RoomId, &user.UserId)
+		belongs, err := h.IRoomService.IsMember(c, &room.ID, &user.ID)
 		if err != nil || !belongs {
 			utils.WriteError(c, utils.ErrorUserDoesntBelongRoom)
 			return
@@ -143,8 +143,8 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	// register client
 	client := &Client{
 		Conn:   conn,
-		UserId: user.UserId,
-		RoomId: room.RoomId,
+		UserID: user.ID,
+		RoomID: room.ID,
 	}
 
 	h.hub.Register <- client
@@ -156,7 +156,7 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 }
 
 type GetClientRes struct {
-	ID       string `json:"user_id"`
+	ID       string `json:"id"`
 	Username string `json:"username"`
 }
 
@@ -180,7 +180,7 @@ func (h *WebsocketHandler) GetClients(c *gin.Context) {
 
 	for _, client := range h.hub.Rooms[roomId].Clients {
 		clients = append(clients, GetClientRes{
-			ID: client.UserId.String(),
+			ID: client.UserID.String(),
 		})
 	}
 

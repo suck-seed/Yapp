@@ -1,5 +1,5 @@
 # Use a multi-stage build to keep the image slim
-FROM golang:1.24-alpine
+FROM golang:1.25-alpine
 
 # Install git (required by air) and air for hot-reload
 RUN apk add --no-cache git \

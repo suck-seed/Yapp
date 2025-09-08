@@ -83,7 +83,7 @@ func (h *Hub) handleInboundMessage() {
 func (h *Hub) handleOutbound() {
 
 	for msg := range h.Outbound {
-		h.deliverToRoom(msg.RoomId, msg)
+		h.deliverToRoom(msg.RoomID, msg)
 
 	}
 
@@ -94,23 +94,23 @@ func (h *Hub) registerClient(client *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	room, exists := h.Rooms[client.RoomId]
+	room, exists := h.Rooms[client.RoomID]
 	if !exists {
 		room = &Room{
-			RoomId:  client.RoomId,
+			ID:      client.RoomID,
 			Clients: make(map[uuid.UUID]*Client),
 		}
 
-		h.Rooms[client.RoomId] = room
+		h.Rooms[client.RoomID] = room
 	}
 
-	room.Clients[client.UserId] = client
+	room.Clients[client.UserID] = client
 
 	// Notift room of user joining via broadcast channel
 	joinMsg := &OutboundMessage{
 		Type:      MessageTypeJoin,
-		RoomId:    client.RoomId,
-		AuthorId:  client.UserId,
+		RoomID:    client.RoomID,
+		AuthorID:  client.UserID,
 		Timestamp: time.Now(),
 	}
 
@@ -119,7 +119,7 @@ func (h *Hub) registerClient(client *Client) {
 	case h.Outbound <- joinMsg:
 
 	default:
-		log.Printf("Could not broadcast join message for user %s", client.UserId)
+		log.Printf("Could not broadcast join message for user %s", client.UserID)
 	}
 
 }
@@ -129,32 +129,32 @@ func (h *Hub) unregisterClient(client *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	room, exists := h.Rooms[client.RoomId]
+	room, exists := h.Rooms[client.RoomID]
 	if !exists {
 		return
 	}
 
 	// if exists
-	delete(room.Clients, client.UserId)
+	delete(room.Clients, client.UserID)
 	close(client.Send)
 
 	leavingMsg := &OutboundMessage{
 		Type:      MessageTypeLeave,
-		RoomId:    client.RoomId,
-		AuthorId:  client.UserId,
+		RoomID:    client.RoomID,
+		AuthorID:  client.UserID,
 		Timestamp: time.Now(),
 	}
 
 	// remove room from memory if no user
 	if len(room.Clients) == 0 {
-		delete(h.Rooms, client.RoomId)
+		delete(h.Rooms, client.RoomID)
 	} else {
 
 		select {
 		case h.Outbound <- leavingMsg:
 
 		default:
-			log.Printf("Could not broadcast leave message for user %s", client.UserId)
+			log.Printf("Could not broadcast leave message for user %s", client.UserID)
 
 		}
 	}
@@ -166,14 +166,14 @@ func (h *Hub) processTextMessage(msg *InboundMessage) {
 	if err != nil {
 		errMsg := &OutboundMessage{
 			Type:      MessageTypeError,
-			RoomId:    msg.RoomId,
-			AuthorId:  msg.UserId,
+			RoomID:    msg.RoomID,
+			AuthorID:  msg.UserID,
 			Error:     "Failed to send message",
 			Timestamp: time.Now(),
 		}
 
 		// send error the the concerning user only
-		h.sendToUser(msg.UserId, msg.RoomId, errMsg)
+		h.sendToUser(msg.UserID, msg.RoomID, errMsg)
 		return
 	}
 
@@ -182,7 +182,7 @@ func (h *Hub) processTextMessage(msg *InboundMessage) {
 	case h.Outbound <- outboundingMsg:
 
 	default:
-		log.Printf("Broadcast channel full, dropping message %s", outboundingMsg.MessageId)
+		log.Printf("Broadcast channel full, dropping message %s", outboundingMsg.ID)
 
 	}
 
@@ -192,10 +192,10 @@ func (h *Hub) processTypingIndicator(msg *InboundMessage) {
 
 	typingMsg := &OutboundMessage{
 		Type:       MessageTypeTyping,
-		RoomId:     msg.RoomId,
-		AuthorId:   msg.UserId,
+		RoomID:     msg.RoomID,
+		AuthorID:   msg.UserID,
 		Timestamp:  time.Now(),
-		TypingUser: &msg.UserId,
+		TypingUser: &msg.UserID,
 	}
 
 	select {
@@ -209,8 +209,8 @@ func (h *Hub) processTypingIndicator(msg *InboundMessage) {
 		time.Sleep(5 * time.Second)
 		stopTyping := &OutboundMessage{
 			Type:      MessageTypeStopTyping,
-			RoomId:    msg.RoomId,
-			AuthorId:  msg.UserId,
+			RoomID:    msg.RoomID,
+			AuthorID:  msg.UserID,
 			Timestamp: time.Now(),
 			// Typing User is nil, thus stopped typing
 		}
@@ -252,7 +252,7 @@ func (h *Hub) deliverToRoom(roomId uuid.UUID, msg *OutboundMessage) {
 		default:
 			// Client send buffer is full -
 			// Disconnect
-			log.Printf("Client %s buffer full, disconnecting", msg.AuthorId)
+			log.Printf("Client %s buffer full, disconnecting", msg.AuthorID)
 			close(client.Send)
 			disconnectedClients = append(disconnectedClients, userId)
 

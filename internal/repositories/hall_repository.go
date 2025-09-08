@@ -7,7 +7,7 @@ type hallRepository struct {
 	db PGXTX
 }
 
-func NewHallReposiroty(db PGXTX) IHallRepository {
+func NewHallRepository(db PGXTX) IHallRepository {
 
 	return &hallRepository{
 		db: db,

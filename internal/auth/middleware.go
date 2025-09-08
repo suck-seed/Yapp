@@ -31,7 +31,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		}
 
-		// Everythings alright, place the context for handlers
+		// Everything's alright, place the context for handlers
 		c.Set(CtxUSerIDKey, claims.ID)
 		c.Set(CtxUsernameKey, claims.Username)
 		c.Next()

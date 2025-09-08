@@ -15,7 +15,7 @@ func MakePresistFunc(messageService services.IMessageService, userService servic
 
 		// send to messageService to handle
 		saved, err := messageService.CreateMessage(context.Background(), &dto.CreateMessageReq{
-			RoomId:          in.RoomId.String(),
+			RoomId:          in.RoomID.String(),
 			Content:         in.Content,
 			MentionEveryone: in.MentionEveryone,
 			Mentions:        in.Mentions,
@@ -27,9 +27,9 @@ func MakePresistFunc(messageService services.IMessageService, userService servic
 
 		return &OutboundMessage{
 			Type:      MessageTypeText,
-			MessageId: saved.MessageId,
-			RoomId:    saved.RoomId,
-			AuthorId:  saved.AuthorId,
+			ID:        saved.ID,
+			RoomID:    saved.RoomId,
+			AuthorID:  saved.AuthorId,
 			Content:   saved.Content,
 			Timestamp: saved.SentAt,
 		}, nil

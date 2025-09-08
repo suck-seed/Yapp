@@ -15,8 +15,8 @@ type Client struct {
 	Send chan *OutboundMessage
 
 	// Identity - only what's needed for routing
-	UserId uuid.UUID
-	RoomId uuid.UUID
+	UserID uuid.UUID
+	RoomID uuid.UUID
 
 	// Connection metadata
 	ConnectedAt time.Time
@@ -90,8 +90,8 @@ func (c *Client) readPump(hub *Hub) {
 
 		}
 
-		msg.UserId = c.UserId
-		msg.RoomId = c.RoomId
+		msg.UserID = c.UserID
+		msg.RoomID = c.RoomID
 
 		hub.Inbound <- msg
 	}
