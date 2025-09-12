@@ -7,9 +7,9 @@ type roomRepository struct {
 	db PGXTX
 }
 
-func NewRoomReposiroty(db PGXTX) IHallRepository {
+func NewRoomRepository(db PGXTX) IRoomRepository {
 
-	return &hallRepository{
+	return &roomRepository{
 		db: db,
 	}
 }

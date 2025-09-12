@@ -1,6 +1,6 @@
 CREATE TABLE user_devices (
-    user_device_id uuid PRIMARY KEY,
-    user_id uuid NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+    id uuid PRIMARY KEY,
+    user_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     device_id text NOT NULL,
     device_name text,
     last_ip inet,

@@ -14,25 +14,25 @@ import (
 //
 
 type CreateUserRes struct {
-	UserId   string `json:"user_id"`
+	ID       string `json:"id"`
 	Username string `json:"username" binding:"required,min=3,max=32"`
 }
 
-type LoginUserRes struct {
+type SigninUserRes struct {
 	AccessToken string
-	UserId      string `json:"user_id" db:"user_id"`
+	ID          string `json:"id" db:"id"`
 	Username    string `json:"username" db:"username"`
 }
 
 type UserPublic struct {
-	UserId      string `json:"user_id"`
+	ID          string `json:"id"`
 	Username    string `json:"username"`
 	DisplayName string `json:"display_name"`
 	AvatarURL   string `json:"avatar_url,omitempty"`
 }
 
 type UserMe struct {
-	UserId       string              `json:"user_idd"`
+	ID           string              `json:"id"`
 	Username     string              `json:"username"`
 	DisplayName  *string             `json:"display_name,omitempty"`
 	Email        string              `json:"email"`
@@ -72,9 +72,9 @@ type UsernameAvailabilityResponse struct {
 
 // Func to convert model.User to public and private
 func ToUserPublic(u models.User) UserPublic {
-	id := u.UserId.String()
+	id := u.ID.String()
 	return UserPublic{
-		UserId:      id,
+		ID:          id,
 		Username:    u.Username,
 		DisplayName: *u.DisplayName,
 		AvatarURL:   *u.AvatarURL,
@@ -83,7 +83,7 @@ func ToUserPublic(u models.User) UserPublic {
 
 func ToUserMe(u models.User) UserMe {
 	return UserMe{
-		UserId:       uuid.UUID(u.UserId).String(),
+		ID:           uuid.UUID(u.ID).String(),
 		Username:     u.Username,
 		DisplayName:  u.DisplayName,
 		Email:        u.Email,

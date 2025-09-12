@@ -16,7 +16,7 @@ const (
 )
 
 type User struct {
-	UserId       uuid.UUID    `json:"user_id" db:"user_id"`
+	ID           uuid.UUID    `json:"id" db:"id"`
 	Username     string       `json:"username" db:"username"`
 	DisplayName  *string      `json:"display_name,omitempty" db:"display_name"`
 	Email        string       `json:"email" db:"email"`

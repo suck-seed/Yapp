@@ -13,7 +13,7 @@ type CreateUserReq struct {
 	// if empty, server may default display_name = username
 }
 
-type LoginUserReq struct {
+type SigninUserReq struct {
 	UsernameOrEmail string `json:"username_or_email" binding:"required"`
 	Password        string `json:"password" binding:"required"`
 

@@ -22,10 +22,10 @@ func StartServer(cfg config.AppConfig) {
 
 	// repositories
 	userRepository := repositories.NewUserRepository(cfg.Postgres)
-	hallRepository := repositories.NewHallReposiroty(cfg.Postgres)
+	hallRepository := repositories.NewHallRepository(cfg.Postgres)
 	floorRepository := repositories.NewFloorRepository(cfg.Postgres)
-	roomRepository := repositories.NewRoomReposiroty(cfg.Postgres)
-	messageRepository := repositories.NewMessageReposiroty(cfg.Postgres)
+	roomRepository := repositories.NewRoomRepository(cfg.Postgres)
+	messageRepository := repositories.NewMessageRepository(cfg.Postgres)
 
 	// Service & Dependency Injection for services
 	userService := services.NewUserService(userRepository)
@@ -37,7 +37,7 @@ func StartServer(cfg config.AppConfig) {
 	// Routes Handler
 	rest.RegisterAuthRoutes(router, userService)
 
-	// Proteched API routed (JWT required)
+	// Protected API routed (JWT required)
 
 	api := router.Group("/api")
 	api.Use(auth.AuthMiddleware())

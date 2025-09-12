@@ -21,7 +21,7 @@ type messageRepository struct {
 	db PGXTX
 }
 
-func NewMessageReposiroty(db PGXTX) IMessageRepository {
+func NewMessageRepository(db PGXTX) IMessageRepository {
 
 	return &messageRepository{
 		db: db,
@@ -41,7 +41,7 @@ func (r *messageRepository) CreateMessage(ctx context.Context, message *models.M
 	row := r.db.QueryRow(
 		ctx,
 		query,
-		message.MessageId,
+		message.ID,
 		message.RoomId,
 		message.AuthorId,
 		message.Content,
@@ -56,7 +56,7 @@ func (r *messageRepository) CreateMessage(ctx context.Context, message *models.M
 	createdMessage := &models.Message{}
 
 	err := row.Scan(
-		&createdMessage.MessageId,
+		&createdMessage.ID,
 		&createdMessage.RoomId,
 		&createdMessage.AuthorId,
 		&createdMessage.Content,
@@ -87,7 +87,7 @@ func (r *messageRepository) GetMessageByID(ctx context.Context, messageID uuid.U
 	message := &models.Message{}
 
 	err := r.db.QueryRow(ctx, query, messageID).Scan(
-		&message.MessageId,
+		&message.ID,
 		&message.RoomId,
 		&message.AuthorId,
 		&message.Content,
@@ -127,7 +127,7 @@ func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, roomID uuid
 	for rows.Next() {
 
 		err := rows.Scan(
-			&message.MessageId,
+			&message.ID,
 			&message.RoomId,
 			&message.AuthorId,
 			&message.Content,
@@ -193,7 +193,7 @@ func (r *messageRepository) GetRoomMessages(ctx context.Context, roomID uuid.UUI
 	for rows.Next() {
 
 		err := rows.Scan(
-			&message.MessageId,
+			&message.ID,
 			&message.RoomId,
 			&message.AuthorId,
 			&message.Content,

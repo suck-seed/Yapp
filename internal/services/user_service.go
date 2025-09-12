@@ -15,7 +15,7 @@ import (
 
 type IUserService interface {
 	CreateUser(c context.Context, req *dto.CreateUserReq) (*dto.CreateUserRes, error)
-	Login(c context.Context, req *dto.LoginUserReq) (*dto.LoginUserRes, error)
+	Signin(c context.Context, req *dto.SigninUserReq) (*dto.SigninUserRes, error)
 
 	GetUserByID(c context.Context, userId *uuid.UUID) (*models.User, error)
 }
@@ -99,7 +99,7 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	}
 
 	user := &models.User{
-		UserId:       id,
+		ID:           id,
 		Username:     canonUsername,
 		Email:        canonEmail,
 		PhoneNumber:  canonPhone,
@@ -116,13 +116,13 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	// create a response
 
 	return &dto.CreateUserRes{
-		UserId:   r.UserId.String(),
+		ID:       r.ID.String(),
 		Username: r.Username,
 	}, nil
 
 }
 
-func (s *userService) Login(c context.Context, req *dto.LoginUserReq) (*dto.LoginUserRes, error) {
+func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.SigninUserRes, error) {
 
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
@@ -161,9 +161,9 @@ func (s *userService) Login(c context.Context, req *dto.LoginUserReq) (*dto.Logi
 		return nil, utils.ErrorCreatingUser
 	}
 
-	return &dto.LoginUserRes{
+	return &dto.SigninUserRes{
 		AccessToken: signedToken,
-		UserId:      user.UserId.String(),
+		ID:          user.ID.String(),
 		Username:    user.Username,
 	}, nil
 }

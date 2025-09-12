@@ -47,7 +47,7 @@ const (
 
 // Room represents a chat room in memory
 type Room struct {
-	RoomId uuid.UUID `json:"room_id"`
+	ID uuid.UUID `json:"id"`
 
 	// Active connections - use map for O(1) lookup
 	Clients map[uuid.UUID]*Client `json:"-"`
@@ -71,16 +71,16 @@ type InboundMessage struct {
 	Mentions        []string `json:"mentions,omitempty"` // array of user IDs
 
 	// These are set by server, not client
-	UserId uuid.UUID `json:"-"`
-	RoomId uuid.UUID `json:"-"`
+	UserID uuid.UUID `json:"-"`
+	RoomID uuid.UUID `json:"-"`
 }
 
 // What server sends to clients
 type OutboundMessage struct {
 	Type      MessageType `json:"type"`
-	MessageId uuid.UUID   `json:"message_id,omitempty"`
-	RoomId    uuid.UUID   `json:"room_id"`
-	AuthorId  uuid.UUID   `json:"author_id"`
+	ID        uuid.UUID   `json:"id,omitempty"`
+	RoomID    uuid.UUID   `json:"room_id"`
+	AuthorID  uuid.UUID   `json:"author_id"`
 	Content   string      `json:"content,omitempty"`
 	Timestamp time.Time   `json:"timestamp"`
 
@@ -93,8 +93,8 @@ type PersistFunc func(ctx context.Context, in *InboundMessage) (*OutboundMessage
 
 // TypingIndicator represents typing state
 type TypingIndicator struct {
-	UserId    uuid.UUID `json:"user_id"`
-	RoomId    uuid.UUID `json:"room_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	RoomID    uuid.UUID `json:"room_id"`
 	IsTyping  bool      `json:"is_typing"`
 	Timestamp time.Time `json:"timestamp"`
 }

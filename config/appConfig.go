@@ -18,7 +18,7 @@ import (
 var (
 	httpPort         string
 	postgresUser     string
-	postgresPass     string
+	postgresPassword string
 	postgresHost     string
 	postgresHostPort string
 	postgresPort     string
@@ -87,14 +87,25 @@ func loadEnvVariables() error {
 
 	httpPort = os.Getenv("HTTP_PORT")
 	postgresUser = os.Getenv("POSTGRES_USER")
-	postgresPass = os.Getenv("POSTGRES_PASS")
+	postgresPassword = os.Getenv("POSTGRES_PASSWORD")
 
 	// since everything is inside docker container, it used default postgres port
 	// db_host_port is for local app like TablePlus or pgAdmin to connect to postgres
 
 	postgresHostPort = os.Getenv("HOST_POSTGRES_PORT")
 	postgresHost = os.Getenv("POSTGRES_HOST")
+	if postgresHost == "" {
+		// default for docker compose network; outside docker use localhost
+		if os.Getenv("APP_ENV") == "dev" {
+			postgresHost = "postgres"
+		} else {
+			postgresHost = "localhost"
+		}
+	}
 	postgresPort = os.Getenv("POSTGRES_PORT")
+	if postgresPort == "" {
+		postgresPort = "5432"
+	}
 	postgresDbName = os.Getenv("POSTGRES_DB")
 	secretKey = os.Getenv("JWT_SECRET_KEY")
 
@@ -120,8 +131,10 @@ func loadEnvVariables() error {
 		return errors.New("Forgot to set POSTGRES_PORT ? ")
 	}
 
-	// TODO: Handle further error checking here
-
+	// Further validation: ensure critical DB vars exist
+	if postgresUser == "" || postgresPassword == "" || postgresDbName == "" {
+		return errors.New("Missing required DB environment variables: POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB")
+	}
 	return nil
 }
 

@@ -14,7 +14,7 @@ const (
 )
 
 type Room struct {
-	RoomId    uuid.UUID  `json:"room_id" db:"room_id"`
+	ID        uuid.UUID  `json:"id" db:"id"`
 	HallId    uuid.UUID  `json:"hall_id" db:"hall_id"`
 	FloorId   *uuid.UUID `json:"floor_id,omitempty" db:"floor_id"`
 	Name      string     `json:"name" db:"name"`
