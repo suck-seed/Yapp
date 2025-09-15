@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/services"
 	"github.com/suck-seed/yapp/internal/utils"
@@ -57,33 +58,51 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 
 		utils.WriteError(c, err)
 		return
-
 	}
 
-	// setcookie
+	// set cookie
 	const cookieSecond = 24 * 60 * 60
 
 	c.SetSameSite(http.SameSiteLaxMode)
 	// Use host-only cookie (empty domain) for flexibility across localhost/127.0.0.1
 	c.SetCookie("jwt", u.AccessToken, cookieSecond, "/", "", false, true)
 
-	// a filtered req as we do not want to implicitely pass accessToken to client
+	// a filtered req as we do not want to implicitly pass accessToken to client
 	res := &dto.SigninUserRes{
-		ID:       u.ID,
-		Username: u.Username,
+		ID:          u.ID,
+		Username:    u.Username,
+		DisplayName: u.DisplayName,
 	}
 
 	c.JSON(http.StatusOK, res)
 
 }
 
-func (h *AuthHandler) Logout(c *gin.Context) {
+func (h *AuthHandler) Signout(c *gin.Context) {
 
 	c.SetSameSite(http.SameSiteLaxMode)
 	// Clear the same cookie attributes used when setting it (host-only cookie)
 	c.SetCookie("jwt", "", -1, "/", "", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Logout successful",
+		"message": "Signed out successfully",
+	})
+}
+
+// In your handlers/auth_handler.go
+func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
+	// Extract user info from context (already validated by middleware)
+	userId, username, displayName, err := auth.CurrentUserFromContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	// Return user information
+	c.JSON(http.StatusOK, gin.H{
+		"id":           userId,
+		"username":     username,
+		"display_name": displayName,
+		"success":      true,
 	})
 }

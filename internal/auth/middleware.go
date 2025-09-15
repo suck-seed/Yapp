@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	CtxUSerIDKey   = "user_id"
-	CtxUsernameKey = "username"
+	CtxUSerIDKey      = "user_id"
+	CtxUsernameKey    = "username"
+	CtxDisplayNameKey = "display_name"
 )
 
 // Verifies JWT from cookie "jwt" or "Authorization : Bearer <token>"
@@ -34,6 +35,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		// Everything's alright, place the context for handlers
 		c.Set(CtxUSerIDKey, claims.ID)
 		c.Set(CtxUsernameKey, claims.Username)
+		c.Set(CtxDisplayNameKey, claims.DisplayName)
 		c.Next()
 	}
 
@@ -55,20 +57,22 @@ func getTokenFromRequest(c *gin.Context) string {
 	return ""
 }
 
-func CurrentUserFromContext(c *gin.Context) (userId string, username string, err error) {
+func CurrentUserFromContext(c *gin.Context) (userId string, username string, displayName string, err error) {
 	rawId, ok := c.Get(CtxUSerIDKey)
 	if !ok {
-		return "", "", utils.ErrorNoUserIdInContext
+		return "", "", "", utils.ErrorNoUserIdInContext
 	}
 
 	rawUsername, _ := c.Get(CtxUsernameKey)
+	rawDisplayName, _ := c.Get(CtxDisplayNameKey)
 
 	idString, _ := rawId.(string)
 	usernameString, _ := rawUsername.(string)
+	displayNameString, _ := rawDisplayName.(string)
 
 	if idString == "" {
-		return "", "", utils.ErrorEmptyUserIdInContext
+		return "", "", "", utils.ErrorEmptyUserIdInContext
 	}
 
-	return idString, usernameString, nil
+	return idString, usernameString, displayNameString, nil
 }

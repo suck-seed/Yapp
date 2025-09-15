@@ -12,7 +12,7 @@ import (
 var usernameRx = regexp.MustCompile(`^[a-z0-9_.-]{3,32}$`)
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`)
 
-func SanatizeUsername(s string) (string, error) {
+func SanitizeUsername(s string) (string, error) {
 	s = strings.TrimSpace(s)
 	s = strings.ToLower(s)
 	if !usernameRx.MatchString(s) {
@@ -21,7 +21,7 @@ func SanatizeUsername(s string) (string, error) {
 	return s, nil
 }
 
-func SanatizeEmail(s string) (string, error) {
+func SanitizeEmail(s string) (string, error) {
 	s = strings.TrimSpace(s)
 	s = strings.ToLower(s)
 	// very light check; rely on validator.v10 too
@@ -31,7 +31,7 @@ func SanatizeEmail(s string) (string, error) {
 	return s, nil
 }
 
-func SanatizePhoneE164(ptr *string) (*string, error) {
+func SanitizePhoneE164(ptr *string) (*string, error) {
 	if ptr == nil {
 		return nil, nil
 	}
@@ -62,26 +62,23 @@ func keepPlusDigits(s string) string {
 	return b.String()
 }
 
-func SanatizeDisplayName(ptr *string) (*string, error) {
-	if ptr == nil {
-		return nil, nil
-	}
-	s := strings.TrimSpace(*ptr)
+func SanitizeDisplayName(ptr string) (string, error) {
+	s := strings.TrimSpace(ptr)
 	// normalize unicode; collapse spaces
 	s = norm.NFKC.String(s)
 	s = strings.Join(strings.Fields(s), " ")
 	if s == "" {
-		return nil, nil
+		return "", nil
 	}
 	if utf8.RuneCountInString(s) > 64 {
-		return nil, ErrorInvalidDisplayName
+		return "", ErrorInvalidDisplayName
 	}
-	return &s, nil
+	return s, nil
 }
 
 const minEntropyBits = 60.0 // ~good baseline for online attacks; use 70–80 for higher risk
 
-func SanatizePasswordPolicy(raw string) (string, error) {
+func SanitizePasswordPolicy(raw string) (string, error) {
 	// Do NOT silently modify. Reject confusing whitespace at edges.
 	if strings.TrimSpace(raw) != raw {
 		return "", ErrorPasswordWhiteSpace

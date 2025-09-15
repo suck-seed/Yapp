@@ -51,6 +51,7 @@ var (
 	// TOKENS
 	ErrorMissingToken = &CustomError{Code: http.StatusUnauthorized, Message: "Missing Token"}
 	ErrorInvalidToken = &CustomError{Code: http.StatusUnauthorized, Message: "Invalid Token"}
+	ErrorTokenExpired = &CustomError{Code: http.StatusUnauthorized, Message: "Token expired"}
 
 	// ROOM/FLOOR/MESSAGE DOESNT EXIST
 	ErrorRoomDoesntExist      = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}

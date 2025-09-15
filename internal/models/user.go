@@ -18,7 +18,7 @@ const (
 type User struct {
 	ID           uuid.UUID    `json:"id" db:"id"`
 	Username     string       `json:"username" db:"username"`
-	DisplayName  *string      `json:"display_name,omitempty" db:"display_name"`
+	DisplayName  string       `json:"display_name" db:"display_name"`
 	Email        string       `json:"email" db:"email"`
 	Description  *string      `json:"description,omitempty" db:"description"`
 	PasswordHash string       `json:"password_hash" db:"password_hash"`

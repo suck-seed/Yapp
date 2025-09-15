@@ -9,7 +9,7 @@ type CreateUserReq struct {
 	Password    string  `json:"password" binding:"required,min=8"`
 	Email       string  `json:"email" binding:"required,email"`
 	PhoneNumber *string `json:"phone_number" binding:"omitempty"`
-	DisplayName *string `json:"display_name" binding:"omitempty,max=64"`
+	DisplayName string  `json:"display_name" binding:"required,min=1,max=64"`
 	// if empty, server may default display_name = username
 }
 
@@ -41,7 +41,7 @@ type ResetPasswordConfirmReq struct {
 }
 
 type UpdateProfileReq struct {
-	DisplayName *string `json:"display_name" binding:"omitempty,max=64"`
+	DisplayName string  `json:"display_name" binding:"required,min=1,max=64"`
 	PhoneNumber *string `json:"phone_number" binding:"omitempty"`
 	AvatarURL   *string `json:"avatar_url" binding:"omitempty,url"`
 }
