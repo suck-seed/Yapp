@@ -11,16 +11,18 @@ import (
 const CookieJWTTImeSeconds = 24 * 60 * 60
 
 type MyJWTClaims struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
+	ID          string `json:"id"`
+	Username    string `json:"username"`
+	DisplayName string `json:"display_name"`
 	jwt.RegisteredClaims
 }
 
 func GetSignedToken(user *models.User) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, MyJWTClaims{
-		ID:       user.ID.String(),
-		Username: user.Username,
+		ID:          user.ID.String(),
+		Username:    user.Username,
+		DisplayName: user.DisplayName,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    user.ID.String(),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),

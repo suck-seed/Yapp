@@ -3,6 +3,7 @@ package rest
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/suck-seed/yapp/internal/api/rest/handlers"
+	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/services"
 )
 
@@ -15,7 +16,9 @@ func RegisterAuthRoutes(r *gin.Engine, userService services.IUserService) {
 	{
 		authGroup.POST("/signup", authHandler.CreateUser)
 		authGroup.POST("/signin", authHandler.Signin)
-		authGroup.GET("/logout", authHandler.Logout)
+		authGroup.GET("/signout", authHandler.Signout)
+
+		authGroup.GET("/me", auth.AuthMiddleware(), authHandler.GetCurrentUser)
 	}
 }
 

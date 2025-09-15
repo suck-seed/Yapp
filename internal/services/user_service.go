@@ -44,31 +44,31 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	defer cancel()
 
 	// sanitize the inputs
-	canonUsername, err := utils.SanatizeUsername(req.Username)
+	canonUsername, err := utils.SanitizeUsername(req.Username)
 	if err != nil {
 		return nil, utils.ErrorInvalidUsername
 	}
-	canonPassword, err := utils.SanatizePasswordPolicy(req.Password)
+	canonPassword, err := utils.SanitizePasswordPolicy(req.Password)
 	if err != nil {
 		return nil, utils.ErrorInvalidPassword
 	}
-	canonEmail, err := utils.SanatizeEmail(req.Email)
+	canonEmail, err := utils.SanitizeEmail(req.Email)
 	if err != nil {
 		return nil, utils.ErrorInvalidEmail
 	}
-	canonPhone, err := utils.SanatizePhoneE164(req.PhoneNumber)
+	canonPhone, err := utils.SanitizePhoneE164(req.PhoneNumber)
 	if err != nil {
 		return nil, utils.ErrorInvalidPhoneNumber
 	}
-	canonDisplayName, err := utils.SanatizeDisplayName(req.DisplayName)
+	canonDisplayName, err := utils.SanitizeDisplayName(req.DisplayName)
 	if err != nil {
 		return nil, utils.ErrorInvalidDisplayName
 	}
 
 	// to assign username to displayName if null
-	if canonDisplayName == nil {
-		canonDisplayName = &canonUsername
-	}
+	// if canonDisplayName == nil {
+	// 	canonDisplayName = &canonUsername
+	// }
 
 	// check username, email and number for existing records
 	userByUsername, _ := s.IUserRepository.GetUserByUsername(ctx, canonUsername)
@@ -129,17 +129,17 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 
 	user := &models.User{}
 
-	canonEmail, err := utils.SanatizeEmail(req.UsernameOrEmail)
+	canonEmail, err := utils.SanitizeEmail(req.UsernameOrEmail)
 	if err == nil {
 		user, _ = s.IUserRepository.GetUserByEmail(ctx, canonEmail)
 	}
 
-	canonUsername, err := utils.SanatizeUsername(req.UsernameOrEmail)
+	canonUsername, err := utils.SanitizeUsername(req.UsernameOrEmail)
 	if err == nil {
 		user, _ = s.IUserRepository.GetUserByUsername(ctx, canonUsername)
 	}
 
-	canonPassword, err := utils.SanatizePasswordPolicy(req.Password)
+	canonPassword, err := utils.SanitizePasswordPolicy(req.Password)
 	if err != nil {
 		return nil, utils.ErrorInvalidPassword
 	}
@@ -165,6 +165,7 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 		AccessToken: signedToken,
 		ID:          user.ID.String(),
 		Username:    user.Username,
+		DisplayName: user.DisplayName,
 	}, nil
 }
 

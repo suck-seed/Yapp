@@ -22,6 +22,7 @@ type SigninUserRes struct {
 	AccessToken string
 	ID          string `json:"id" db:"id"`
 	Username    string `json:"username" db:"username"`
+	DisplayName string `json:"display_name" db:"display_name"`
 }
 
 type UserPublic struct {
@@ -34,7 +35,7 @@ type UserPublic struct {
 type UserMe struct {
 	ID           string              `json:"id"`
 	Username     string              `json:"username"`
-	DisplayName  *string             `json:"display_name,omitempty"`
+	DisplayName  string              `json:"display_name"`
 	Email        string              `json:"email"`
 	PhoneNumber  *string             `json:"phone_number,omitempty"`
 	AvatarURL    *string             `json:"avatar_url,omitempty"`
@@ -76,7 +77,7 @@ func ToUserPublic(u models.User) UserPublic {
 	return UserPublic{
 		ID:          id,
 		Username:    u.Username,
-		DisplayName: *u.DisplayName,
+		DisplayName: u.DisplayName,
 		AvatarURL:   *u.AvatarURL,
 	}
 }
