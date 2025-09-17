@@ -7,13 +7,9 @@ import (
 	"github.com/suck-seed/yapp/internal/models"
 )
 
-//
-// ────────────────────────────────
 // Responses
-// ────────────────────────────────
-//
 
-type CreateUserRes struct {
+type SignupUserRes struct {
 	ID       string `json:"id"`
 	Username string `json:"username" binding:"required,min=3,max=32"`
 }
@@ -22,7 +18,6 @@ type SigninUserRes struct {
 	AccessToken string
 	ID          string `json:"id" db:"id"`
 	Username    string `json:"username" db:"username"`
-	DisplayName string `json:"display_name" db:"display_name"`
 }
 
 type UserPublic struct {

@@ -21,9 +21,9 @@ func NewAuthHandler(userService services.IUserService) *AuthHandler {
 	}
 }
 
-func (h *AuthHandler) CreateUser(c *gin.Context) {
+func (h *AuthHandler) Signup(c *gin.Context) {
 
-	var u dto.CreateUserReq
+	var u dto.SignupUserReq
 
 	if err := c.ShouldBindJSON(&u); err != nil {
 
@@ -32,7 +32,7 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 
 	}
 
-	res, err := h.IUserService.CreateUser(c.Request.Context(), &u)
+	res, err := h.IUserService.Signup(c.Request.Context(), &u)
 	if err != nil {
 
 		utils.WriteError(c, err)
@@ -69,9 +69,8 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 
 	// a filtered req as we do not want to implicitly pass accessToken to client
 	res := &dto.SigninUserRes{
-		ID:          u.ID,
-		Username:    u.Username,
-		DisplayName: u.DisplayName,
+		ID:       u.ID,
+		Username: u.Username,
 	}
 
 	c.JSON(http.StatusOK, res)
@@ -89,10 +88,21 @@ func (h *AuthHandler) Signout(c *gin.Context) {
 	})
 }
 
-// In your handlers/auth_handler.go
-func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
+func (h *AuthHandler) GetUser(c *gin.Context) {
 	// Extract user info from context (already validated by middleware)
-	userId, username, displayName, err := auth.CurrentUserFromContext(c)
+	userId, username, err := auth.GetUsernameAndIdFromContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	userIdParsed, err := utils.ParseUUID(userId)
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidUserIdInContext)
+		return
+	}
+
+	user, err := h.IUserService.GetUserByID(c.Request.Context(), userIdParsed)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
@@ -100,9 +110,11 @@ func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 
 	// Return user information
 	c.JSON(http.StatusOK, gin.H{
-		"id":           userId,
-		"username":     username,
-		"display_name": displayName,
-		"success":      true,
+		"username":    username,
+		"displayName": user.DisplayName,
+		"email":       user.Email,
+		"avatarUrl":   user.AvatarURL,
+		"active":      user.Active,
+		"success":     true,
 	})
 }

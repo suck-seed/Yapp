@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/models"
 )
 
@@ -11,6 +12,7 @@ type IUserRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 	GetUserByNumber(ctx context.Context, number *string) (*models.User, error)
+	GetUserById(ctx context.Context, userId *uuid.UUID) (*models.User, error)
 }
 
 type userRepository struct {
@@ -81,7 +83,30 @@ func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email 
 	}
 
 	return user, nil
+}
 
+func (userRepository *userRepository) GetUserById(ctx context.Context, userId *uuid.UUID) (*models.User, error) {
+	user := &models.User{}
+
+	query := `
+				SELECT username, display_name, email, avatar_url 
+				FROM users
+				WHERE id = $1
+			`
+
+	row := userRepository.db.QueryRow(ctx, query, userId)
+
+	err := row.Scan(
+		&user.Username,
+		&user.DisplayName,
+		&user.Email,
+		&user.AvatarURL,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func (userRepository *userRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
