@@ -14,7 +14,7 @@ import (
 )
 
 type IUserService interface {
-	CreateUser(c context.Context, req *dto.CreateUserReq) (*dto.CreateUserRes, error)
+	Signup(c context.Context, req *dto.SignupUserReq) (*dto.SignupUserRes, error)
 	Signin(c context.Context, req *dto.SigninUserReq) (*dto.SigninUserRes, error)
 
 	GetUserByID(c context.Context, userId *uuid.UUID) (*models.User, error)
@@ -37,7 +37,7 @@ func NewUserService(repository repositories.IUserRepository) IUserService {
 }
 
 // Methods
-func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dto.CreateUserRes, error) {
+func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.SignupUserRes, error) {
 
 	// interface that provides a way to control lifecycle, cancellation and prppaagation of requests
 	ctx, cancel := context.WithTimeout(c, s.timeout)
@@ -56,10 +56,12 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	if err != nil {
 		return nil, utils.ErrorInvalidEmail
 	}
-	canonPhone, err := utils.SanitizePhoneE164(req.PhoneNumber)
-	if err != nil {
-		return nil, utils.ErrorInvalidPhoneNumber
-	}
+
+	// canonPhone, err := utils.SanitizePhoneE164(req.PhoneNumber)
+	// if err != nil {
+	// 	return nil, utils.ErrorInvalidPhoneNumber
+	// }
+
 	canonDisplayName, err := utils.SanitizeDisplayName(req.DisplayName)
 	if err != nil {
 		return nil, utils.ErrorInvalidDisplayName
@@ -73,7 +75,8 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	// check username, email and number for existing records
 	userByUsername, _ := s.IUserRepository.GetUserByUsername(ctx, canonUsername)
 	userByEmail, _ := s.IUserRepository.GetUserByEmail(ctx, canonEmail)
-	userByNumber, _ := s.IUserRepository.GetUserByNumber(ctx, canonPhone)
+
+	// userByNumber, _ := s.IUserRepository.GetUserByNumber(ctx, canonPhone)
 
 	if userByUsername != nil {
 		return nil, utils.ErrorUsernameExists
@@ -81,9 +84,9 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	if userByEmail != nil {
 		return nil, utils.ErrorEmailExists
 	}
-	if userByNumber != nil {
-		return nil, utils.ErrorNumberExists
-	}
+	// if userByNumber != nil {
+	// 	return nil, utils.ErrorNumberExists
+	// }
 
 	// generate id
 	id, err := uuid.NewV7()
@@ -99,10 +102,10 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	}
 
 	user := &models.User{
-		ID:           id,
-		Username:     canonUsername,
-		Email:        canonEmail,
-		PhoneNumber:  canonPhone,
+		ID:       id,
+		Username: canonUsername,
+		Email:    canonEmail,
+		// PhoneNumber:  canonPhone,
 		PasswordHash: password_hash,
 		DisplayName:  canonDisplayName,
 	}
@@ -115,7 +118,7 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 
 	// create a response
 
-	return &dto.CreateUserRes{
+	return &dto.SignupUserRes{
 		ID:       r.ID.String(),
 		Username: r.Username,
 	}, nil
@@ -129,12 +132,12 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 
 	user := &models.User{}
 
-	canonEmail, err := utils.SanitizeEmail(req.UsernameOrEmail)
+	canonEmail, err := utils.SanitizeEmail(req.Email)
 	if err == nil {
 		user, _ = s.IUserRepository.GetUserByEmail(ctx, canonEmail)
 	}
 
-	canonUsername, err := utils.SanitizeUsername(req.UsernameOrEmail)
+	canonUsername, err := utils.SanitizeUsername(req.Email)
 	if err == nil {
 		user, _ = s.IUserRepository.GetUserByUsername(ctx, canonUsername)
 	}
@@ -165,17 +168,22 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 		AccessToken: signedToken,
 		ID:          user.ID.String(),
 		Username:    user.Username,
-		DisplayName: user.DisplayName,
 	}, nil
 }
 
 func (s *userService) GetUserByID(c context.Context, userId *uuid.UUID) (*models.User, error) {
-
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	print(ctx)
+	// Actually fetch the user from the repository
+	user, err := s.IUserRepository.GetUserById(ctx, userId)
+	if err != nil {
+		return nil, utils.ErrorUserNotFound
+	}
 
-	return &models.User{}, nil
+	if user == nil {
+		return nil, utils.ErrorUserNotFound
+	}
 
+	return user, nil
 }

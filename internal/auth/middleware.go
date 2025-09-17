@@ -8,9 +8,8 @@ import (
 )
 
 const (
-	CtxUSerIDKey      = "user_id"
-	CtxUsernameKey    = "username"
-	CtxDisplayNameKey = "display_name"
+	CtxUserIDKey   = "user_id"
+	CtxUsernameKey = "username"
 )
 
 // Verifies JWT from cookie "jwt" or "Authorization : Bearer <token>"
@@ -18,7 +17,7 @@ const (
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		tokenString := getTokenFromRequest(c)
+		tokenString := GetTokenFromRequest(c)
 		if tokenString == "" {
 			utils.WriteError(c, utils.ErrorMissingToken)
 			return
@@ -33,15 +32,14 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		// Everything's alright, place the context for handlers
-		c.Set(CtxUSerIDKey, claims.ID)
+		c.Set(CtxUserIDKey, claims.ID)
 		c.Set(CtxUsernameKey, claims.Username)
-		c.Set(CtxDisplayNameKey, claims.DisplayName)
 		c.Next()
 	}
 
 }
 
-func getTokenFromRequest(c *gin.Context) string {
+func GetTokenFromRequest(c *gin.Context) string {
 
 	// Trying cookie
 	if cookie, err := c.Cookie("jwt"); err == nil && cookie != "" {
@@ -57,22 +55,18 @@ func getTokenFromRequest(c *gin.Context) string {
 	return ""
 }
 
-func CurrentUserFromContext(c *gin.Context) (userId string, username string, displayName string, err error) {
-	rawId, ok := c.Get(CtxUSerIDKey)
+func GetUsernameAndIdFromContext(c *gin.Context) (userId string, username string, err error) {
+	rawId, ok := c.Get(CtxUserIDKey) // Fix typo here
 	if !ok {
-		return "", "", "", utils.ErrorNoUserIdInContext
+		return "", "", utils.ErrorNoUserIdInContext
 	}
-
 	rawUsername, _ := c.Get(CtxUsernameKey)
-	rawDisplayName, _ := c.Get(CtxDisplayNameKey)
 
-	idString, _ := rawId.(string)
-	usernameString, _ := rawUsername.(string)
-	displayNameString, _ := rawDisplayName.(string)
+	userId, _ = rawId.(string)
+	username, _ = rawUsername.(string)
 
-	if idString == "" {
-		return "", "", "", utils.ErrorEmptyUserIdInContext
+	if userId == "" {
+		return "", "", utils.ErrorEmptyUserIdInContext
 	}
-
-	return idString, usernameString, displayNameString, nil
+	return userId, username, nil
 }
