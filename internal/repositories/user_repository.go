@@ -58,7 +58,6 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 
 func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 
-	// create a user model
 	user := &models.User{}
 
 	query := `
@@ -86,10 +85,11 @@ func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email 
 }
 
 func (userRepository *userRepository) GetUserById(ctx context.Context, userId *uuid.UUID) (*models.User, error) {
+
 	user := &models.User{}
 
 	query := `
-				SELECT username, display_name, email, avatar_url 
+				SELECT username, display_name, email, avatar_url, active 
 				FROM users
 				WHERE id = $1
 			`
@@ -101,6 +101,7 @@ func (userRepository *userRepository) GetUserById(ctx context.Context, userId *u
 		&user.DisplayName,
 		&user.Email,
 		&user.AvatarURL,
+		&user.Active,
 	)
 	if err != nil {
 		return nil, err
@@ -111,7 +112,6 @@ func (userRepository *userRepository) GetUserById(ctx context.Context, userId *u
 
 func (userRepository *userRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 
-	// create a user model
 	user := &models.User{}
 
 	query := `
@@ -141,7 +141,6 @@ func (userRepository *userRepository) GetUserByUsername(ctx context.Context, use
 
 func (userRepository *userRepository) GetUserByNumber(ctx context.Context, number *string) (*models.User, error) {
 
-	// create a user model
 	user := &models.User{}
 
 	query := `

@@ -16,9 +16,7 @@ func RegisterAuthRoutes(r *gin.Engine, userService services.IUserService) {
 	{
 		authGroup.POST("/signup", authHandler.Signup)
 		authGroup.POST("/signin", authHandler.Signin)
-		authGroup.GET("/signout", authHandler.Signout)
-
-		authGroup.GET("/me", auth.AuthMiddleware(), authHandler.GetUser)
+		authGroup.GET("/signout", auth.AuthMiddleware(), authHandler.Signout)
 	}
 }
 
@@ -39,11 +37,10 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 	}
 
 	// private (me operation)
-
 	meGroup := r.Group("/me")
 	{
 		// get my profile
-		meGroup.GET("/")
+		meGroup.GET("/", userHandler.GetUser)
 		// update my profile (display, phone, avatar, friend_policy)
 		meGroup.PATCH("/")
 		// soft delete my profile

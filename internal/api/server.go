@@ -38,7 +38,6 @@ func StartServer(cfg config.AppConfig) {
 	rest.RegisterAuthRoutes(router, userService)
 
 	// Protected API routed (JWT required)
-
 	api := router.Group("/api")
 	api.Use(auth.AuthMiddleware())
 	{
