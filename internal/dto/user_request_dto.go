@@ -40,9 +40,9 @@ type ResetPasswordConfirmReq struct {
 }
 
 type UpdateProfileReq struct {
-	DisplayName string  `json:"display_name" binding:"required,min=1,max=64"`
-	PhoneNumber *string `json:"phone_number" binding:"omitempty"`
-	AvatarURL   *string `json:"avatar_url" binding:"omitempty,url"`
+	DisplayName string `json:"display_name" binding:"required,min=1,max=64"`
+	// PhoneNumber *string `json:"phone_number" binding:"omitempty"`
+	AvatarURL *string `json:"avatar_url" binding:"omitempty,url"`
 }
 
 type ChangePasswordReq struct {

@@ -47,14 +47,12 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 	var user dto.SigninUserReq
 
 	if err := c.ShouldBindJSON(&user); err != nil {
-
 		utils.WriteError(c, utils.ErrorInvalidInput)
 		return
 	}
 
 	u, err := h.IUserService.Signin(c.Request.Context(), &user)
 	if err != nil {
-
 		utils.WriteError(c, err)
 		return
 	}

@@ -28,7 +28,6 @@ func AuthMiddleware() gin.HandlerFunc {
 		if err != nil {
 			utils.WriteError(c, utils.ErrorInvalidToken)
 			return
-
 		}
 
 		// Everything's alright, place the context for handlers
@@ -55,18 +54,25 @@ func GetTokenFromRequest(c *gin.Context) string {
 	return ""
 }
 
-func GetUsernameAndIdFromContext(c *gin.Context) (userId string, username string, err error) {
-	rawId, ok := c.Get(CtxUserIDKey) // Fix typo here
+// ---- UserID ----
+func GetUserIDFromContext(c *gin.Context) (string, error) {
+	rawId, ok := c.Get(CtxUserIDKey)
 	if !ok {
-		return "", "", utils.ErrorNoUserIdInContext
+		return "", utils.ErrorNoUserIdInContext
 	}
-	rawUsername, _ := c.Get(CtxUsernameKey)
-
-	userId, _ = rawId.(string)
-	username, _ = rawUsername.(string)
-
+	userId, _ := rawId.(string)
 	if userId == "" {
-		return "", "", utils.ErrorEmptyUserIdInContext
+		return "", utils.ErrorEmptyUserIdInContext
 	}
-	return userId, username, nil
+	return userId, nil
+}
+
+// ---- Username ----
+func GetUsernameFromContext(c *gin.Context) (string, error) {
+	rawUsername, ok := c.Get(CtxUsernameKey)
+	if !ok {
+		return "", utils.ErrorNoUserIdInContext
+	}
+	username, _ := rawUsername.(string)
+	return username, nil
 }

@@ -18,6 +18,8 @@ type IUserService interface {
 	Signin(c context.Context, req *dto.SigninUserReq) (*dto.SigninUserRes, error)
 
 	GetUserByID(c context.Context, userId *uuid.UUID) (*models.User, error)
+
+	UpdateUser(c context.Context, username string, displayName string, avatarUrl *string) (*models.User, error)
 }
 
 // userService : Behaves like a class, and implements IUserService's methods
@@ -175,8 +177,24 @@ func (s *userService) GetUserByID(c context.Context, userId *uuid.UUID) (*models
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// Actually fetch the user from the repository
+	// Fetch the user from the repository
 	user, err := s.IUserRepository.GetUserById(ctx, userId)
+	if err != nil {
+		return nil, utils.ErrorUserNotFound
+	}
+
+	if user == nil {
+		return nil, utils.ErrorUserNotFound
+	}
+
+	return user, nil
+}
+
+func (s *userService) UpdateUser(c context.Context, username string, displayName string, avatarUrl *string) (*models.User, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	user, err := s.IUserRepository.UpdateUser(ctx, username, displayName, avatarUrl)
 	if err != nil {
 		return nil, utils.ErrorUserNotFound
 	}
