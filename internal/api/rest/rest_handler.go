@@ -42,7 +42,7 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 		// get my profile
 		meGroup.GET("/", userHandler.GetUser)
 		// update my profile (display, phone, avatar, friend_policy)
-		meGroup.PATCH("/")
+		meGroup.PATCH("/", userHandler.UpdateUser)
 		// soft delete my profile
 		meGroup.DELETE("/")
 

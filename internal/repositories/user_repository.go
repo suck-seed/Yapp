@@ -9,6 +9,8 @@ import (
 
 type IUserRepository interface {
 	CreateUser(ctx context.Context, user *models.User) (*models.User, error)
+	UpdateUser(ctx context.Context, username string, displayName string, avatarUrl *string) (*models.User, error)
+
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 	GetUserByNumber(ctx context.Context, number *string) (*models.User, error)
@@ -166,4 +168,30 @@ func (userRepository *userRepository) GetUserByNumber(ctx context.Context, numbe
 
 	return user, nil
 
+}
+
+func (userRepository *userRepository) UpdateUser(
+	ctx context.Context,
+	username string,
+	displayName string,
+	avatarUrl *string,
+) (*models.User, error) {
+	user := &models.User{}
+	query := `
+        UPDATE users
+        SET display_name = $1, avatar_url = $2
+        WHERE username = $3
+        RETURNING username, display_name, email, avatar_url, active
+    `
+	err := userRepository.db.QueryRow(ctx, query, displayName, avatarUrl, username).Scan(
+		&user.Username,
+		&user.DisplayName,
+		&user.Email,
+		&user.AvatarURL,
+		&user.Active,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }
