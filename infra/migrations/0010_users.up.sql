@@ -6,6 +6,7 @@ CREATE TABLE users (
     password_hash text NOT NULL,
     phone_number text UNIQUE,
     avatar_url text,
+    verified boolean NOT NULL DEFAULT false,
     friend_policy friend_policy DEFAULT 'everyone',
     active boolean NOT NULL DEFAULT false, -- consider derived via Redis; keep for compatibility
     last_seen timestamptz,

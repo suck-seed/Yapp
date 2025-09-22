@@ -108,7 +108,7 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	}
 
 	// calling the repo
-	r, err := s.IUserRepository.CreateUser(ctx, user)
+	userCRES, err := s.IUserRepository.CreateUser(ctx, user)
 	if err != nil {
 		return nil, utils.ErrorCreatingUser
 	}
@@ -116,8 +116,8 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	// create a response
 
 	return &dto.CreateUserRes{
-		ID:       r.ID.String(),
-		Username: r.Username,
+		ID:       userCRES.ID.String(),
+		Username: userCRES.Username,
 	}, nil
 
 }

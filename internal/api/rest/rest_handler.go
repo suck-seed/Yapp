@@ -55,6 +55,13 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 
 func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 
+	// hallHandler := handlers.NewHallhandler(hallService)
+
+	hallGroup := r.Group("/halls")
+	{
+		hallGroup.POST("/")
+	}
+
 }
 
 func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService) {

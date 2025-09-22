@@ -28,6 +28,7 @@ var (
 	// REQUEST ERRORS
 	ErrorInvalidInput       = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Data"}
 	ErrorInvalidUsername    = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Username"}
+	ErrorInvalidHallName    = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Hall Name"}
 	ErrorInvalidEmail       = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Email"}
 	ErrorInvalidPhoneNumber = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Phone Number"}
 	ErrorInvalidDisplayName = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Display Name"}
@@ -37,6 +38,7 @@ var (
 	// INTERNAL ERRROS
 	ErrorInternal     = &CustomError{Code: http.StatusInternalServerError, Message: "Internal server error"}
 	ErrorCreatingUser = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating user"}
+	ErrorCreatingHall = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall"}
 
 	// WEBSOCKET ERRORS
 	ErrorFailedUpgrade = &CustomError{Code: http.StatusBadRequest, Message: "Failed to upgrade connection"}
@@ -53,9 +55,15 @@ var (
 	ErrorInvalidToken = &CustomError{Code: http.StatusUnauthorized, Message: "Invalid Token"}
 
 	// ROOM/FLOOR/MESSAGE DOESNT EXIST
-	ErrorRoomDoesntExist      = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}
+	ErrorRoomDoesntExist = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}
+	ErrorHallDoesntExist = &CustomError{Code: http.StatusBadRequest, Message: "Hall not found"}
+
 	ErrorUserDoesntBelongRoom = &CustomError{Code: http.StatusBadRequest, Message: "User is not allowded in this room"}
 	ErrorUserDoesntBelongHall = &CustomError{Code: http.StatusBadRequest, Message: "User is not allowded in this hall"}
+	ErrorInvalidBannerColor   = &CustomError{Code: http.StatusBadRequest, Message: "Invalid banner color"}
+
+	// HALL/FLOOR/ROOM ALREADY EXISTS
+	ErrorHallAlreadyExist = &CustomError{Code: http.StatusBadRequest, Message: "Hall under the name already exists"}
 )
 
 // Writting Errors from handlers to client

@@ -25,7 +25,7 @@ func NewUserRepository(db PGXTX) IUserRepository {
 
 }
 
-func (userRepository *userRepository) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
+func (r *userRepository) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
 
 	query := `
   				INSERT INTO users (id, username, display_name, email, password_hash, phone_number)
@@ -34,7 +34,7 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 
    			`
 
-	row := userRepository.db.QueryRow(ctx, query,
+	row := r.db.QueryRow(ctx, query,
 		user.ID,
 		user.Username,
 		user.DisplayName,
@@ -54,7 +54,7 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 	return saved, nil
 }
 
-func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 
 	// create a user model
 	user := &models.User{}
@@ -65,7 +65,7 @@ func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email 
 				WHERE lower(email) = lower($1)
 			`
 
-	row := userRepository.db.QueryRow(ctx, query, email)
+	row := r.db.QueryRow(ctx, query, email)
 
 	err := row.Scan(
 		&user.ID,
@@ -84,7 +84,7 @@ func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email 
 
 }
 
-func (userRepository *userRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
+func (r *userRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 
 	// create a user model
 	user := &models.User{}
@@ -95,7 +95,7 @@ func (userRepository *userRepository) GetUserByUsername(ctx context.Context, use
 				WHERE lower(username) = lower($1)
 			`
 
-	row := userRepository.db.QueryRow(ctx, query, username)
+	row := r.db.QueryRow(ctx, query, username)
 
 	err := row.Scan(
 		&user.ID,
@@ -114,7 +114,7 @@ func (userRepository *userRepository) GetUserByUsername(ctx context.Context, use
 
 }
 
-func (userRepository *userRepository) GetUserByNumber(ctx context.Context, number *string) (*models.User, error) {
+func (r *userRepository) GetUserByNumber(ctx context.Context, number *string) (*models.User, error) {
 
 	// create a user model
 	user := &models.User{}
@@ -125,7 +125,7 @@ func (userRepository *userRepository) GetUserByNumber(ctx context.Context, numbe
 				WHERE phone_number = $1
 			`
 
-	row := userRepository.db.QueryRow(ctx, query, number)
+	row := r.db.QueryRow(ctx, query, number)
 
 	err := row.Scan(
 		&user.ID,

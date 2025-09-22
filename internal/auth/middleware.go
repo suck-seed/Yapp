@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -31,10 +32,17 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		}
 
-		// Everything's alright, place the context for handlers
+		// Everything's alright, place the context for ws_handler and other handler
 		c.Set(CtxUSerIDKey, claims.ID)
 		c.Set(CtxUsernameKey, claims.Username)
+
+		// Also add them to context.Context, to be accessed from service and repository layer if we have to
+		ctx := context.WithValue(c.Request.Context(), CtxUSerIDKey, claims.ID)
+		ctx = context.WithValue(ctx, CtxUsernameKey, claims.Username)
+		c.Request = c.Request.WithContext(ctx)
+
 		c.Next()
+
 	}
 
 }
@@ -55,20 +63,38 @@ func getTokenFromRequest(c *gin.Context) string {
 	return ""
 }
 
-func CurrentUserFromContext(c *gin.Context) (userId string, username string, err error) {
+func CurrentUserFromGinContext(c *gin.Context) (string, string, error) {
 	rawId, ok := c.Get(CtxUSerIDKey)
 	if !ok {
 		return "", "", utils.ErrorNoUserIdInContext
 	}
 
-	rawUsername, _ := c.Get(CtxUsernameKey)
-
 	idString, _ := rawId.(string)
-	usernameString, _ := rawUsername.(string)
-
 	if idString == "" {
 		return "", "", utils.ErrorEmptyUserIdInContext
 	}
 
+	rawUsername, _ := c.Get(CtxUsernameKey)
+	usernameString, _ := rawUsername.(string)
+
 	return idString, usernameString, nil
+}
+
+func CurrentUserFromContext(c context.Context) (id string, username string, err error) {
+
+	rawId := c.Value(CtxUSerIDKey)
+	if rawId == nil {
+		return "", "", utils.ErrorNoUserIdInContext
+	}
+
+	idString, _ := rawId.(string)
+	if idString == "" {
+		return "", "", utils.ErrorEmptyUserIdInContext
+
+	}
+
+	usernameString, _ := c.Value(CtxUsernameKey).(string)
+
+	return idString, usernameString, nil
+
 }
