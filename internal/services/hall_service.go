@@ -96,7 +96,16 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 
 	// additional setup
 
-	return &dto.CreateHallRes{}, nil
+	return &dto.CreateHallRes{
+		ID:          hallCRES.ID,
+		Name:        hallCRES.Name,
+		IconURL:     hallCRES.IconURL,
+		BannerColor: hallCRES.BannerColor,
+		Description: hallCRES.Description,
+		CreatedAt:   hall.CreatedAt,
+		UpdatedAt:   hall.UpdatedAt,
+		Owner:       hallCRES.Owner,
+	}, nil
 }
 
 func (s *hallService) IsMember(c context.Context, hallID *uuid.UUID, userId *uuid.UUID) (bool, error) {

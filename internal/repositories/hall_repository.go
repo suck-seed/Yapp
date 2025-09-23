@@ -8,6 +8,7 @@ import (
 
 type IHallRepository interface {
 	CreateHall(ctx context.Context, hall *models.Hall) (*models.Hall, error)
+	GetHallByName(ctx context.Context, hallName string) (*models.Hall, error)
 }
 
 type hallRepository struct {
@@ -56,4 +57,9 @@ func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*mo
 	}
 
 	return saved, nil
+}
+
+func (r *roomRepository) GetHallByName(ctx context.Context, hallName string) (*models.Hall, error) {
+
+	return &models.Hall{}, nil
 }
