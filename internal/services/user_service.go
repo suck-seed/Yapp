@@ -14,10 +14,12 @@ import (
 )
 
 type IUserService interface {
-	CreateUser(c context.Context, req *dto.CreateUserReq) (*dto.CreateUserRes, error)
+	Signup(c context.Context, req *dto.SignupUserReq) (*dto.SignupUserRes, error)
 	Signin(c context.Context, req *dto.SigninUserReq) (*dto.SigninUserRes, error)
 
 	GetUserByID(c context.Context, userId *uuid.UUID) (*models.User, error)
+
+	UpdateUser(c context.Context, username string, displayName string, avatarUrl *string) (*models.User, error)
 }
 
 // userService : Behaves like a class, and implements IUserService's methods
@@ -37,7 +39,7 @@ func NewUserService(repository repositories.IUserRepository) IUserService {
 }
 
 // Methods
-func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dto.CreateUserRes, error) {
+func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.SignupUserRes, error) {
 
 	// interface that provides a way to control lifecycle, cancellation and prppaagation of requests
 	ctx, cancel := context.WithTimeout(c, s.timeout)
@@ -48,7 +50,7 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	if err != nil {
 		return nil, utils.ErrorInvalidUsername
 	}
-	canonPassword, err := utils.SanatizePasswordPolicy(req.Password)
+	canonPassword, err := utils.SanitizePasswordPolicy(req.Password)
 	if err != nil {
 		return nil, utils.ErrorInvalidPassword
 	}
@@ -56,24 +58,27 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	if err != nil {
 		return nil, utils.ErrorInvalidEmail
 	}
-	canonPhone, err := utils.SanatizePhoneE164(req.PhoneNumber)
-	if err != nil {
-		return nil, utils.ErrorInvalidPhoneNumber
-	}
-	canonDisplayName, err := utils.SanatizeDisplayName(req.DisplayName)
+
+	// canonPhone, err := utils.SanitizePhoneE164(req.PhoneNumber)
+	// if err != nil {
+	// 	return nil, utils.ErrorInvalidPhoneNumber
+	// }
+
+	canonDisplayName, err := utils.SanatizeDisplayName(&req.DisplayName)
 	if err != nil {
 		return nil, utils.ErrorInvalidDisplayName
 	}
 
 	// to assign username to displayName if null
-	if canonDisplayName == nil {
-		canonDisplayName = &canonUsername
-	}
+	// if canonDisplayName == nil {
+	// 	canonDisplayName = &canonUsername
+	// }
 
 	// check username, email and number for existing records
 	userByUsername, _ := s.IUserRepository.GetUserByUsername(ctx, canonUsername)
 	userByEmail, _ := s.IUserRepository.GetUserByEmail(ctx, canonEmail)
-	userByNumber, _ := s.IUserRepository.GetUserByNumber(ctx, canonPhone)
+
+	// userByNumber, _ := s.IUserRepository.GetUserByNumber(ctx, canonPhone)
 
 	if userByUsername != nil {
 		return nil, utils.ErrorUsernameExists
@@ -81,9 +86,9 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	if userByEmail != nil {
 		return nil, utils.ErrorEmailExists
 	}
-	if userByNumber != nil {
-		return nil, utils.ErrorNumberExists
-	}
+	// if userByNumber != nil {
+	// 	return nil, utils.ErrorNumberExists
+	// }
 
 	// generate id
 	id, err := uuid.NewV7()
@@ -99,12 +104,12 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 	}
 
 	user := &models.User{
-		ID:           id,
-		Username:     canonUsername,
-		Email:        canonEmail,
-		PhoneNumber:  canonPhone,
+		ID:       id,
+		Username: canonUsername,
+		Email:    canonEmail,
+		// PhoneNumber:  canonPhone,
 		PasswordHash: password_hash,
-		DisplayName:  canonDisplayName,
+		DisplayName:  *canonDisplayName,
 	}
 
 	// calling the repo
@@ -115,7 +120,7 @@ func (s *userService) CreateUser(c context.Context, req *dto.CreateUserReq) (*dt
 
 	// create a response
 
-	return &dto.CreateUserRes{
+	return &dto.SignupUserRes{
 		ID:       userCRES.ID.String(),
 		Username: userCRES.Username,
 	}, nil
@@ -129,17 +134,17 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 
 	user := &models.User{}
 
-	canonEmail, err := utils.SanatizeEmail(req.UsernameOrEmail)
+	canonEmail, err := utils.SanatizeEmail(req.Email)
 	if err == nil {
 		user, _ = s.IUserRepository.GetUserByEmail(ctx, canonEmail)
 	}
 
-	canonUsername, err := utils.SanatizeUsername(req.UsernameOrEmail)
-	if err == nil {
-		user, _ = s.IUserRepository.GetUserByUsername(ctx, canonUsername)
-	}
+	// canonUsername, err := utils.SanitizeUsername(req.Username)
+	// if err == nil {
+	// 	user, _ = s.IUserRepository.GetUserByUsername(ctx, canonUsername)
+	// }
 
-	canonPassword, err := utils.SanatizePasswordPolicy(req.Password)
+	canonPassword, err := utils.SanitizePasswordPolicy(req.Password)
 	if err != nil {
 		return nil, utils.ErrorInvalidPassword
 	}
@@ -169,12 +174,34 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 }
 
 func (s *userService) GetUserByID(c context.Context, userId *uuid.UUID) (*models.User, error) {
-
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	print(ctx)
+	// Fetch the user from the repository
+	user, err := s.IUserRepository.GetUserById(ctx, userId)
+	if err != nil {
+		return nil, utils.ErrorUserNotFound
+	}
 
-	return &models.User{}, nil
+	if user == nil {
+		return nil, utils.ErrorUserNotFound
+	}
 
+	return user, nil
+}
+
+func (s *userService) UpdateUser(c context.Context, username string, displayName string, avatarUrl *string) (*models.User, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	user, err := s.IUserRepository.UpdateUser(ctx, username, displayName, avatarUrl)
+	if err != nil {
+		return nil, utils.ErrorUserNotFound
+	}
+
+	if user == nil {
+		return nil, utils.ErrorUserNotFound
+	}
+
+	return user, nil
 }

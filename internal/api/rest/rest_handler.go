@@ -3,6 +3,7 @@ package rest
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/suck-seed/yapp/internal/api/rest/handlers"
+	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/services"
 )
 
@@ -13,9 +14,9 @@ func RegisterAuthRoutes(r *gin.Engine, userService services.IUserService) {
 
 	authGroup := r.Group("/auth")
 	{
-		authGroup.POST("/signup", authHandler.CreateUser)
+		authGroup.POST("/signup", authHandler.Signup)
 		authGroup.POST("/signin", authHandler.Signin)
-		authGroup.GET("/logout", authHandler.Logout)
+		authGroup.GET("/signout", auth.AuthMiddleware(), authHandler.Signout)
 	}
 }
 
@@ -36,13 +37,12 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 	}
 
 	// private (me operation)
-
 	meGroup := r.Group("/me")
 	{
 		// get my profile
-		meGroup.GET("/")
+		meGroup.GET("/", userHandler.GetUser)
 		// update my profile (display, phone, avatar, friend_policy)
-		meGroup.PATCH("/")
+		meGroup.PATCH("/", userHandler.UpdateUser)
 		// soft delete my profile
 		meGroup.DELETE("/")
 

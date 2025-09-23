@@ -31,7 +31,6 @@ func (h *HallHandler) CreateHall(c *gin.Context) {
 	res, err := h.IHallService.CreateHall(c.Request.Context(), u)
 	if err != nil {
 		utils.WriteError(c, err)
-		return
 	}
 
 	c.JSON(http.StatusCreated, res)

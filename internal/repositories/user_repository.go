@@ -3,14 +3,18 @@ package repositories
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/models"
 )
 
 type IUserRepository interface {
 	CreateUser(ctx context.Context, user *models.User) (*models.User, error)
+	UpdateUser(ctx context.Context, username string, displayName string, avatarUrl *string) (*models.User, error)
+
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 	GetUserByNumber(ctx context.Context, number *string) (*models.User, error)
+	GetUserById(ctx context.Context, userId *uuid.UUID) (*models.User, error)
 }
 
 type userRepository struct {
@@ -56,7 +60,6 @@ func (r *userRepository) CreateUser(ctx context.Context, user *models.User) (*mo
 
 func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 
-	// create a user model
 	user := &models.User{}
 
 	query := `
@@ -81,12 +84,36 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 	}
 
 	return user, nil
+}
 
+func (userRepository *userRepository) GetUserById(ctx context.Context, userId *uuid.UUID) (*models.User, error) {
+
+	user := &models.User{}
+
+	query := `
+				SELECT username, display_name, email, avatar_url, active 
+				FROM users
+				WHERE id = $1
+			`
+
+	row := userRepository.db.QueryRow(ctx, query, userId)
+
+	err := row.Scan(
+		&user.Username,
+		&user.DisplayName,
+		&user.Email,
+		&user.AvatarURL,
+		&user.Active,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func (r *userRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 
-	// create a user model
 	user := &models.User{}
 
 	query := `
@@ -116,7 +143,6 @@ func (r *userRepository) GetUserByUsername(ctx context.Context, username string)
 
 func (r *userRepository) GetUserByNumber(ctx context.Context, number *string) (*models.User, error) {
 
-	// create a user model
 	user := &models.User{}
 
 	query := `
@@ -142,4 +168,30 @@ func (r *userRepository) GetUserByNumber(ctx context.Context, number *string) (*
 
 	return user, nil
 
+}
+
+func (userRepository *userRepository) UpdateUser(
+	ctx context.Context,
+	username string,
+	displayName string,
+	avatarUrl *string,
+) (*models.User, error) {
+	user := &models.User{}
+	query := `
+        UPDATE users
+        SET display_name = $1, avatar_url = $2
+        WHERE username = $3
+        RETURNING username, display_name, email, avatar_url, active
+    `
+	err := userRepository.db.QueryRow(ctx, query, displayName, avatarUrl, username).Scan(
+		&user.Username,
+		&user.DisplayName,
+		&user.Email,
+		&user.AvatarURL,
+		&user.Active,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }

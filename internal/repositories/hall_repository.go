@@ -59,7 +59,7 @@ func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*mo
 	return saved, nil
 }
 
-func (r *roomRepository) GetHallByName(ctx context.Context, hallName string) (*models.Hall, error) {
+func (r *hallRepository) GetHallByName(ctx context.Context, hallName string) (*models.Hall, error) {
 
 	return &models.Hall{}, nil
 }

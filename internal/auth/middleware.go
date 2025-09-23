@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	CtxUSerIDKey   = "user_id"
+	CtxUserIDKey   = "user_id"
 	CtxUsernameKey = "username"
 )
 
@@ -18,7 +18,7 @@ const (
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		tokenString := getTokenFromRequest(c)
+		tokenString := GetTokenFromRequest(c)
 		if tokenString == "" {
 			utils.WriteError(c, utils.ErrorMissingToken)
 			return
@@ -29,15 +29,14 @@ func AuthMiddleware() gin.HandlerFunc {
 		if err != nil {
 			utils.WriteError(c, utils.ErrorInvalidToken)
 			return
-
 		}
 
 		// Everything's alright, place the context for ws_handler and other handler
-		c.Set(CtxUSerIDKey, claims.ID)
+		c.Set(CtxUserIDKey, claims.ID)
 		c.Set(CtxUsernameKey, claims.Username)
 
 		// Also add them to context.Context, to be accessed from service and repository layer if we have to
-		ctx := context.WithValue(c.Request.Context(), CtxUSerIDKey, claims.ID)
+		ctx := context.WithValue(c.Request.Context(), CtxUserIDKey, claims.ID)
 		ctx = context.WithValue(ctx, CtxUsernameKey, claims.Username)
 		c.Request = c.Request.WithContext(ctx)
 
@@ -47,7 +46,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 }
 
-func getTokenFromRequest(c *gin.Context) string {
+func GetTokenFromRequest(c *gin.Context) string {
 
 	// Trying cookie
 	if cookie, err := c.Cookie("jwt"); err == nil && cookie != "" {
@@ -64,7 +63,7 @@ func getTokenFromRequest(c *gin.Context) string {
 }
 
 func CurrentUserFromGinContext(c *gin.Context) (string, string, error) {
-	rawId, ok := c.Get(CtxUSerIDKey)
+	rawId, ok := c.Get(CtxUserIDKey)
 	if !ok {
 		return "", "", utils.ErrorNoUserIdInContext
 	}
@@ -82,7 +81,7 @@ func CurrentUserFromGinContext(c *gin.Context) (string, string, error) {
 
 func CurrentUserFromContext(c context.Context) (id string, username string, err error) {
 
-	rawId := c.Value(CtxUSerIDKey)
+	rawId := c.Value(CtxUserIDKey)
 	if rawId == nil {
 		return "", "", utils.ErrorNoUserIdInContext
 	}

@@ -20,9 +20,9 @@ func NewAuthHandler(userService services.IUserService) *AuthHandler {
 	}
 }
 
-func (h *AuthHandler) CreateUser(c *gin.Context) {
+func (h *AuthHandler) Signup(c *gin.Context) {
 
-	u := &dto.CreateUserReq{}
+	u := &dto.SignupUserReq{}
 
 	if err := c.ShouldBindJSON(u); err != nil {
 
@@ -31,7 +31,7 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 
 	}
 
-	res, err := h.IUserService.CreateUser(c.Request.Context(), u)
+	res, err := h.IUserService.Signup(c.Request.Context(), u)
 	if err != nil {
 
 		utils.WriteError(c, err)
@@ -54,20 +54,18 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 
 	u, err := h.IUserService.Signin(c.Request.Context(), user)
 	if err != nil {
-
 		utils.WriteError(c, err)
 		return
-
 	}
 
-	// setcookie
+	// set cookie
 	const cookieSecond = 24 * 60 * 60
 
 	c.SetSameSite(http.SameSiteLaxMode)
 	// Use host-only cookie (empty domain) for flexibility across localhost/127.0.0.1
 	c.SetCookie("jwt", u.AccessToken, cookieSecond, "/", "", false, true)
 
-	// a filtered req as we do not want to implicitely pass accessToken to client
+	// a filtered req as we do not want to implicitly pass accessToken to client
 	res := &dto.SigninUserRes{
 		ID:       u.ID,
 		Username: u.Username,
@@ -77,13 +75,13 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 
 }
 
-func (h *AuthHandler) Logout(c *gin.Context) {
+func (h *AuthHandler) Signout(c *gin.Context) {
 
 	c.SetSameSite(http.SameSiteLaxMode)
 	// Clear the same cookie attributes used when setting it (host-only cookie)
 	c.SetCookie("jwt", "", -1, "/", "", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Logout successful",
+		"message": "Signed out successfully",
 	})
 }

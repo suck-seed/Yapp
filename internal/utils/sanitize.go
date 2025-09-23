@@ -61,7 +61,7 @@ func SanatizeEmail(s string) (string, error) {
 	return s, nil
 }
 
-func SanatizePhoneE164(ptr *string) (*string, error) {
+func SanitizePhoneE164(ptr *string) (*string, error) {
 	if ptr == nil {
 		return nil, nil
 	}
@@ -95,7 +95,7 @@ func keepPlusDigits(s string) string {
 // PASSWORD SECTION
 const minEntropyBits = 60.0 // ~good baseline for online attacks; use 70–80 for higher risk
 
-func SanatizePasswordPolicy(raw string) (string, error) {
+func SanitizePasswordPolicy(raw string) (string, error) {
 	// Do NOT silently modify. Reject confusing whitespace at edges.
 	if strings.TrimSpace(raw) != raw {
 		return "", ErrorPasswordWhiteSpace
