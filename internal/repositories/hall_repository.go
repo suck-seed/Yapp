@@ -3,11 +3,12 @@ package repositories
 import (
 	"context"
 
+	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 )
 
 type IHallRepository interface {
-	CreateHall(ctx context.Context, hall *models.Hall) (*models.Hall, error)
+	CreateHall(ctx context.Context, hall *dto.CreateHallReq) (*models.Hall, error)
 	GetHallByName(ctx context.Context, hallName string) (*models.Hall, error)
 }
 
@@ -22,7 +23,7 @@ func NewHallRepository(db PGXTX) IHallRepository {
 	}
 }
 
-func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*models.Hall, error) {
+func (r *hallRepository) CreateHall(ctx context.Context, hall *dto.CreateHallReq) (*models.Hall, error) {
 
 	query := `
 	INSERT INTO halls (id, name, icon_url, description, created_by_id)

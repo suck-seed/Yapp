@@ -17,9 +17,10 @@ type IUserService interface {
 	Signup(c context.Context, req *dto.SignupUserReq) (*dto.SignupUserRes, error)
 	Signin(c context.Context, req *dto.SigninUserReq) (*dto.SigninUserRes, error)
 
-	GetUserByID(c context.Context, userId *uuid.UUID) (*models.User, error)
+	GetUserMe(c context.Context) (*models.User, error)
+	GetUserById(c context.Context, userId uuid.UUID) (*models.User, error)
 
-	UpdateUser(c context.Context, username string, displayName string, avatarUrl *string) (*models.User, error)
+	UpdateUserMe(c context.Context, req *dto.UpdateProfileReq) (*models.User, error)
 }
 
 // userService : Behaves like a class, and implements IUserService's methods
@@ -59,20 +60,10 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 		return nil, utils.ErrorInvalidEmail
 	}
 
-	// canonPhone, err := utils.SanitizePhoneE164(req.PhoneNumber)
-	// if err != nil {
-	// 	return nil, utils.ErrorInvalidPhoneNumber
-	// }
-
 	canonDisplayName, err := utils.SanitizeDisplayName(req.DisplayName)
 	if err != nil {
 		return nil, utils.ErrorInvalidDisplayName
 	}
-
-	// to assign username to displayName if null
-	// if canonDisplayName == nil {
-	// 	canonDisplayName = &canonUsername
-	// }
 
 	// check username, email and number for existing records
 	userByUsername, _ := s.IUserRepository.GetUserByUsername(ctx, canonUsername)
@@ -86,9 +77,6 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	if userByEmail != nil {
 		return nil, utils.ErrorEmailExists
 	}
-	// if userByNumber != nil {
-	// 	return nil, utils.ErrorNumberExists
-	// }
 
 	// generate id
 	id, err := uuid.NewV7()
@@ -171,7 +159,36 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 	}, nil
 }
 
-func (s *userService) GetUserByID(c context.Context, userId *uuid.UUID) (*models.User, error) {
+func (s *userService) GetUserMe(c context.Context) (*models.User, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	// Extract user info from context (already validated by middleware)
+	userIdString, _, err := auth.CurrentUserFromContext(c)
+	if err != nil {
+		return nil, utils.ErrorUserNotFound
+	}
+
+	// parse uuid
+	userId, err := uuid.Parse(userIdString)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch the user from the repository
+	user, err := s.IUserRepository.GetUserById(ctx, userId)
+	if err != nil {
+		return nil, utils.ErrorUserNotFound
+	}
+
+	if user == nil {
+		return nil, utils.ErrorUserNotFound
+	}
+
+	return user, nil
+}
+
+func (s *userService) GetUserById(c context.Context, userId uuid.UUID) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
@@ -188,11 +205,16 @@ func (s *userService) GetUserByID(c context.Context, userId *uuid.UUID) (*models
 	return user, nil
 }
 
-func (s *userService) UpdateUser(c context.Context, username string, displayName string, avatarUrl *string) (*models.User, error) {
+func (s *userService) UpdateUserMe(c context.Context, req *dto.UpdateProfileReq) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	user, err := s.IUserRepository.UpdateUser(ctx, username, displayName, avatarUrl)
+	_, username, err := auth.CurrentUserFromContext(c)
+	if err != nil {
+		return nil, utils.ErrorUserNotFound
+	}
+
+	user, err := s.IUserRepository.UpdateUserByUsername(ctx, username, req)
 	if err != nil {
 		return nil, utils.ErrorUserNotFound
 	}

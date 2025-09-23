@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/dto"
-	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/utils"
 )
@@ -41,15 +40,15 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	defer cancel()
 
 	// sanatize req
-	canonHallname, err := utils.SanatizeHallname(req.Name)
+	canonHallname, err := utils.SanitizeHallname(req.Name)
 	if err != nil {
 		return nil, err
 	}
-	canonBannerColor, err := utils.SanatizeColorFormat(req.BannerColor)
+	canonBannerColor, err := utils.SanitizeColorFormat(req.BannerColor)
 	if err != nil {
 		return nil, err
 	}
-	canonDescription, err := utils.SanatizeText(req.Description)
+	canonDescription, err := utils.SanitizeText(req.Description)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +78,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	}
 
 	// package a hall struct
-	newHall := &models.Hall{
+	newHall := &dto.CreateHallReq{
 		ID:          id,
 		Name:        canonHallname,
 		IconURL:     req.IconURL,

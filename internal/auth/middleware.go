@@ -45,16 +45,14 @@ func AuthMiddleware() gin.HandlerFunc {
 }
 
 func GetTokenFromRequest(c *gin.Context) string {
-
-	// Trying cookie
+	// Try cookie
 	if cookie, err := c.Cookie("jwt"); err == nil && cookie != "" {
 		return cookie
 	}
 
-	// Trying Authorization header
-	authHeader := c.GetHeader("Authorization")
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	// Try Authorization header
+	if token, ok := strings.CutPrefix(c.GetHeader("Authorization"), "Bearer "); ok {
+		return strings.TrimSpace(token)
 	}
 
 	return ""

@@ -72,7 +72,7 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	}
 
 	// verify if user exists
-	user, err := h.IUserService.GetUserByID(c, &userId)
+	user, err := h.IUserService.GetUserById(c, userId)
 	if err != nil {
 		utils.WriteError(c, utils.ErrorUserNotFound)
 		return

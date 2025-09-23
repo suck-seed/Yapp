@@ -4,17 +4,18 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 )
 
 type IUserRepository interface {
 	CreateUser(ctx context.Context, user *models.User) (*models.User, error)
-	UpdateUser(ctx context.Context, username string, displayName string, avatarUrl *string) (*models.User, error)
+	UpdateUserByUsername(ctx context.Context, username string, req *dto.UpdateProfileReq) (*models.User, error)
 
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 	GetUserByNumber(ctx context.Context, number *string) (*models.User, error)
-	GetUserById(ctx context.Context, userId *uuid.UUID) (*models.User, error)
+	GetUserById(ctx context.Context, userId uuid.UUID) (*models.User, error)
 }
 
 type userRepository struct {
@@ -32,8 +33,8 @@ func NewUserRepository(db PGXTX) IUserRepository {
 func (userRepository *userRepository) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
 
 	query := `
-  				INSERT INTO users (id, username, display_name, email, password_hash, phone_number)
-      			VALUES ($1, $2, $3, $4, $5, $6)
+  				INSERT INTO users (id, username, display_name, email, password_hash)
+      			VALUES ($1, $2, $3, $4, $5)
          		RETURNING id, username, display_name, email, phone_number, avatar_url, friend_policy, created_at, updated_at
 
    			`
@@ -44,12 +45,21 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 		user.DisplayName,
 		user.Email,
 		user.PasswordHash,
-		user.PhoneNumber,
 	)
 
 	saved := &models.User{}
 
-	err := row.Scan(&saved.ID, &saved.Username, &saved.DisplayName, &saved.Email, &saved.PhoneNumber, &saved.AvatarURL, &saved.FriendPolicy, &saved.CreatedAt, &saved.UpdatedAt)
+	err := row.Scan(
+		&saved.ID,
+		&saved.Username,
+		&saved.DisplayName,
+		&saved.Email,
+		&saved.PhoneNumber,
+		&saved.AvatarURL,
+		&saved.FriendPolicy,
+		&saved.CreatedAt,
+		&saved.UpdatedAt,
+	)
 
 	if err != nil {
 		return nil, err
@@ -86,18 +96,17 @@ func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email 
 	return user, nil
 }
 
-func (userRepository *userRepository) GetUserById(ctx context.Context, userId *uuid.UUID) (*models.User, error) {
-
-	user := &models.User{}
+func (userRepository *userRepository) GetUserById(ctx context.Context, userId uuid.UUID) (*models.User, error) {
 
 	query := `
-				SELECT username, display_name, email, avatar_url, active 
+				SELECT username, display_name, email, avatar_url, active
 				FROM users
 				WHERE id = $1
 			`
 
 	row := userRepository.db.QueryRow(ctx, query, userId)
 
+	user := &models.User{}
 	err := row.Scan(
 		&user.Username,
 		&user.DisplayName,
@@ -170,12 +179,7 @@ func (userRepository *userRepository) GetUserByNumber(ctx context.Context, numbe
 
 }
 
-func (userRepository *userRepository) UpdateUser(
-	ctx context.Context,
-	username string,
-	displayName string,
-	avatarUrl *string,
-) (*models.User, error) {
+func (userRepository *userRepository) UpdateUserByUsername(ctx context.Context, username string, req *dto.UpdateProfileReq) (*models.User, error) {
 	user := &models.User{}
 	query := `
         UPDATE users
@@ -183,7 +187,7 @@ func (userRepository *userRepository) UpdateUser(
         WHERE username = $3
         RETURNING username, display_name, email, avatar_url, active
     `
-	err := userRepository.db.QueryRow(ctx, query, displayName, avatarUrl, username).Scan(
+	err := userRepository.db.QueryRow(ctx, query, req.DisplayName, req.AvatarURL, username).Scan(
 		&user.Username,
 		&user.DisplayName,
 		&user.Email,
