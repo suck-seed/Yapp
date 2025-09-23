@@ -10,21 +10,31 @@ import (
 )
 
 type HallHandler struct {
-	// inject IHallService
 	services.IHallService
 }
 
-func NewHallHandler(hallService services.IHallService) *HallHandler {
+func NewHallhandler(hallService services.IHallService) *HallHandler {
 	return &HallHandler{
 		hallService,
 	}
 }
 
-func (h *HallHandler) Ping(c *gin.Context) {
+func (h *HallHandler) CreateHall(c *gin.Context) {
 
-	c.JSON(200, gin.H{
-		"message": "ping",
-	})
+	u := &dto.CreateHallReq{}
+
+	if err := c.ShouldBindJSON(u); err != nil {
+		utils.WriteError(c, utils.ErrorInvalidInput)
+		return
+	}
+
+	res, err := h.IHallService.CreateHall(c.Request.Context(), u)
+	if err != nil {
+		utils.WriteError(c, err)
+	}
+
+	c.JSON(http.StatusCreated, res)
+
 }
 
 func (h *HallHandler) CreateHall(c *gin.Context) {
