@@ -14,11 +14,9 @@ func RegisterAuthRoutes(r *gin.Engine, userService services.IUserService) {
 
 	authGroup := r.Group("/auth")
 	{
-		authGroup.POST("/signup", authHandler.CreateUser)
+		authGroup.POST("/signup", authHandler.Signup)
 		authGroup.POST("/signin", authHandler.Signin)
-		authGroup.GET("/signout", authHandler.Signout)
-
-		authGroup.GET("/me", auth.AuthMiddleware(), authHandler.GetCurrentUser)
+		authGroup.GET("/signout", auth.AuthMiddleware(), authHandler.Signout)
 	}
 }
 
@@ -39,13 +37,12 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 	}
 
 	// private (me operation)
-
 	meGroup := r.Group("/me")
 	{
 		// get my profile
-		meGroup.GET("/")
+		meGroup.GET("/", userHandler.GetUser)
 		// update my profile (display, phone, avatar, friend_policy)
-		meGroup.PATCH("/")
+		meGroup.PATCH("/", userHandler.UpdateUser)
 		// soft delete my profile
 		meGroup.DELETE("/")
 
@@ -57,6 +54,13 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 }
 
 func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
+
+	// hallHandler := handlers.NewHallhandler(hallService)
+
+	hallGroup := r.Group("/halls")
+	{
+		hallGroup.POST("/")
+	}
 
 }
 

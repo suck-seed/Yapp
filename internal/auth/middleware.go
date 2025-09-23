@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -8,9 +9,8 @@ import (
 )
 
 const (
-	CtxUSerIDKey      = "user_id"
-	CtxUsernameKey    = "username"
-	CtxDisplayNameKey = "display_name"
+	CtxUserIDKey   = "user_id"
+	CtxUsernameKey = "username"
 )
 
 // Verifies JWT from cookie "jwt" or "Authorization : Bearer <token>"
@@ -18,7 +18,7 @@ const (
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		tokenString := getTokenFromRequest(c)
+		tokenString := GetTokenFromRequest(c)
 		if tokenString == "" {
 			utils.WriteError(c, utils.ErrorMissingToken)
 			return
@@ -29,19 +29,24 @@ func AuthMiddleware() gin.HandlerFunc {
 		if err != nil {
 			utils.WriteError(c, utils.ErrorInvalidToken)
 			return
-
 		}
 
-		// Everything's alright, place the context for handlers
-		c.Set(CtxUSerIDKey, claims.ID)
+		// Everything's alright, place the context for ws_handler and other handler
+		c.Set(CtxUserIDKey, claims.ID)
 		c.Set(CtxUsernameKey, claims.Username)
-		c.Set(CtxDisplayNameKey, claims.DisplayName)
+
+		// Also add them to context.Context, to be accessed from service and repository layer if we have to
+		ctx := context.WithValue(c.Request.Context(), CtxUserIDKey, claims.ID)
+		ctx = context.WithValue(ctx, CtxUsernameKey, claims.Username)
+		c.Request = c.Request.WithContext(ctx)
+
 		c.Next()
+
 	}
 
 }
 
-func getTokenFromRequest(c *gin.Context) string {
+func GetTokenFromRequest(c *gin.Context) string {
 
 	// Trying cookie
 	if cookie, err := c.Cookie("jwt"); err == nil && cookie != "" {
@@ -57,22 +62,38 @@ func getTokenFromRequest(c *gin.Context) string {
 	return ""
 }
 
-func CurrentUserFromContext(c *gin.Context) (userId string, username string, displayName string, err error) {
-	rawId, ok := c.Get(CtxUSerIDKey)
+func CurrentUserFromGinContext(c *gin.Context) (string, string, error) {
+	rawId, ok := c.Get(CtxUserIDKey)
 	if !ok {
-		return "", "", "", utils.ErrorNoUserIdInContext
+		return "", "", utils.ErrorNoUserIdInContext
+	}
+
+	idString, _ := rawId.(string)
+	if idString == "" {
+		return "", "", utils.ErrorEmptyUserIdInContext
 	}
 
 	rawUsername, _ := c.Get(CtxUsernameKey)
-	rawDisplayName, _ := c.Get(CtxDisplayNameKey)
-
-	idString, _ := rawId.(string)
 	usernameString, _ := rawUsername.(string)
-	displayNameString, _ := rawDisplayName.(string)
 
-	if idString == "" {
-		return "", "", "", utils.ErrorEmptyUserIdInContext
+	return idString, usernameString, nil
+}
+
+func CurrentUserFromContext(c context.Context) (id string, username string, err error) {
+
+	rawId := c.Value(CtxUserIDKey)
+	if rawId == nil {
+		return "", "", utils.ErrorNoUserIdInContext
 	}
 
-	return idString, usernameString, displayNameString, nil
+	idString, _ := rawId.(string)
+	if idString == "" {
+		return "", "", utils.ErrorEmptyUserIdInContext
+
+	}
+
+	usernameString, _ := c.Value(CtxUsernameKey).(string)
+
+	return idString, usernameString, nil
+
 }

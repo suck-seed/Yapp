@@ -3,17 +3,12 @@ package dto
 import (
 	"time"
 
-	"github.com/gofrs/uuid"
 	"github.com/suck-seed/yapp/internal/models"
 )
 
-//
-// ────────────────────────────────
 // Responses
-// ────────────────────────────────
-//
 
-type CreateUserRes struct {
+type SignupUserRes struct {
 	ID       string `json:"id"`
 	Username string `json:"username" binding:"required,min=3,max=32"`
 }
@@ -22,7 +17,6 @@ type SigninUserRes struct {
 	AccessToken string
 	ID          string `json:"id" db:"id"`
 	Username    string `json:"username" db:"username"`
-	DisplayName string `json:"display_name" db:"display_name"`
 }
 
 type UserPublic struct {
@@ -33,17 +27,18 @@ type UserPublic struct {
 }
 
 type UserMe struct {
-	ID           string              `json:"id"`
-	Username     string              `json:"username"`
-	DisplayName  string              `json:"display_name"`
-	Email        string              `json:"email"`
-	PhoneNumber  *string             `json:"phone_number,omitempty"`
-	AvatarURL    *string             `json:"avatar_url,omitempty"`
-	FriendPolicy models.FriendPolicy `json:"friend_policy"`
-	Active       bool                `json:"active"`
-	LastSeen     *time.Time          `json:"last_seen,omitempty"`
-	CreatedAt    time.Time           `json:"created_at"`
-	UpdatedAt    time.Time           `json:"updated_at"`
+	ID           string  `json:"id"`
+	Username     string  `json:"username"`
+	DisplayName  string  `json:"display_name"`
+	Email        string  `json:"email"`
+	PhoneNumber  *string `json:"phone_number,omitempty"`
+	AvatarURL    *string `json:"avatar_url,omitempty"`
+	Description  *string `json:"description,omitempty"`
+	FriendPolicy string  `json:"friend_policy"`
+	Active       bool    `json:"active"`
+	//LastSeen     *time.Time          `json:"last_seen,omitempty"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // For app links on response
@@ -73,9 +68,8 @@ type UsernameAvailabilityResponse struct {
 
 // Func to convert model.User to public and private
 func ToUserPublic(u models.User) UserPublic {
-	id := u.ID.String()
 	return UserPublic{
-		ID:          id,
+		ID:          u.ID.String(),
 		Username:    u.Username,
 		DisplayName: u.DisplayName,
 		AvatarURL:   *u.AvatarURL,
@@ -83,17 +77,19 @@ func ToUserPublic(u models.User) UserPublic {
 }
 
 func ToUserMe(u models.User) UserMe {
+
 	return UserMe{
-		ID:           uuid.UUID(u.ID).String(),
+		ID:           u.ID.String(),
 		Username:     u.Username,
 		DisplayName:  u.DisplayName,
 		Email:        u.Email,
 		PhoneNumber:  u.PhoneNumber,
 		AvatarURL:    u.AvatarURL,
-		FriendPolicy: u.FriendPolicy,
+		Description:  u.Description,
+		FriendPolicy: string(u.FriendPolicy),
 		Active:       u.Active,
-		LastSeen:     u.LastSeen,
-		CreatedAt:    u.CreatedAt,
-		UpdatedAt:    u.UpdatedAt,
+		// LastSeen:     u.LastSeen,
+		CreatedAt: u.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
 	}
 }

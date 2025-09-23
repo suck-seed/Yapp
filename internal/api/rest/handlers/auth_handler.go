@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/services"
 	"github.com/suck-seed/yapp/internal/utils"
@@ -21,18 +20,18 @@ func NewAuthHandler(userService services.IUserService) *AuthHandler {
 	}
 }
 
-func (h *AuthHandler) CreateUser(c *gin.Context) {
+func (h *AuthHandler) Signup(c *gin.Context) {
 
-	var u dto.CreateUserReq
+	u := &dto.SignupUserReq{}
 
-	if err := c.ShouldBindJSON(&u); err != nil {
+	if err := c.ShouldBindJSON(u); err != nil {
 
 		utils.WriteError(c, utils.ErrorInvalidInput)
 		return
 
 	}
 
-	res, err := h.IUserService.CreateUser(c.Request.Context(), &u)
+	res, err := h.IUserService.Signup(c.Request.Context(), u)
 	if err != nil {
 
 		utils.WriteError(c, err)
@@ -45,17 +44,16 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 
 func (h *AuthHandler) Signin(c *gin.Context) {
 
-	var user dto.SigninUserReq
+	user := &dto.SigninUserReq{}
 
-	if err := c.ShouldBindJSON(&user); err != nil {
+	if err := c.ShouldBindJSON(user); err != nil {
 
 		utils.WriteError(c, utils.ErrorInvalidInput)
 		return
 	}
 
-	u, err := h.IUserService.Signin(c.Request.Context(), &user)
+	u, err := h.IUserService.Signin(c.Request.Context(), user)
 	if err != nil {
-
 		utils.WriteError(c, err)
 		return
 	}
@@ -69,9 +67,8 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 
 	// a filtered req as we do not want to implicitly pass accessToken to client
 	res := &dto.SigninUserRes{
-		ID:          u.ID,
-		Username:    u.Username,
-		DisplayName: u.DisplayName,
+		ID:       u.ID,
+		Username: u.Username,
 	}
 
 	c.JSON(http.StatusOK, res)
@@ -86,23 +83,5 @@ func (h *AuthHandler) Signout(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Signed out successfully",
-	})
-}
-
-// In your handlers/auth_handler.go
-func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
-	// Extract user info from context (already validated by middleware)
-	userId, username, displayName, err := auth.CurrentUserFromContext(c)
-	if err != nil {
-		utils.WriteError(c, err)
-		return
-	}
-
-	// Return user information
-	c.JSON(http.StatusOK, gin.H{
-		"id":           userId,
-		"username":     username,
-		"display_name": displayName,
-		"success":      true,
 	})
 }

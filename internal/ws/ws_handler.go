@@ -58,7 +58,7 @@ func (h *WebsocketHandler) CreateRoom(c *gin.Context) {
 func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	// cant trust user with sending their userID, so we fetch it from context
 
-	userIdString, _, _, err := auth.CurrentUserFromContext(c)
+	userIdString, _, err := auth.CurrentUserFromContext(c)
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidToken)
 		return

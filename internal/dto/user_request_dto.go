@@ -4,18 +4,17 @@ import "github.com/suck-seed/yapp/internal/models"
 
 // REQUESTS
 
-type CreateUserReq struct {
-	Username    string  `json:"username" binding:"required,min=3,max=32"`
-	Password    string  `json:"password" binding:"required,min=8"`
-	Email       string  `json:"email" binding:"required,email"`
-	PhoneNumber *string `json:"phone_number" binding:"omitempty"`
-	DisplayName string  `json:"display_name" binding:"required,min=1,max=64"`
-	// if empty, server may default display_name = username
+type SignupUserReq struct {
+	Username string `json:"username" binding:"required,min=3,max=32"`
+	Password string `json:"password" binding:"required,min=8"`
+	Email    string `json:"email" binding:"required,email"`
+	// PhoneNumber *string `json:"phone_number" binding:"omitempty"`
+	DisplayName string `json:"display_name" binding:"required,min=1,max=64"`
 }
 
 type SigninUserReq struct {
-	UsernameOrEmail string `json:"username_or_email" binding:"required"`
-	Password        string `json:"password" binding:"required"`
+	Email    string `json:"email" binding:"required"`
+	Password string `json:"password" binding:"required"`
 
 	// // Optional device info (if you track sessions per device)
 	// DeviceID   string `json:"device_id" binding:"omitempty,uuid4"`
@@ -41,9 +40,9 @@ type ResetPasswordConfirmReq struct {
 }
 
 type UpdateProfileReq struct {
-	DisplayName string  `json:"display_name" binding:"required,min=1,max=64"`
-	PhoneNumber *string `json:"phone_number" binding:"omitempty"`
-	AvatarURL   *string `json:"avatar_url" binding:"omitempty,url"`
+	DisplayName string `json:"display_name" binding:"required,min=1,max=64"`
+	// PhoneNumber *string `json:"phone_number" binding:"omitempty"`
+	AvatarURL *string `json:"avatar_url" binding:"omitempty,url"`
 }
 
 type ChangePasswordReq struct {
