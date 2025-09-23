@@ -3,12 +3,11 @@ package repositories
 import (
 	"context"
 
-	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 )
 
 type IHallRepository interface {
-	CreateHall(ctx context.Context, hall *dto.CreateHallReq) (*models.Hall, error)
+	CreateHall(ctx context.Context, hall *models.Hall) (*models.Hall, error)
 	GetHallByName(ctx context.Context, hallName string) (*models.Hall, error)
 }
 
@@ -23,11 +22,11 @@ func NewHallRepository(db PGXTX) IHallRepository {
 	}
 }
 
-func (r *hallRepository) CreateHall(ctx context.Context, hall *dto.CreateHallReq) (*models.Hall, error) {
+func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*models.Hall, error) {
 
 	query := `
-	INSERT INTO halls (id, name, icon_url, description, created_by_id)
-    VALUES ($1, $2, $3, $4, $5)
+	INSERT INTO halls (id, name, icon_url, banner_color, description, created_by_id)
+    VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING id, name, icon_url, banner_color, description, created_at, updated_at, created_by_id
 	`
 
@@ -35,6 +34,7 @@ func (r *hallRepository) CreateHall(ctx context.Context, hall *dto.CreateHallReq
 		hall.ID,
 		hall.Name,
 		hall.IconURL,
+		hall.BannerColor,
 		hall.Description,
 		hall.CreatedBy,
 	)
@@ -60,6 +60,25 @@ func (r *hallRepository) CreateHall(ctx context.Context, hall *dto.CreateHallReq
 }
 
 func (r *hallRepository) GetHallByName(ctx context.Context, hallName string) (*models.Hall, error) {
+	hall := &models.Hall{}
 
-	return &models.Hall{}, nil
+	query := `SELECT id, name, icon_url, banner_color, description, created_at, updated_at, created_by_id
+              FROM halls WHERE name = $1`
+
+	err := r.db.QueryRow(ctx, query, hallName).Scan(
+		&hall.ID,
+		&hall.Name,
+		&hall.IconURL,
+		&hall.BannerColor,
+		&hall.Description,
+		&hall.CreatedAt,
+		&hall.UpdatedAt,
+		&hall.CreatedBy,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return hall, nil
 }

@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/dto"
@@ -183,11 +184,11 @@ func (userRepository *userRepository) UpdateUserByUsername(ctx context.Context, 
 	user := &models.User{}
 	query := `
         UPDATE users
-        SET display_name = $1, avatar_url = $2
-        WHERE username = $3
+        SET display_name = $1, avatar_url = $2, updated_at = $3
+        WHERE username = $4
         RETURNING username, display_name, email, avatar_url, active
     `
-	err := userRepository.db.QueryRow(ctx, query, req.DisplayName, req.AvatarURL, username).Scan(
+	err := userRepository.db.QueryRow(ctx, query, req.DisplayName, req.AvatarURL, time.Now(), username).Scan(
 		&user.Username,
 		&user.DisplayName,
 		&user.Email,

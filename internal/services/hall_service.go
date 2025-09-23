@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/dto"
+	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/utils"
 )
@@ -78,7 +79,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	}
 
 	// package a hall struct
-	newHall := &dto.CreateHallReq{
+	newHall := &models.Hall{
 		ID:          id,
 		Name:        canonHallname,
 		IconURL:     req.IconURL,
