@@ -46,7 +46,7 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	defer cancel()
 
 	// sanitize the inputs
-	canonUsername, err := utils.SanitizeUsername(req.Username)
+	canonUsername, err := utils.SanatizeUsername(req.Username)
 	if err != nil {
 		return nil, utils.ErrorInvalidUsername
 	}
@@ -54,7 +54,7 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	if err != nil {
 		return nil, utils.ErrorInvalidPassword
 	}
-	canonEmail, err := utils.SanitizeEmail(req.Email)
+	canonEmail, err := utils.SanatizeEmail(req.Email)
 	if err != nil {
 		return nil, utils.ErrorInvalidEmail
 	}
@@ -64,7 +64,7 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	// 	return nil, utils.ErrorInvalidPhoneNumber
 	// }
 
-	canonDisplayName, err := utils.SanitizeDisplayName(req.DisplayName)
+	canonDisplayName, err := utils.SanatizeDisplayName(&req.DisplayName)
 	if err != nil {
 		return nil, utils.ErrorInvalidDisplayName
 	}
@@ -109,11 +109,11 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 		Email:    canonEmail,
 		// PhoneNumber:  canonPhone,
 		PasswordHash: password_hash,
-		DisplayName:  canonDisplayName,
+		DisplayName:  *canonDisplayName,
 	}
 
 	// calling the repo
-	r, err := s.IUserRepository.CreateUser(ctx, user)
+	userCRES, err := s.IUserRepository.CreateUser(ctx, user)
 	if err != nil {
 		return nil, utils.ErrorCreatingUser
 	}
@@ -121,8 +121,8 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	// create a response
 
 	return &dto.SignupUserRes{
-		ID:       r.ID.String(),
-		Username: r.Username,
+		ID:       userCRES.ID.String(),
+		Username: userCRES.Username,
 	}, nil
 
 }
@@ -134,15 +134,15 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 
 	user := &models.User{}
 
-	canonEmail, err := utils.SanitizeEmail(req.Email)
+	canonEmail, err := utils.SanatizeEmail(req.Email)
 	if err == nil {
 		user, _ = s.IUserRepository.GetUserByEmail(ctx, canonEmail)
 	}
 
-	canonUsername, err := utils.SanitizeUsername(req.Email)
-	if err == nil {
-		user, _ = s.IUserRepository.GetUserByUsername(ctx, canonUsername)
-	}
+	// canonUsername, err := utils.SanitizeUsername(req.Username)
+	// if err == nil {
+	// 	user, _ = s.IUserRepository.GetUserByUsername(ctx, canonUsername)
+	// }
 
 	canonPassword, err := utils.SanitizePasswordPolicy(req.Password)
 	if err != nil {

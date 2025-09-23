@@ -31,7 +31,7 @@ func (userHandler *UserHandler) Ping(c *gin.Context) {
 
 func (h *UserHandler) GetUser(c *gin.Context) {
 	// Extract user info from context (already validated by middleware)
-	userId, err := auth.GetUserIDFromContext(c)
+	userId, _, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
@@ -59,7 +59,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	var u dto.UpdateProfileReq
 
 	// Extract username from context (already validated by middleware)
-	username, err := auth.GetUsernameFromContext(c)
+	_, username, err := auth.CurrentUserFromContext(c)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
