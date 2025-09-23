@@ -119,12 +119,10 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	}
 
 	// create a response
-
 	return &dto.SignupUserRes{
 		ID:       r.ID.String(),
 		Username: r.Username,
 	}, nil
-
 }
 
 func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.SigninUserRes, error) {

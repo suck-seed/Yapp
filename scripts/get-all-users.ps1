@@ -1,8 +1,9 @@
 # PowerShell script to get all users from the Yapp database using Docker
-# This script connects to the PostgreSQL database running in Docker and retrieves all user data
+# Default output format: JSON
+# Optional format: table
 
 param(
-    [string]$Format = "table",  # table, json, csv
+    [string]$Format = "json",   # json (default), table
     [string]$OutputFile = "",   # Optional output file
     [switch]$IncludePasswordHash = $false,  # Whether to include password hashes (not recommended)
     [switch]$Help = $false
@@ -13,15 +14,15 @@ if ($Help) {
     Write-Host "Usage: .\get-all-users.ps1 [OPTIONS]" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Options:" -ForegroundColor Yellow
-    Write-Host "  -Format FORMAT           Output format: table, json, csv (default: table)" -ForegroundColor Cyan
+    Write-Host "  -Format FORMAT           Output format: json (default), table" -ForegroundColor Cyan
     Write-Host "  -OutputFile FILE         Output file (default: stdout)" -ForegroundColor Cyan
     Write-Host "  -IncludePasswordHash     Include password hash (not recommended)" -ForegroundColor Cyan
     Write-Host "  -Help                    Show this help message" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Examples:" -ForegroundColor Yellow
     Write-Host "  .\get-all-users.ps1" -ForegroundColor Green
-    Write-Host "  .\get-all-users.ps1 -Format json -OutputFile users.json" -ForegroundColor Green
-    Write-Host "  .\get-all-users.ps1 -Format csv -OutputFile users.csv" -ForegroundColor Green
+    Write-Host "  .\get-all-users.ps1 -Format table" -ForegroundColor Green
+    Write-Host "  .\get-all-users.ps1 -OutputFile users.json" -ForegroundColor Green
     Write-Host "  .\get-all-users.ps1 -IncludePasswordHash" -ForegroundColor Green
     exit 0
 }
@@ -58,45 +59,43 @@ try {
     switch ($Format.ToLower()) {
         "json" {
             Write-Host "Executing query in JSON format..." -ForegroundColor Yellow
-            
-            # Get raw data and convert to JSON
+
             $rawData = docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -t -c $QUERY
-            
+
             if ($LASTEXITCODE -ne 0) {
                 throw "Failed to execute query"
             }
-            
-            # Parse the raw data into objects
+
             $users = @()
             $lines = $rawData -split "`n" | Where-Object { $_.Trim() -ne "" }
-            
+
             foreach ($line in $lines) {
                 $fields = $line -split "\|" | ForEach-Object { $_.Trim() }
                 if ($fields.Count -ge 11) {
                     $user = [PSCustomObject]@{
-                        user_id = $fields[0]
-                        username = $fields[1]
+                        user_id      = $fields[0]
+                        username     = $fields[1]
                         display_name = if ($fields[2] -eq "") { $null } else { $fields[2] }
-                        email = $fields[3]
+                        email        = $fields[3]
                         phone_number = if ($fields[4] -eq "") { $null } else { $fields[4] }
-                        avatar_url = if ($fields[5] -eq "") { $null } else { $fields[5] }
-                        friend_policy = $fields[6]
-                        active = $fields[7] -eq "t"
-                        last_seen = if ($fields[8] -eq "") { $null } else { $fields[8] }
-                        created_at = $fields[9]
-                        updated_at = $fields[10]
+                        avatar_url   = if ($fields[5] -eq "") { $null } else { $fields[5] }
+                        friend_policy= $fields[6]
+                        active       = $fields[7] -eq "t"
+                        last_seen    = if ($fields[8] -eq "") { $null } else { $fields[8] }
+                        created_at   = $fields[9]
+                        updated_at   = $fields[10]
                     }
-                    
+
                     if ($IncludePasswordHash -and $fields.Count -ge 12) {
                         $user | Add-Member -NotePropertyName "password_hash" -NotePropertyValue $fields[11]
                     }
-                    
+
                     $users += $user
                 }
             }
-            
+
             $output = $users | ConvertTo-Json -Depth 3
-            
+
             if ($OutputFile) {
                 $output | Out-File -FilePath $OutputFile -Encoding UTF8
                 Write-Host "Results saved to: $OutputFile" -ForegroundColor Yellow
@@ -104,50 +103,23 @@ try {
                 Write-Host $output
             }
         }
-        
-        "csv" {
-            Write-Host "Executing query in CSV format..." -ForegroundColor Yellow
-            
-            $output = docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -c $QUERY --csv
-            
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to execute query"
-            }
-            
-            if ($OutputFile) {
-                $output | Out-File -FilePath $OutputFile -Encoding UTF8
-                Write-Host "Results saved to: $OutputFile" -ForegroundColor Yellow
-            } else {
-                Write-Host $output
-            }
-        }
-        
+
         "table" {
             Write-Host "Executing query in table format..." -ForegroundColor Yellow
-            
             $output = docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -c $QUERY
-            
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to execute query"
-            }
-            
-            if ($OutputFile) {
-                $output | Out-File -FilePath $OutputFile -Encoding UTF8
-                Write-Host "Results saved to: $OutputFile" -ForegroundColor Yellow
-            } else {
-                Write-Host $output
-            }
+            if ($LASTEXITCODE -ne 0) { throw "Failed to execute query" }
+            if ($OutputFile) { $output | Out-File -FilePath $OutputFile -Encoding UTF8 } else { Write-Host $output }
         }
-        
+
         default {
-            Write-Error "Invalid format. Use: table, json, or csv"
+            Write-Error "Invalid format. Use: json or table"
             exit 1
         }
     }
-    
+
     Write-Host ""
     Write-Host "Query completed successfully!" -ForegroundColor Green
-    
+
 } catch {
     Write-Error "Error: $($_.Exception.Message)"
     Write-Host ""
@@ -159,8 +131,8 @@ try {
 }
 
 # Usage examples:
-# .\get-all-users.ps1
-# .\get-all-users.ps1 -Format json -OutputFile "users.json"
-# .\get-all-users.ps1 -Format csv -OutputFile "users.csv"
+# .\get-all-users.ps1              -> JSON (default)
+# .\get-all-users.ps1 -Format table
+# .\get-all-users.ps1 -OutputFile "users.json"
 # .\get-all-users.ps1 -IncludePasswordHash
 # .\get-all-users.ps1 -Help

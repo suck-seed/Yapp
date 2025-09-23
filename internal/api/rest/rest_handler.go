@@ -45,16 +45,23 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 		meGroup.PATCH("/", userHandler.UpdateUser)
 		// soft delete my profile
 		meGroup.DELETE("/")
-
 		meGroup.PATCH("/username")
 		meGroup.PATCH("/email")
-
 	}
 
 }
 
 func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
+	hallHandler := handlers.NewHallHandler(hallService)
 
+	hallGroup := r.Group("/halls")
+	{
+		hallGroup.GET("/", hallHandler.Ping)
+		hallGroup.GET("/{hall_id}")
+		hallGroup.GET("/{hall_id}/floors")
+
+		hallGroup.POST("/create", hallHandler.CreateHall)
+	}
 }
 
 func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService) {

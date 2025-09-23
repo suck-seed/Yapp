@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -33,6 +34,11 @@ func AuthMiddleware() gin.HandlerFunc {
 		// Everything's alright, place the context for handlers
 		c.Set(CtxUserIDKey, claims.ID)
 		c.Set(CtxUsernameKey, claims.Username)
+
+		ctx := context.WithValue(c.Request.Context(), CtxUserIDKey, claims.ID)
+		ctx = context.WithValue(ctx, CtxUsernameKey, claims.Username)
+		c.Request = c.Request.WithContext(ctx)
+
 		c.Next()
 	}
 
@@ -54,25 +60,42 @@ func GetTokenFromRequest(c *gin.Context) string {
 	return ""
 }
 
-// ---- UserID ----
-func GetUserIDFromContext(c *gin.Context) (string, error) {
+// ---- UserID and Username from gin context ----
+func CurrentUserFromGinContext(c *gin.Context) (string, string, error) {
+
 	rawId, ok := c.Get(CtxUserIDKey)
 	if !ok {
-		return "", utils.ErrorNoUserIdInContext
+		return "", "", utils.ErrorNoUserIdInContext
 	}
-	userId, _ := rawId.(string)
-	if userId == "" {
-		return "", utils.ErrorEmptyUserIdInContext
+
+	idString, _ := rawId.(string)
+	if idString == "" {
+		return "", "", utils.ErrorEmptyUserIdInContext
 	}
-	return userId, nil
+
+	rawUsername, _ := c.Get(CtxUsernameKey)
+	usernameString, _ := rawUsername.(string)
+
+	return idString, usernameString, nil
+
 }
 
-// ---- Username ----
-func GetUsernameFromContext(c *gin.Context) (string, error) {
-	rawUsername, ok := c.Get(CtxUsernameKey)
-	if !ok {
-		return "", utils.ErrorNoUserIdInContext
+// ---- UserID and Username from context ----
+func CurrentUserFromContext(c context.Context) (id string, username string, err error) {
+
+	rawId := c.Value(CtxUserIDKey)
+	if rawId == nil {
+		return "", "", utils.ErrorNoUserIdInContext
 	}
-	username, _ := rawUsername.(string)
-	return username, nil
+
+	idString, _ := rawId.(string)
+	if idString == "" {
+		return "", "", utils.ErrorEmptyUserIdInContext
+
+	}
+
+	usernameString, _ := c.Value(CtxUsernameKey).(string)
+
+	return idString, usernameString, nil
+
 }
