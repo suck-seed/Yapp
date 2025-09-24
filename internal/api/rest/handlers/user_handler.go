@@ -43,7 +43,7 @@ func (h *UserHandler) GetUserMe(c *gin.Context) {
 }
 
 func (h *UserHandler) UpdateUserMe(c *gin.Context) {
-	var u dto.UpdateProfileReq
+	var u dto.UpdateUserMeReq
 
 	// Bind JSON payload: expects { "display_name": "...", "avatar_url": "..." }
 	if err := c.ShouldBindJSON(&u); err != nil {

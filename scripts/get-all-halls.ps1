@@ -30,8 +30,8 @@ $DB_USER = "yappUser"
 $DB_NAME = "yappDev"
 
 # Build the SQL query for halls
-$SELECT_FIELDS = "id, name, icon_url, banner_color, description, created_at, updated_at, created_by_id"
-$QUERY = "SELECT $SELECT_FIELDS FROM halls ORDER BY created_at DESC;"
+# $SELECT_FIELDS = "id, name, icon_url, banner_color, description, created_at, updated_at, created_by_id"
+$QUERY = "SELECT * FROM halls ORDER BY created_at DESC;"
 
 Write-Host "Connecting to database container: $DB_CONTAINER" -ForegroundColor Green
 Write-Host "Database: $DB_NAME, User: $DB_USER" -ForegroundColor Green

@@ -11,8 +11,9 @@ import (
 
 type IUserRepository interface {
 	CreateUser(ctx context.Context, user *models.User) (*models.User, error)
-	UpdateUserByUsername(ctx context.Context, username string, req *dto.UpdateProfileReq) (*models.User, error)
+	UpdateUserById(ctx context.Context, userId uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error)
 
+	GetUserWithPasswordHashByEmail(ctx context.Context, email string) (*models.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 	GetUserByNumber(ctx context.Context, number *string) (*models.User, error)
@@ -28,15 +29,16 @@ func NewUserRepository(db PGXTX) IUserRepository {
 	return &userRepository{
 		db: db,
 	}
-
 }
 
 func (userRepository *userRepository) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
 
+	saved := &models.User{}
+
 	query := `
   				INSERT INTO users (id, username, display_name, email, password_hash)
       			VALUES ($1, $2, $3, $4, $5)
-         		RETURNING id, username, display_name, email, phone_number, avatar_url, friend_policy, created_at, updated_at
+         		RETURNING id, username, display_name, email, phone_number, avatar_url, avatar_thumbnail_url, friend_policy, created_at, updated_at
 
    			`
 
@@ -48,8 +50,6 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 		user.PasswordHash,
 	)
 
-	saved := &models.User{}
-
 	err := row.Scan(
 		&saved.ID,
 		&saved.Username,
@@ -57,6 +57,7 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 		&saved.Email,
 		&saved.PhoneNumber,
 		&saved.AvatarURL,
+		&saved.AvatarThumbnailURL,
 		&saved.FriendPolicy,
 		&saved.CreatedAt,
 		&saved.UpdatedAt,
@@ -69,65 +70,12 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 	return saved, nil
 }
 
-func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
-
-	user := &models.User{}
-
-	query := `
-				SELECT id, username, display_name, email, phone_number, avatar_url, password_hash
-				FROM users
-				WHERE lower(email) = lower($1)
-			`
-
-	row := userRepository.db.QueryRow(ctx, query, email)
-
-	err := row.Scan(
-		&user.ID,
-		&user.Username,
-		&user.DisplayName,
-		&user.Email,
-		&user.PhoneNumber,
-		&user.AvatarURL,
-		&user.PasswordHash,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return user, nil
-}
-
-func (userRepository *userRepository) GetUserById(ctx context.Context, userId uuid.UUID) (*models.User, error) {
-
-	query := `
-				SELECT username, display_name, email, avatar_url, active
-				FROM users
-				WHERE id = $1
-			`
-
-	row := userRepository.db.QueryRow(ctx, query, userId)
-
-	user := &models.User{}
-	err := row.Scan(
-		&user.Username,
-		&user.DisplayName,
-		&user.Email,
-		&user.AvatarURL,
-		&user.Active,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return user, nil
-}
-
 func (userRepository *userRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 
 	user := &models.User{}
 
 	query := `
-				SELECT id, username, display_name, email, phone_number, avatar_url, password_hash
+				SELECT id, username, display_name, email, phone_number, avatar_url, avatar_thumbnail_url, friend_policy, created_at, updated_at, active
 				FROM users
 				WHERE lower(username) = lower($1)
 			`
@@ -141,14 +89,17 @@ func (userRepository *userRepository) GetUserByUsername(ctx context.Context, use
 		&user.Email,
 		&user.PhoneNumber,
 		&user.AvatarURL,
-		&user.PasswordHash,
+		&user.AvatarThumbnailURL,
+		&user.FriendPolicy,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.Active,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	return user, nil
-
 }
 
 func (userRepository *userRepository) GetUserByNumber(ctx context.Context, number *string) (*models.User, error) {
@@ -156,7 +107,7 @@ func (userRepository *userRepository) GetUserByNumber(ctx context.Context, numbe
 	user := &models.User{}
 
 	query := `
-				SELECT id, username, display_name, email, phone_number, avatar_url, password_hash
+				SELECT id, username, display_name, email, phone_number, avatar_url, avatar_thumbnail_url, friend_policy, created_at, updated_at, active
 				FROM users
 				WHERE phone_number = $1
 			`
@@ -170,29 +121,135 @@ func (userRepository *userRepository) GetUserByNumber(ctx context.Context, numbe
 		&user.Email,
 		&user.PhoneNumber,
 		&user.AvatarURL,
-		&user.PasswordHash,
+		&user.AvatarThumbnailURL,
+		&user.FriendPolicy,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.Active,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	return user, nil
-
 }
 
-func (userRepository *userRepository) UpdateUserByUsername(ctx context.Context, username string, req *dto.UpdateProfileReq) (*models.User, error) {
+func (userRepository *userRepository) GetUserWithPasswordHashByEmail(ctx context.Context, email string) (*models.User, error) {
+
 	user := &models.User{}
+
+	query := `
+				SELECT id, username, display_name, email, password_hash, phone_number, avatar_url, avatar_thumbnail_url, friend_policy,
+				created_at, updated_at, active
+				FROM users
+				WHERE lower(email) = lower($1)
+			`
+
+	row := userRepository.db.QueryRow(ctx, query, email)
+
+	err := row.Scan(
+		&user.ID,
+		&user.Username,
+		&user.DisplayName,
+		&user.Email,
+		&user.PasswordHash,
+		&user.PhoneNumber,
+		&user.AvatarURL,
+		&user.AvatarThumbnailURL,
+		&user.FriendPolicy,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.Active,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+
+	user := &models.User{}
+
+	query := `
+				SELECT id, username, display_name, email, phone_number, avatar_url, avatar_thumbnail_url, friend_policy,
+				created_at, updated_at, active
+				FROM users
+				WHERE lower(email) = lower($1)
+			`
+
+	row := userRepository.db.QueryRow(ctx, query, email)
+
+	err := row.Scan(
+		&user.ID,
+		&user.Username,
+		&user.DisplayName,
+		&user.Email,
+		&user.PhoneNumber,
+		&user.AvatarURL,
+		&user.AvatarThumbnailURL,
+		&user.FriendPolicy,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.Active,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (userRepository *userRepository) GetUserById(ctx context.Context, userId uuid.UUID) (*models.User, error) {
+
+	user := &models.User{}
+
+	query := `
+				SELECT id, username, display_name, email, phone_number, avatar_url, avatar_thumbnail_url, friend_policy, created_at,
+				updated_at, active
+				FROM users
+				WHERE id = $1
+			`
+
+	row := userRepository.db.QueryRow(ctx, query, userId)
+
+	err := row.Scan(
+		&user.ID,
+		&user.Username,
+		&user.DisplayName,
+		&user.Email,
+		&user.PhoneNumber,
+		&user.AvatarURL,
+		&user.AvatarThumbnailURL,
+		&user.FriendPolicy,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.Active,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (userRepository *userRepository) UpdateUserById(ctx context.Context, userId uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error) {
+
+	user := &models.User{}
+
 	query := `
         UPDATE users
-        SET display_name = $1, avatar_url = $2, updated_at = $3
-        WHERE username = $4
-        RETURNING username, display_name, email, avatar_url, active
+        SET display_name = $1, avatar_url = $2, avatar_thumbnail_url = $3, updated_at = $4
+        WHERE id = $5
+        RETURNING username, display_name, email, avatar_url, avatar_thumbnail_url, active
     `
-	err := userRepository.db.QueryRow(ctx, query, req.DisplayName, req.AvatarURL, time.Now(), username).Scan(
+	err := userRepository.db.QueryRow(ctx, query, req.DisplayName, req.AvatarURL, req.AvatarThumbnailURL, time.Now(), userId).Scan(
 		&user.Username,
 		&user.DisplayName,
 		&user.Email,
 		&user.AvatarURL,
+		&user.AvatarThumbnailURL,
 		&user.Active,
 	)
 	if err != nil {

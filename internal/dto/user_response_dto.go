@@ -20,22 +20,24 @@ type SigninUserRes struct {
 }
 
 type UserPublic struct {
-	ID          string `json:"id"`
-	Username    string `json:"username"`
-	DisplayName string `json:"display_name"`
-	AvatarURL   string `json:"avatar_url,omitempty"`
+	ID                 string  `json:"id"`
+	Username           string  `json:"username"`
+	DisplayName        string  `json:"display_name"`
+	AvatarURL          *string `json:"avatar_url,omitempty"`
+	AvatarThumbnailURL *string `json:"avatar_thumbnail_url,omitempty"`
 }
 
 type UserMe struct {
-	ID           string  `json:"id"`
-	Username     string  `json:"username"`
-	DisplayName  string  `json:"display_name"`
-	Email        string  `json:"email"`
-	PhoneNumber  *string `json:"phone_number,omitempty"`
-	AvatarURL    *string `json:"avatar_url,omitempty"`
-	Description  *string `json:"description,omitempty"`
-	FriendPolicy string  `json:"friend_policy"`
-	Active       bool    `json:"active"`
+	ID                 string  `json:"id"`
+	Username           string  `json:"username"`
+	DisplayName        string  `json:"display_name"`
+	Email              string  `json:"email"`
+	PhoneNumber        *string `json:"phone_number,omitempty"`
+	AvatarURL          *string `json:"avatar_url,omitempty"`
+	AvatarThumbnailURL *string `json:"avatar_thumbnail_url,omitempty"`
+	Description        *string `json:"description,omitempty"`
+	FriendPolicy       string  `json:"friend_policy"`
+	Active             bool    `json:"active"`
 	//LastSeen     *time.Time          `json:"last_seen,omitempty"`
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
@@ -69,25 +71,27 @@ type UsernameAvailabilityResponse struct {
 // Func to convert model.User to public and private
 func ToUserPublic(u models.User) UserPublic {
 	return UserPublic{
-		ID:          u.ID.String(),
-		Username:    u.Username,
-		DisplayName: u.DisplayName,
-		AvatarURL:   *u.AvatarURL,
+		ID:                 u.ID.String(),
+		Username:           u.Username,
+		DisplayName:        u.DisplayName,
+		AvatarURL:          u.AvatarURL,
+		AvatarThumbnailURL: u.AvatarThumbnailURL,
 	}
 }
 
 func ToUserMe(u models.User) UserMe {
 
 	return UserMe{
-		ID:           u.ID.String(),
-		Username:     u.Username,
-		DisplayName:  u.DisplayName,
-		Email:        u.Email,
-		PhoneNumber:  u.PhoneNumber,
-		AvatarURL:    u.AvatarURL,
-		Description:  u.Description,
-		FriendPolicy: string(u.FriendPolicy),
-		Active:       u.Active,
+		ID:                 u.ID.String(),
+		Username:           u.Username,
+		DisplayName:        u.DisplayName,
+		Email:              u.Email,
+		PhoneNumber:        u.PhoneNumber,
+		AvatarURL:          u.AvatarURL,
+		AvatarThumbnailURL: u.AvatarThumbnailURL,
+		Description:        u.Description,
+		FriendPolicy:       string(u.FriendPolicy),
+		Active:             u.Active,
 		// LastSeen:     u.LastSeen,
 		CreatedAt: u.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),

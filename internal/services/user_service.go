@@ -20,7 +20,7 @@ type IUserService interface {
 	GetUserMe(c context.Context) (*models.User, error)
 	GetUserById(c context.Context, userId uuid.UUID) (*models.User, error)
 
-	UpdateUserMe(c context.Context, req *dto.UpdateProfileReq) (*models.User, error)
+	UpdateUserMe(c context.Context, req *dto.UpdateUserMeReq) (*models.User, error)
 }
 
 // userService : Behaves like a class, and implements IUserService's methods
@@ -122,12 +122,7 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 
 	canonEmail, err := utils.SanitizeEmail(req.Email)
 	if err == nil {
-		user, _ = s.IUserRepository.GetUserByEmail(ctx, canonEmail)
-	}
-
-	canonUsername, err := utils.SanitizeUsername(req.Email)
-	if err == nil {
-		user, _ = s.IUserRepository.GetUserByUsername(ctx, canonUsername)
+		user, _ = s.IUserRepository.GetUserWithPasswordHashByEmail(ctx, canonEmail)
 	}
 
 	canonPassword, err := utils.SanitizePasswordPolicy(req.Password)
@@ -188,12 +183,23 @@ func (s *userService) GetUserMe(c context.Context) (*models.User, error) {
 	return user, nil
 }
 
-func (s *userService) GetUserById(c context.Context, userId uuid.UUID) (*models.User, error) {
+func (s *userService) UpdateUserMe(c context.Context, req *dto.UpdateUserMeReq) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// Fetch the user from the repository
-	user, err := s.IUserRepository.GetUserById(ctx, userId)
+	// Extract user info from context (already validated by middleware)
+	userIdString, _, err := auth.CurrentUserFromContext(c)
+	if err != nil {
+		return nil, utils.ErrorUserNotFound
+	}
+
+	// parse uuid
+	userId, err := uuid.Parse(userIdString)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := s.IUserRepository.UpdateUserById(ctx, userId, req)
 	if err != nil {
 		return nil, utils.ErrorUserNotFound
 	}
@@ -205,16 +211,12 @@ func (s *userService) GetUserById(c context.Context, userId uuid.UUID) (*models.
 	return user, nil
 }
 
-func (s *userService) UpdateUserMe(c context.Context, req *dto.UpdateProfileReq) (*models.User, error) {
+func (s *userService) GetUserById(c context.Context, userId uuid.UUID) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	_, username, err := auth.CurrentUserFromContext(c)
-	if err != nil {
-		return nil, utils.ErrorUserNotFound
-	}
-
-	user, err := s.IUserRepository.UpdateUserByUsername(ctx, username, req)
+	// Fetch the user from the repository
+	user, err := s.IUserRepository.GetUserById(ctx, userId)
 	if err != nil {
 		return nil, utils.ErrorUserNotFound
 	}
