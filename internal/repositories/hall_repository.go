@@ -60,6 +60,25 @@ func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*mo
 }
 
 func (r *hallRepository) GetHallByName(ctx context.Context, hallName string) (*models.Hall, error) {
+	hall := &models.Hall{}
 
-	return &models.Hall{}, nil
+	query := `SELECT id, name, icon_url, banner_color, description, created_at, updated_at, owner
+              FROM halls WHERE name = $1`
+
+	err := r.db.QueryRow(ctx, query, hallName).Scan(
+		&hall.ID,
+		&hall.Name,
+		&hall.IconURL,
+		&hall.BannerColor,
+		&hall.Description,
+		&hall.CreatedAt,
+		&hall.UpdatedAt,
+		&hall.Owner,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return hall, nil
 }

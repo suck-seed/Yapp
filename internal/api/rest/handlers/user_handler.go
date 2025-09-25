@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/services"
 	"github.com/suck-seed/yapp/internal/utils"
@@ -29,21 +28,9 @@ func (userHandler *UserHandler) Ping(c *gin.Context) {
 	})
 }
 
-func (h *UserHandler) GetUser(c *gin.Context) {
-	// Extract user info from context (already validated by middleware)
-	userId, _, err := auth.CurrentUserFromGinContext(c)
-	if err != nil {
-		utils.WriteError(c, err)
-		return
-	}
+func (h *UserHandler) GetUserMe(c *gin.Context) {
 
-	userIdParsed, err := utils.ParseUUID(userId)
-	if err != nil {
-		utils.WriteError(c, utils.ErrorInvalidUserIdInContext)
-		return
-	}
-
-	user, err := h.IUserService.GetUserByID(c.Request.Context(), userIdParsed)
+	user, err := h.IUserService.GetUserMe(c.Request.Context())
 	if err != nil {
 		utils.WriteError(c, err)
 		return
@@ -55,15 +42,8 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-func (h *UserHandler) UpdateUser(c *gin.Context) {
-	var u dto.UpdateProfileReq
-
-	// Extract username from context (already validated by middleware)
-	_, username, err := auth.CurrentUserFromContext(c)
-	if err != nil {
-		utils.WriteError(c, err)
-		return
-	}
+func (h *UserHandler) UpdateUserMe(c *gin.Context) {
+	var u dto.UpdateUserMeReq
 
 	// Bind JSON payload: expects { "display_name": "...", "avatar_url": "..." }
 	if err := c.ShouldBindJSON(&u); err != nil {
@@ -72,7 +52,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	}
 
 	// Call service with values from payload
-	user, err := h.IUserService.UpdateUser(c.Request.Context(), username, u.DisplayName, u.AvatarURL)
+	user, err := h.IUserService.UpdateUserMe(c.Request.Context(), &u)
 	if err != nil {
 		utils.WriteError(c, err)
 		return

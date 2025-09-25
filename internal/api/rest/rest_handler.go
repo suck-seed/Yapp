@@ -40,28 +40,27 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 	meGroup := r.Group("/me")
 	{
 		// get my profile
-		meGroup.GET("/", userHandler.GetUser)
+		meGroup.GET("/", userHandler.GetUserMe)
 		// update my profile (display, phone, avatar, friend_policy)
-		meGroup.PATCH("/", userHandler.UpdateUser)
+		meGroup.PATCH("/", userHandler.UpdateUserMe)
 		// soft delete my profile
 		meGroup.DELETE("/")
-
 		meGroup.PATCH("/username")
 		meGroup.PATCH("/email")
-
 	}
 
 }
 
 func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
-
-	// hallHandler := handlers.NewHallhandler(hallService)
+	hallHandler := handlers.NewHallHandler(hallService)
 
 	hallGroup := r.Group("/halls")
 	{
-		hallGroup.POST("/")
-	}
+		hallGroup.GET("/{hall_id}")
+		hallGroup.GET("/{hall_id}/floors")
 
+		hallGroup.POST("/create", hallHandler.CreateHall)
+	}
 }
 
 func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService) {

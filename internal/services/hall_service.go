@@ -41,15 +41,15 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	defer cancel()
 
 	// sanatize req
-	canonHallname, err := utils.SanatizeHallname(req.Name)
+	canonHallname, err := utils.SanitizeHallname(req.Name)
 	if err != nil {
 		return nil, err
 	}
-	canonBannerColor, err := utils.SanatizeColorFormat(req.BannerColor)
+	canonBannerColor, err := utils.SanitizeColorFormat(req.BannerColor)
 	if err != nil {
 		return nil, err
 	}
-	canonDescription, err := utils.SanatizeText(req.Description)
+	canonDescription, err := utils.SanitizeText(req.Description)
 	if err != nil {
 		return nil, err
 	}

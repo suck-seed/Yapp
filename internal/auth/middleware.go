@@ -35,7 +35,6 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Set(CtxUserIDKey, claims.ID)
 		c.Set(CtxUsernameKey, claims.Username)
 
-		// Also add them to context.Context, to be accessed from service and repository layer if we have to
 		ctx := context.WithValue(c.Request.Context(), CtxUserIDKey, claims.ID)
 		ctx = context.WithValue(ctx, CtxUsernameKey, claims.Username)
 		c.Request = c.Request.WithContext(ctx)
@@ -47,16 +46,14 @@ func AuthMiddleware() gin.HandlerFunc {
 }
 
 func GetTokenFromRequest(c *gin.Context) string {
-
-	// Trying cookie
+	// Try cookie
 	if cookie, err := c.Cookie("jwt"); err == nil && cookie != "" {
 		return cookie
 	}
 
-	// Trying Authorization header
-	authHeader := c.GetHeader("Authorization")
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	// Try Authorization header
+	if token, ok := strings.CutPrefix(c.GetHeader("Authorization"), "Bearer "); ok {
+		return strings.TrimSpace(token)
 	}
 
 	return ""
@@ -77,8 +74,10 @@ func CurrentUserFromGinContext(c *gin.Context) (string, string, error) {
 	usernameString, _ := rawUsername.(string)
 
 	return idString, usernameString, nil
+
 }
 
+// ---- UserID and Username from context ----
 func CurrentUserFromContext(c context.Context) (id string, username string, err error) {
 
 	rawId := c.Value(CtxUserIDKey)

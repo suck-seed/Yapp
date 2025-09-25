@@ -15,7 +15,7 @@ var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+
 var hexRegex = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}){1,2}$`)
 
 // NAME SECTION
-func SanatizeUsername(s string) (string, error) {
+func SanitizeUsername(s string) (string, error) {
 	s = strings.TrimSpace(s)
 	s = strings.ToLower(s)
 	if !usernameRegex.MatchString(s) {
@@ -24,7 +24,7 @@ func SanatizeUsername(s string) (string, error) {
 	return s, nil
 }
 
-func SanatizeHallname(s string) (string, error) {
+func SanitizeHallname(s string) (string, error) {
 	s = strings.TrimSpace(s)
 	s = strings.ToLower(s)
 	if !usernameRegex.MatchString(s) {
@@ -33,25 +33,27 @@ func SanatizeHallname(s string) (string, error) {
 	return s, nil
 }
 
-func SanatizeDisplayName(ptr *string) (*string, error) {
-	if ptr == nil {
-		return nil, nil
-	}
-	s := strings.TrimSpace(*ptr)
-	// normalize unicode; collapse spaces
+func SanitizeDisplayName(s string) (string, error) {
+	s = strings.TrimSpace(s)
+
 	s = norm.NFKC.String(s)
+
 	s = strings.Join(strings.Fields(s), " ")
+
 	if s == "" {
-		return nil, nil
+		return "", ErrorInvalidDisplayName
 	}
-	if utf8.RuneCountInString(s) > 32 || utf8.RuneCountInString(s) < 3 {
-		return nil, ErrorInvalidDisplayName
+
+	length := utf8.RuneCountInString(s)
+	if length < 3 || length > 32 {
+		return "", ErrorInvalidDisplayName
 	}
-	return &s, nil
+
+	return s, nil
 }
 
 // EMAIL SECTION
-func SanatizeEmail(s string) (string, error) {
+func SanitizeEmail(s string) (string, error) {
 	s = strings.TrimSpace(s)
 	s = strings.ToLower(s)
 	// very light check; rely on validator.v10 too
@@ -107,7 +109,7 @@ func SanitizePasswordPolicy(raw string) (string, error) {
 }
 
 // COLOR SECTION
-func SanatizeColorFormat(colorHex *string) (*string, error) {
+func SanitizeColorFormat(colorHex *string) (*string, error) {
 
 	if colorHex == nil {
 		return nil, nil
@@ -126,7 +128,7 @@ func SanatizeColorFormat(colorHex *string) (*string, error) {
 }
 
 // TEXT SECTION
-func SanatizeText(text *string) (*string, error) {
+func SanitizeText(text *string) (*string, error) {
 	if text == nil {
 		return nil, nil
 	}
