@@ -49,10 +49,7 @@ const (
 type Room struct {
 	ID uuid.UUID `json:"id"`
 
-	// Active connections - use map for O(1) lookup
-	Clients map[uuid.UUID]*Client `json:"-"`
-
-	// Room broadcast channel
+	Clients   map[uuid.UUID]*Client `json:"-"`
 	Broadcast chan *OutboundMessage `json:"-"`
 
 	// Metadata (fetched once, cached)
@@ -61,16 +58,16 @@ type Room struct {
 	mu        sync.RWMutex
 }
 
-// What clients Send to server
 type InboundMessage struct {
-	Type    MessageType `json:"type"`
-	Content string      `json:"content,omitempty"`
+	Type        MessageType `json:"type"`
+	Content     *string     `json:"content,omitempty" binding:"min=1,max=8000"`
+	Attachments *[]string   `json:"attachments,omitempty"`
 
 	// Mention fields - parsed by frontend
-	MentionEveryone bool     `json:"mention_everyone,omitempty"`
-	Mentions        []string `json:"mentions,omitempty"` // array of user IDs
+	MentionEveryone *bool     `json:"mention_everyone,omitempty"`
+	Mentions        *[]string `json:"mentions,omitempty"` // array of user IDs
 
-	// These are set by server, not client
+	// These are set by server, not client, BUT KEEP THEM HERE for simplicity
 	UserID uuid.UUID `json:"-"`
 	RoomID uuid.UUID `json:"-"`
 }

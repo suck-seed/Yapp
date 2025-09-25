@@ -56,7 +56,6 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 
 	hallGroup := r.Group("/halls")
 	{
-		hallGroup.GET("/", hallHandler.Ping)
 		hallGroup.GET("/{hall_id}")
 		hallGroup.GET("/{hall_id}/floors")
 

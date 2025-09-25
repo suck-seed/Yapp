@@ -79,30 +79,32 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	}
 
 	// package a hall struct
-	newHall := &models.Hall{
+	hall := &models.Hall{
 		ID:          id,
 		Name:        canonHallname,
 		IconURL:     req.IconURL,
 		BannerColor: canonBannerColor,
 		Description: canonDescription,
-		CreatedBy:   userId,
+		Owner:       userId,
 	}
 
 	// passing to repo
-	hall, err := s.IHallRepository.CreateHall(ctx, newHall)
+	hallCRES, err := s.IHallRepository.CreateHall(ctx, hall)
 	if err != nil {
 		return nil, utils.ErrorCreatingHall
 	}
 
+	// additional setup
+
 	return &dto.CreateHallRes{
-		ID:          hall.ID.String(),
-		Name:        hall.Name,
-		IconURL:     hall.IconURL,
-		BannerColor: hall.BannerColor,
-		Description: hall.Description,
-		CreatedAt:   hall.CreatedAt.String(),
-		UpdatedAt:   hall.UpdatedAt.String(),
-		CreatedBy:   hall.CreatedBy.String(),
+		ID:          hallCRES.ID,
+		Name:        hallCRES.Name,
+		IconURL:     hallCRES.IconURL,
+		BannerColor: hallCRES.BannerColor,
+		Description: hallCRES.Description,
+		CreatedAt:   hall.CreatedAt,
+		UpdatedAt:   hall.UpdatedAt,
+		Owner:       hallCRES.Owner,
 	}, nil
 }
 
