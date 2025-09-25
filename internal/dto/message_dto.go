@@ -9,10 +9,12 @@ import (
 type CreateMessageReq struct {
 
 	// we will get author id from headers
-	RoomId          string   `json:"room_id" binding:"required"`
-	Content         string   `json:"content" binding:"required,min=1,max=8000"`
-	MentionEveryone bool     `json:"mention_everyone"`
-	Mentions        []string `json:"mentions" binding:"dive,uuid4"`
+	RoomId      string    `json:"room_id" binding:"required"`
+	Content     *string   `json:"content,omitempty" binding:"min=1,max=8000"`
+	Attachments *[]string `json:"attachments,omitempty"`
+
+	MentionEveryone *bool     `json:"mention_everyone,omitempty"`
+	Mentions        *[]string `json:"mentions,omitempty"`
 }
 
 type CreateMessageRes struct {

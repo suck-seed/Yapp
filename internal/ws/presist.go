@@ -17,6 +17,7 @@ func MakePresistFunc(messageService services.IMessageService, userService servic
 		saved, err := messageService.CreateMessage(context.Background(), &dto.CreateMessageReq{
 			RoomId:          in.RoomID.String(),
 			Content:         in.Content,
+			Attachments:     in.Attachments,
 			MentionEveryone: in.MentionEveryone,
 			Mentions:        in.Mentions,
 		})
