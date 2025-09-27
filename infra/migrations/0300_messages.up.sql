@@ -3,10 +3,11 @@ CREATE TABLE messages (
     room_id uuid NOT NULL REFERENCES rooms (id) ON DELETE CASCADE,
     author_id uuid NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
     content text NOT NULL,
+    mention_everyone boolean NOT NULL DEFAULT false,
+
     sent_at timestamptz NOT NULL DEFAULT now (),
     edited_at timestamptz,
     deleted_at timestamptz,
-    mention_everyone boolean NOT NULL DEFAULT false,
     created_at timestamptz NOT NULL DEFAULT now (),
     updated_at timestamptz NOT NULL DEFAULT now ()
 );

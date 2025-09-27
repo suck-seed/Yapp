@@ -11,13 +11,16 @@ import (
 
 type IUserRepository interface {
 	CreateUser(ctx context.Context, user *models.User) (*models.User, error)
-	UpdateUserById(ctx context.Context, userId uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error)
+	UpdateUserById(ctx context.Context, userID uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error)
 
 	GetUserWithPasswordHashByEmail(ctx context.Context, email string) (*models.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 	GetUserByNumber(ctx context.Context, number *string) (*models.User, error)
-	GetUserById(ctx context.Context, userId uuid.UUID) (*models.User, error)
+	GetUserById(ctx context.Context, userID uuid.UUID) (*models.User, error)
+
+	UserExists(ctx context.Context, userID uuid.UUID) (bool, error)
+	AddMessageMention(ctx context.Context, messageId uuid.UUID, userID uuid.UUID) error
 }
 
 type userRepository struct {
@@ -134,7 +137,7 @@ func (r *userRepository) GetUserByNumber(ctx context.Context, number *string) (*
 	return user, nil
 }
 
-func (userRepository *userRepository) GetUserWithPasswordHashByEmail(ctx context.Context, email string) (*models.User, error) {
+func (r *userRepository) GetUserWithPasswordHashByEmail(ctx context.Context, email string) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -145,7 +148,7 @@ func (userRepository *userRepository) GetUserWithPasswordHashByEmail(ctx context
 				WHERE lower(email) = lower($1)
 			`
 
-	row := userRepository.db.QueryRow(ctx, query, email)
+	row := r.db.QueryRow(ctx, query, email)
 
 	err := row.Scan(
 		&user.ID,
@@ -168,7 +171,7 @@ func (userRepository *userRepository) GetUserWithPasswordHashByEmail(ctx context
 	return user, nil
 }
 
-func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -179,7 +182,7 @@ func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email 
 				WHERE lower(email) = lower($1)
 			`
 
-	row := userRepository.db.QueryRow(ctx, query, email)
+	row := r.db.QueryRow(ctx, query, email)
 
 	err := row.Scan(
 		&user.ID,
@@ -201,7 +204,7 @@ func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email 
 	return user, nil
 }
 
-func (userRepository *userRepository) GetUserById(ctx context.Context, userId uuid.UUID) (*models.User, error) {
+func (r *userRepository) GetUserById(ctx context.Context, userId uuid.UUID) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -212,7 +215,7 @@ func (userRepository *userRepository) GetUserById(ctx context.Context, userId uu
 				WHERE id = $1
 			`
 
-	row := userRepository.db.QueryRow(ctx, query, userId)
+	row := r.db.QueryRow(ctx, query, userId)
 
 	err := row.Scan(
 		&user.ID,
@@ -234,7 +237,7 @@ func (userRepository *userRepository) GetUserById(ctx context.Context, userId uu
 	return user, nil
 }
 
-func (userRepository *userRepository) UpdateUserById(ctx context.Context, userId uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error) {
+func (r *userRepository) UpdateUserById(ctx context.Context, userId uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -244,7 +247,7 @@ func (userRepository *userRepository) UpdateUserById(ctx context.Context, userId
         WHERE id = $5
         RETURNING username, display_name, email, avatar_url, avatar_thumbnail_url, active
     `
-	err := userRepository.db.QueryRow(ctx, query, req.DisplayName, req.AvatarURL, req.AvatarThumbnailURL, time.Now(), userId).Scan(
+	err := r.db.QueryRow(ctx, query, req.DisplayName, req.AvatarURL, req.AvatarThumbnailURL, time.Now(), userId).Scan(
 		&user.Username,
 		&user.DisplayName,
 		&user.Email,
@@ -256,4 +259,36 @@ func (userRepository *userRepository) UpdateUserById(ctx context.Context, userId
 		return nil, err
 	}
 	return user, nil
+}
+
+func (r *userRepository) UserExists(ctx context.Context, userId uuid.UUID) (bool, error) {
+
+	query := `
+
+		SELECT EXISTS (SELECT 1 FROM users WHERE id = $1)
+
+	`
+
+	var exists bool
+
+	err := r.db.QueryRow(ctx, query, userId).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (r *userRepository) AddMessageMention(ctx context.Context, messageId uuid.UUID, userID uuid.UUID) error {
+
+	query := `
+  				INSERT INTO message_mentions (message_id,user_id)
+      			VALUES ($1, $2)
+        		ON CONFLICT (message_id, user_id) DO NOTHING
+
+   			`
+
+	_, err := r.db.Exec(ctx, query)
+
+	return err
 }

@@ -11,6 +11,7 @@ import (
 )
 
 var usernameRegex = regexp.MustCompile(`^[a-z0-9_.-]{3,32}$`)
+var hallNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.-]{3,32}$`)
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`)
 var hexRegex = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}){1,2}$`)
 
@@ -26,8 +27,7 @@ func SanitizeUsername(s string) (string, error) {
 
 func SanitizeHallname(s string) (string, error) {
 	s = strings.TrimSpace(s)
-	s = strings.ToLower(s)
-	if !usernameRegex.MatchString(s) {
+	if !hallNameRegex.MatchString(s) {
 		return "", ErrorInvalidHallName
 	}
 	return s, nil
@@ -143,4 +143,18 @@ func SanitizeText(text *string) (*string, error) {
 	s = p.Sanitize(s)
 
 	return &s, nil
+}
+
+func SanitizeMessageContent(content *string) *string {
+
+	// s = strings.Join(strings.Fields(s), " ")
+
+	s := strings.TrimSpace(*content)
+	s = norm.NFKC.String(s)
+
+	p := bluemonday.UGCPolicy()
+	s = p.Sanitize(s)
+
+	return &s
+
 }

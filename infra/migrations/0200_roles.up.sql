@@ -6,6 +6,7 @@ CREATE TABLE roles (
     icon_url text,
     is_default boolean NOT NULL DEFAULT false, -- "everyone"
     is_admin boolean NOT NULL DEFAULT false, -- full permissions
+
     created_at timestamptz NOT NULL DEFAULT now (),
     updated_at timestamptz NOT NULL DEFAULT now ()
 );

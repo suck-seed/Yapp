@@ -9,12 +9,19 @@ import (
 type CreateMessageReq struct {
 
 	// we will get author id from headers
-	RoomId      string    `json:"room_id" binding:"required"`
-	Content     *string   `json:"content,omitempty" binding:"min=1,max=8000"`
-	Attachments *[]string `json:"attachments,omitempty"`
+	RoomId      uuid.UUID `json:"room_id" binding:"required"`
+	UserId      uuid.UUID
+	Content     *string           `json:"content,omitempty" binding:"min=1,max=8000"`
+	Attachments *[]AttachmentType `json:"attachments,omitempty"`
 
 	MentionEveryone *bool     `json:"mention_everyone,omitempty"`
 	Mentions        *[]string `json:"mentions,omitempty"`
+}
+
+type AttachmentType struct {
+	FileName string
+	URL      string
+	FileType string
 }
 
 type CreateMessageRes struct {

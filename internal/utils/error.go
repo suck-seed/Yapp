@@ -65,6 +65,10 @@ var (
 
 	// HALL/FLOOR/ROOM ALREADY EXISTS
 	ErrorHallAlreadyExist = &CustomError{Code: http.StatusBadRequest, Message: "Hall under the name already exists"}
+
+	// MESSAGE CREATION ERROR
+	ErrorWritingMessage  = &CustomError{Code: http.StatusInternalServerError, Message: "Error Writing Message"}
+	ErrorWritingMentions = &CustomError{Code: http.StatusInternalServerError, Message: "Error Writing Mentions"}
 )
 
 // Writting Errors from handlers to client

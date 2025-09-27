@@ -96,6 +96,13 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 
 	// additional setup
 
+	// roleID, err := uuid.NewV7()
+	// createRole(roleID, "admin")
+	// roleCRES :
+	// admin,
+
+	// r.AddHallMember(ctx, hall_id, user_id, role_id)
+
 	return &dto.CreateHallRes{
 		ID:          hallCRES.ID,
 		Name:        hallCRES.Name,

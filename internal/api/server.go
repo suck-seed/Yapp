@@ -32,7 +32,7 @@ func StartServer(cfg config.AppConfig) {
 	hallService := services.NewHallService(hallRepository)
 	floorService := services.NewFloorService(hallRepository, floorRepository)
 	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository)
-	messageService := services.NewMessageService(roomRepository, messageRepository)
+	messageService := services.NewMessageService(roomRepository, messageRepository, userRepository)
 
 	// Public Router ( Do not pass AuthMiddleware here pls )
 	rest.RegisterAuthRoutes(router, userService)

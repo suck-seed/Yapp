@@ -9,13 +9,14 @@ import (
 
 type PersistFunction func(ctx context.Context, in *InboundMessage) (*OutboundMessage, error)
 
-// MakePresistFunc : Performs various actions and pushes it to db
-func MakePresistFunc(messageService services.IMessageService, userService services.IUserService) PersistFunction {
+// MakePresistFunction : Performs various actions and pushes it to db
+func MakePresistFunction(messageService services.IMessageService, userService services.IUserService) PersistFunction {
 	return func(ctx context.Context, in *InboundMessage) (*OutboundMessage, error) {
 
 		// send to messageService to handle
 		saved, err := messageService.CreateMessage(context.Background(), &dto.CreateMessageReq{
-			RoomId:          in.RoomID.String(),
+			RoomId:          in.RoomID,
+			UserId:          in.UserID,
 			Content:         in.Content,
 			Attachments:     in.Attachments,
 			MentionEveryone: in.MentionEveryone,

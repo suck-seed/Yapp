@@ -1,11 +1,11 @@
 package ws
 
 import (
-	"context"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/suck-seed/yapp/internal/dto"
 )
 
 type MessageType string
@@ -59,9 +59,9 @@ type Room struct {
 }
 
 type InboundMessage struct {
-	Type        MessageType `json:"type"`
-	Content     *string     `json:"content,omitempty" binding:"min=1,max=8000"`
-	Attachments *[]string   `json:"attachments,omitempty"`
+	Type        MessageType           `json:"type"`
+	Content     *string               `json:"content,omitempty" binding:"min=1,max=8000"`
+	Attachments *[]dto.AttachmentType `json:"attachments,omitempty"`
 
 	// Mention fields - parsed by frontend
 	MentionEveryone *bool     `json:"mention_everyone,omitempty"`
@@ -85,8 +85,6 @@ type OutboundMessage struct {
 	TypingUser *uuid.UUID `json:"typing_user,omitempty"` // for typing indicators
 	Error      string     `json:"error,omitempty"`       // for error messages
 }
-
-type PersistFunc func(ctx context.Context, in *InboundMessage) (*OutboundMessage, error)
 
 // TypingIndicator represents typing state
 type TypingIndicator struct {

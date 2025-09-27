@@ -23,20 +23,20 @@ type Hub struct {
 	Outbound chan *OutboundMessage
 
 	// Persistence callback
-	PersistFunc PersistFunc
+	PersistFunc PersistFunction
 
 	mu sync.RWMutex
 }
 
 // Creates a New Presistent working Hub
-func NewHub(presistFunc PersistFunc) Hub {
+func NewHub(p PersistFunction) Hub {
 	return Hub{
 		Rooms:       make(map[uuid.UUID]*Room),
 		Register:    make(chan *Client, 256),
 		Unregister:  make(chan *Client, 256),
 		Inbound:     make(chan *InboundMessage, 1024),
 		Outbound:    make(chan *OutboundMessage, 1024),
-		PersistFunc: presistFunc,
+		PersistFunc: p,
 	}
 }
 
@@ -59,21 +59,23 @@ func (h *Hub) Run() {
 
 func (h *Hub) handleInboundMessage() {
 
-	for msg := range h.Inbound {
+	// passed from client/readPump()
+	// contains all info about the inbound message
+	for inboundMessage := range h.Inbound {
 
-		switch msg.Type {
+		switch inboundMessage.Type {
 
 		case MessageTypeText:
-			h.processTextMessage(msg)
+			h.processTextMessage(inboundMessage)
 
 		case MessageTypeTyping:
-			h.processTypingIndicator(msg)
+			h.processTypingIndicator(inboundMessage)
 
 		case MessageTypeRead:
-			h.processReadReciept(msg)
+			h.processReadReciept(inboundMessage)
 
 		default:
-			log.Printf("Unknown message type %s", msg.Type)
+			log.Printf("Unknown message type %s", inboundMessage.Type)
 		}
 
 	}
@@ -160,6 +162,7 @@ func (h *Hub) unregisterClient(client *Client) {
 	}
 }
 
+// MESSAGE PROCESSING
 func (h *Hub) processTextMessage(msg *InboundMessage) {
 
 	outboundingMsg, err := h.PersistFunc(context.Background(), msg)
