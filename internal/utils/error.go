@@ -36,9 +36,11 @@ var (
 	ErrorPasswordWhiteSpace = &CustomError{Code: http.StatusBadRequest, Message: "Password has whitespace"}
 
 	// INTERNAL ERRROS
-	ErrorInternal     = &CustomError{Code: http.StatusInternalServerError, Message: "Internal server error"}
-	ErrorCreatingUser = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating user"}
-	ErrorCreatingHall = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall"}
+	ErrorInternal           = &CustomError{Code: http.StatusInternalServerError, Message: "Internal server error"}
+	ErrorCreatingUser       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating user"}
+	ErrorCreatingHall       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall"}
+	ErrorCreatingHallRole   = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Role"}
+	ErrorCreatingHallMember = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Member"}
 
 	// WEBSOCKET ERRORS
 	ErrorFailedUpgrade = &CustomError{Code: http.StatusBadRequest, Message: "Failed to upgrade connection"}
