@@ -30,7 +30,7 @@ $DB_USER = "yappUser"
 $DB_NAME = "yappDev"
 
 # Build the SQL query for halls
-# $SELECT_FIELDS = "id, name, icon_url, banner_color, description, created_at, updated_at, created_by_id"
+# $SELECT_FIELDS = "id, name, icon_url, icon_thumbnail_url, banner_color, description, created_at, updated_at, created_by_id"
 $QUERY = "SELECT * FROM halls ORDER BY created_at DESC;"
 
 Write-Host "Connecting to database container: $DB_CONTAINER" -ForegroundColor Green
@@ -62,16 +62,17 @@ try {
 
             foreach ($line in $lines) {
                 $fields = $line -split "\|" | ForEach-Object { $_.Trim() }
-                if ($fields.Count -ge 8) {
+                if ($fields.Count -ge 9) {  # Updated from 8 to 9 fields
                     $hall = [PSCustomObject]@{
-                        id            = $fields[0]
-                        name          = $fields[1]
-                        icon_url      = if ($fields[2] -eq "") { $null } else { $fields[2] }
-                        banner_color  = if ($fields[3] -eq "") { $null } else { $fields[3] }
-                        description   = if ($fields[4] -eq "") { $null } else { $fields[4] }
-                        created_at    = $fields[5]
-                        updated_at    = $fields[6]
-                        created_by_id = $fields[7]
+                        id                    = $fields[0]
+                        name                  = $fields[1]
+                        icon_url              = if ($fields[2] -eq "") { $null } else { $fields[2] }
+                        icon_thumbnail_url    = if ($fields[3] -eq "") { $null } else { $fields[3] }
+                        banner_color          = if ($fields[4] -eq "") { $null } else { $fields[4] }
+                        description           = if ($fields[5] -eq "") { $null } else { $fields[5] }
+                        created_at            = $fields[6]
+                        updated_at            = $fields[7]
+                        created_by_id         = $fields[8]
                     }
                     $halls += $hall
                 }
