@@ -18,3 +18,14 @@ type Message struct {
 	CreatedAt       time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at" db:"updated_at"`
 }
+
+type Attachment struct {
+	AttachmentID uuid.UUID `json:"id" db:"id"`
+	MessageID    uuid.UUID
+	FileName     string    `json:"file_name"`
+	URL          string    `json:"url"`
+	FileType     *string   `json:"file_type,omitempty"`
+	FileSize     *int64    `json:"file_size,omitempty"`
+	CreatedAt    time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
+}

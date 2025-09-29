@@ -77,6 +77,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 	}
 
 	// else , create entry on message_mentions
+	mentions := uuid.UUIDs{}
 	if *req.MentionEveryone == false && req.Mentions != nil {
 
 		// validate if the userId acc exists or not
@@ -97,10 +98,11 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 			if exists {
 
 				// Add to table message_mentions
-				if err := s.IUserRepository.AddMessageMention(ctx, messageCRES.ID, mentionedUserID); err != nil {
+				if err := s.IMessageRepository.AddMessageMention(ctx, messageCRES.ID, mentionedUserID); err != nil {
 					return nil, utils.ErrorWritingMentions
 				}
 
+				mentions = append(mentions, mentionedUserID)
 			}
 
 		}
@@ -108,14 +110,53 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 	}
 
 	// attachments check
+	attachments := []models.Attachment{}
 	if *req.Attachments != nil {
 
 		for _, currentAttachment := range *req.Attachments {
 
-		}
-	}
+			//			validate fileName
+			canonFileName, err := utils.ValidateFileName(currentAttachment.FileName)
+			if err != nil {
+				return nil, err
+			}
 
-	print(ctx)
+			validatedFileType, err := utils.ValidateFileType(currentAttachment.FileType, currentAttachment.URL)
+			if err != nil {
+				return nil, err
+			}
+
+			//			validate file size
+			if *currentAttachment.FileSize >= utils.FileSize {
+				return nil, utils.ErrorLargeFileSize
+
+			}
+
+			//			attachment_id
+			attachmentID, err := uuid.NewV7()
+			if err != nil {
+				return nil, utils.ErrorInternal
+			}
+
+			//			repo call
+			attachmentCRES, err := s.IMessageRepository.AddAttachment(ctx, &models.Attachment{
+				AttachmentID: attachmentID,
+				MessageID:    messageId,
+				FileName:     canonFileName,
+				URL:          currentAttachment.URL,
+				FileType:     validatedFileType,
+				FileSize:     currentAttachment.FileSize,
+			})
+
+			if err != nil {
+				return nil, utils.ErrorCreatingAttachment
+			}
+
+			//	append to attachments
+			attachments = append(attachments, *attachmentCRES)
+		}
+
+	}
 
 	return &models.Message{}, nil
 

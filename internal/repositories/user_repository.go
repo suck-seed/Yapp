@@ -20,7 +20,6 @@ type IUserRepository interface {
 	GetUserById(ctx context.Context, userID uuid.UUID) (*models.User, error)
 
 	UserExists(ctx context.Context, userID uuid.UUID) (bool, error)
-	AddMessageMention(ctx context.Context, messageId uuid.UUID, userID uuid.UUID) error
 }
 
 type userRepository struct {
@@ -277,18 +276,4 @@ func (r *userRepository) UserExists(ctx context.Context, userId uuid.UUID) (bool
 	}
 
 	return true, nil
-}
-
-func (r *userRepository) AddMessageMention(ctx context.Context, messageId uuid.UUID, userID uuid.UUID) error {
-
-	query := `
-  				INSERT INTO message_mentions (message_id,user_id)
-      			VALUES ($1, $2)
-        		ON CONFLICT (message_id, user_id) DO NOTHING
-
-   			`
-
-	_, err := r.db.Exec(ctx, query)
-
-	return err
 }

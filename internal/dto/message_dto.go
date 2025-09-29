@@ -19,9 +19,11 @@ type CreateMessageReq struct {
 }
 
 type AttachmentType struct {
-	FileName string
-	URL      string
-	FileType string
+	FileName string  `json:"file_name"`
+	URL      string  `json:"url"`
+	FileType *string `json:"file_type,omitempty"`
+	FileSize *int64  `json:"file_size,omitempty"` // in bytes
+
 }
 
 type CreateMessageRes struct {

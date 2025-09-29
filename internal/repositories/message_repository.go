@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"github.com/suck-seed/yapp/internal/dto"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,7 +10,13 @@ import (
 )
 
 type IMessageRepository interface {
+
+	//	Message creation flow
 	CreateMessage(ctx context.Context, message *models.Message) (*models.Message, error)
+	AddMessageMention(ctx context.Context, messageId uuid.UUID, userID uuid.UUID) error
+	AddAttachment(ctx context.Context, attachment *models.Attachment) (*models.Attachment, error)
+
+	//	Additional
 	GetMessageByID(ctx context.Context, messageID uuid.UUID) (*models.Message, error)
 	GetMessagesByRoomID(ctx context.Context, roomID uuid.UUID, limit int, offset int) ([]*models.Message, error)
 	GetRoomMessages(ctx context.Context, roomID uuid.UUID, before *time.Time, limit int) ([]*models.Message, error)
@@ -53,27 +60,67 @@ func (r *messageRepository) CreateMessage(ctx context.Context, message *models.M
 		message.UpdatedAt,
 	)
 
-	createdMessage := &models.Message{}
+	messageCRES := &models.Message{}
 
 	err := row.Scan(
-		&createdMessage.ID,
-		&createdMessage.RoomId,
-		&createdMessage.AuthorId,
-		&createdMessage.Content,
-		&createdMessage.SentAt,
-		&createdMessage.EditedAt,
-		&createdMessage.DeletedAt,
-		&createdMessage.MentionEveryone,
-		&createdMessage.CreatedAt,
-		&createdMessage.UpdatedAt,
+		&messageCRES.ID,
+		&messageCRES.RoomId,
+		&messageCRES.AuthorId,
+		&messageCRES.Content,
+		&messageCRES.SentAt,
+		&messageCRES.EditedAt,
+		&messageCRES.DeletedAt,
+		&messageCRES.MentionEveryone,
+		&messageCRES.CreatedAt,
+		&messageCRES.UpdatedAt,
 	)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return createdMessage, nil
+	return messageCRES, nil
 
+}
+
+func (r *messageRepository) AddAttachment(ctx context.Context, attachment *models.Attachment) (*models.Attachment, error) {
+
+	query := `
+			INSERT INTO attachments (id, message_id, file_name, url, file_type, file_size)
+			VALUES ($1, $2, $3, $4, $5, $6)
+
+			RETURNING id, message_id, file_name, url, file_type, file_size, created_at, updated_at
+
+			`
+
+	row := r.db.QueryRow(
+		ctx,
+		query,
+		attachment.AttachmentID,
+		attachment.MessageID,
+		attachment.FileName,
+		attachment.URL,
+		attachment.FileType,
+		attachment.FileSize,
+
+	)
+
+	attachmentCRES := &models.Attachment{}
+	err := row.Scan(
+		&attachmentCRES.AttachmentID,
+		&attachmentCRES.MessageID,
+		&attachmentCRES.FileName,
+		&attachmentCRES.URL,
+		&attachmentCRES.FileType,
+		&attachmentCRES.FileSize,
+		&attachmentCRES.CreatedAt,
+		&attachmentCRES.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return attachmentCRES, nil
 }
 
 func (r *messageRepository) GetMessageByID(ctx context.Context, messageID uuid.UUID) (*models.Message, error) {
@@ -84,33 +131,33 @@ func (r *messageRepository) GetMessageByID(ctx context.Context, messageID uuid.U
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	message := &models.Message{}
+	messageCRES := &models.Message{}
 
 	err := r.db.QueryRow(ctx, query, messageID).Scan(
-		&message.ID,
-		&message.RoomId,
-		&message.AuthorId,
-		&message.Content,
-		&message.SentAt,
-		&message.EditedAt,
-		&message.DeletedAt,
-		&message.MentionEveryone,
-		&message.CreatedAt,
-		&message.UpdatedAt,
+		&messageCRES.ID,
+		&messageCRES.RoomId,
+		&messageCRES.AuthorId,
+		&messageCRES.Content,
+		&messageCRES.SentAt,
+		&messageCRES.EditedAt,
+		&messageCRES.DeletedAt,
+		&messageCRES.MentionEveryone,
+		&messageCRES.CreatedAt,
+		&messageCRES.UpdatedAt,
 	)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return message, nil
+	return messageCRES, nil
 }
 
 func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, roomID uuid.UUID, limit int, offset int) ([]*models.Message, error) {
 
 	query := `
 		SELECT id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
-		FROM messages
+		FROM messagesCRES
 		WHERE room_id = $1 AND deleted_at IS NULL
 		ORDER BY sent_at DESC
 		LIMIT $2 OFFSET $3
@@ -121,29 +168,29 @@ func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, roomID uuid
 		return nil, err
 	}
 
-	messages := []*models.Message{}
-	message := &models.Message{}
+	messagesCRES := []*models.Message{}
+	messageCRES := &models.Message{}
 
 	for rows.Next() {
 
 		err := rows.Scan(
-			&message.ID,
-			&message.RoomId,
-			&message.AuthorId,
-			&message.Content,
-			&message.SentAt,
-			&message.EditedAt,
-			&message.DeletedAt,
-			&message.MentionEveryone,
-			&message.CreatedAt,
-			&message.UpdatedAt,
+			&messageCRES.ID,
+			&messageCRES.RoomId,
+			&messageCRES.AuthorId,
+			&messageCRES.Content,
+			&messageCRES.SentAt,
+			&messageCRES.EditedAt,
+			&messageCRES.DeletedAt,
+			&messageCRES.MentionEveryone,
+			&messageCRES.CreatedAt,
+			&messageCRES.UpdatedAt,
 		)
 
 		if err != nil {
 			return nil, err
 		}
 
-		messages = append(messages, message)
+		messagesCRES = append(messagesCRES, messageCRES)
 
 	}
 
@@ -151,7 +198,7 @@ func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, roomID uuid
 		return nil, err
 	}
 
-	return messages, nil
+	return messagesCRES, nil
 }
 
 func (r *messageRepository) GetRoomMessages(ctx context.Context, roomID uuid.UUID, before *time.Time, limit int) ([]*models.Message, error) {
@@ -162,7 +209,7 @@ func (r *messageRepository) GetRoomMessages(ctx context.Context, roomID uuid.UUI
 	if before != nil {
 		query = `
 			SELECT id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
-			FROM messages
+			FROM messagesCRES
 			WHERE room_id = $1 AND deleted_at IS NULL AND sent_at < $2
 			ORDER BY sent_at DESC
 			LIMIT $3
@@ -173,7 +220,7 @@ func (r *messageRepository) GetRoomMessages(ctx context.Context, roomID uuid.UUI
 	} else {
 		query = `
 			SELECT id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
-			FROM messages
+			FROM messagesCRES
 			WHERE room_id = $1 AND deleted_at IS NULL
 			ORDER BY sent_at DESC
 		`
@@ -187,29 +234,29 @@ func (r *messageRepository) GetRoomMessages(ctx context.Context, roomID uuid.UUI
 		return nil, err
 	}
 
-	messages := []*models.Message{}
-	message := &models.Message{}
+	messagesCRES := []*models.Message{}
+	messageCRES := &models.Message{}
 
 	for rows.Next() {
 
 		err := rows.Scan(
-			&message.ID,
-			&message.RoomId,
-			&message.AuthorId,
-			&message.Content,
-			&message.SentAt,
-			&message.EditedAt,
-			&message.DeletedAt,
-			&message.MentionEveryone,
-			&message.CreatedAt,
-			&message.UpdatedAt,
+			&messageCRES.ID,
+			&messageCRES.RoomId,
+			&messageCRES.AuthorId,
+			&messageCRES.Content,
+			&messageCRES.SentAt,
+			&messageCRES.EditedAt,
+			&messageCRES.DeletedAt,
+			&messageCRES.MentionEveryone,
+			&messageCRES.CreatedAt,
+			&messageCRES.UpdatedAt,
 		)
 
 		if err != nil {
 			return nil, err
 		}
 
-		messages = append(messages, message)
+		messagesCRES = append(messagesCRES, messageCRES)
 
 	}
 
@@ -217,7 +264,7 @@ func (r *messageRepository) GetRoomMessages(ctx context.Context, roomID uuid.UUI
 		return nil, err
 	}
 
-	return messages, nil
+	return messagesCRES, nil
 
 }
 
@@ -231,4 +278,18 @@ func (r *messageRepository) UpdateMessage(ctx context.Context, message *models.M
 func (r *messageRepository) DeleteMessage(ctx context.Context, message *models.Message) error {
 
 	return nil
+}
+
+func (r *messageRepository) AddMessageMention(ctx context.Context, messageId uuid.UUID, userID uuid.UUID) error {
+
+	query := `
+  				INSERT INTO message_mentions (message_id,user_id)
+      			VALUES ($1, $2)
+        		ON CONFLICT (message_id, user_id) DO NOTHING
+
+   			`
+
+	_, err := r.db.Exec(ctx, query)
+
+	return err
 }
