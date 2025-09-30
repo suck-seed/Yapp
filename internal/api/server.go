@@ -3,6 +3,8 @@ package api
 import (
 	"fmt"
 
+	"github.com/suck-seed/yapp/internal/ws"
+
 	"github.com/gin-gonic/gin"
 	"github.com/suck-seed/yapp/config"
 	"github.com/suck-seed/yapp/internal/api/rest"
@@ -34,6 +36,11 @@ func StartServer(cfg config.AppConfig) {
 	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository)
 	messageService := services.NewMessageService(roomRepository, messageRepository, userRepository)
 
+	//	presist function
+	presistFunction := ws.MakePresistFunction(messageService, userService)
+	hub := ws.NewHub(presistFunction)
+	hub.Run()
+
 	// Public Router ( Do not pass AuthMiddleware here pls )
 	rest.RegisterAuthRoutes(router, userService)
 
@@ -47,6 +54,13 @@ func StartServer(cfg config.AppConfig) {
 		rest.RegisterRoomRoutes(api, roomService)
 		rest.RegisterMessageRoutes(api, messageService)
 
+	}
+
+	ws := router.Group("/ws")
+	ws.Use(auth.AuthMiddleware())
+	{
+
+		rest.RegisterWebSocketRoutes(api, &hub, messageService, hallService, roomService, userService)
 	}
 
 	start(router, cfg)
