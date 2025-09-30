@@ -6,8 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Custom error struct
-
 type CustomError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -67,6 +65,16 @@ var (
 
 	// HALL/FLOOR/ROOM ALREADY EXISTS
 	ErrorHallAlreadyExist = &CustomError{Code: http.StatusBadRequest, Message: "Hall under the name already exists"}
+
+	// MESSAGE CREATION ERROR
+	ErrorWritingMessage         = &CustomError{Code: http.StatusInternalServerError, Message: "Error Writing Message"}
+	ErrorWritingMentions        = &CustomError{Code: http.StatusInternalServerError, Message: "Error Writing Mentions"}
+	ErrorFileSizeExceedingLimit = &CustomError{Code: http.StatusUnauthorized, Message: "Uploaded file size exceedes limit"}
+	ErrorInvalidFileName        = &CustomError{Code: http.StatusBadRequest, Message: "Invalid file name"}
+	ErrorBadFileType            = &CustomError{Code: http.StatusBadRequest, Message: "Bad file type"}
+	ErrorFileUnmatch            = &CustomError{Code: http.StatusBadRequest, Message: "File extension does not match in file_type and URL"}
+	ErrorLargeFileSize          = &CustomError{Code: http.StatusBadRequest, Message: "File size exceedes allowded size"}
+	ErrorCreatingAttachment     = &CustomError{Code: http.StatusInternalServerError, Message: "Error writting attachment to db"}
 )
 
 // Writting Errors from handlers to client

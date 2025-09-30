@@ -62,6 +62,7 @@ func (c *Client) writePump() {
 
 }
 
+// readPump : Continously Reads the upcoming json stream from the websocket connection and passes incoming/inboundMessage to Hub to be handled
 func (c *Client) readPump(hub *Hub) {
 	defer func() {
 		hub.Unregister <- c
@@ -79,9 +80,9 @@ func (c *Client) readPump(hub *Hub) {
 
 	for {
 
-		msg := &InboundMessage{}
+		inboundMessage := &InboundMessage{}
 
-		if err := c.Conn.ReadJSON(&msg); err != nil {
+		if err := c.Conn.ReadJSON(&inboundMessage); err != nil {
 
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
@@ -90,10 +91,11 @@ func (c *Client) readPump(hub *Hub) {
 
 		}
 
-		msg.UserID = c.UserID
-		msg.RoomID = c.RoomID
+		// We added these values on client in JoinRoom Func
+		inboundMessage.UserID = c.UserID
+		inboundMessage.RoomID = c.RoomID
 
-		hub.Inbound <- msg
+		hub.Inbound <- inboundMessage
 	}
 
 }

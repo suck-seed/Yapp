@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"github.com/google/uuid"
 	"time"
 
 	"github.com/suck-seed/yapp/internal/models"
@@ -9,35 +10,35 @@ import (
 // Responses
 
 type SignupUserRes struct {
-	ID       string `json:"id"`
-	Username string `json:"username" binding:"required,min=3,max=32"`
+	ID       uuid.UUID `json:"id"`
+	Username string    `json:"username" binding:"required,min=3,max=32"`
 }
 
 type SigninUserRes struct {
 	AccessToken string
-	ID          string `json:"id" db:"id"`
-	Username    string `json:"username" db:"username"`
+	ID          uuid.UUID `json:"id" db:"id"`
+	Username    string    `json:"username" db:"username"`
 }
 
 type UserPublic struct {
-	ID                 string  `json:"id"`
-	Username           string  `json:"username"`
-	DisplayName        string  `json:"display_name"`
-	AvatarURL          *string `json:"avatar_url,omitempty"`
-	AvatarThumbnailURL *string `json:"avatar_thumbnail_url,omitempty"`
+	ID                 uuid.UUID `json:"id"`
+	Username           string    `json:"username"`
+	DisplayName        string    `json:"display_name"`
+	AvatarURL          *string   `json:"avatar_url,omitempty"`
+	AvatarThumbnailURL *string   `json:"avatar_thumbnail_url,omitempty"`
 }
 
 type UserMe struct {
-	ID                 string  `json:"id"`
-	Username           string  `json:"username"`
-	DisplayName        string  `json:"display_name"`
-	Email              string  `json:"email"`
-	PhoneNumber        *string `json:"phone_number,omitempty"`
-	AvatarURL          *string `json:"avatar_url,omitempty"`
-	AvatarThumbnailURL *string `json:"avatar_thumbnail_url,omitempty"`
-	Description        *string `json:"description,omitempty"`
-	FriendPolicy       string  `json:"friend_policy"`
-	Active             bool    `json:"active"`
+	ID                 uuid.UUID `json:"id"`
+	Username           string    `json:"username"`
+	DisplayName        string    `json:"display_name"`
+	Email              string    `json:"email"`
+	PhoneNumber        *string   `json:"phone_number,omitempty"`
+	AvatarURL          *string   `json:"avatar_url,omitempty"`
+	AvatarThumbnailURL *string   `json:"avatar_thumbnail_url,omitempty"`
+	Description        *string   `json:"description,omitempty"`
+	FriendPolicy       string    `json:"friend_policy"`
+	Active             bool      `json:"active"`
 	//LastSeen     *time.Time          `json:"last_seen,omitempty"`
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
@@ -71,7 +72,7 @@ type UsernameAvailabilityResponse struct {
 // Func to convert model.User to public and private
 func ToUserPublic(u models.User) UserPublic {
 	return UserPublic{
-		ID:                 u.ID.String(),
+		ID:                 u.ID,
 		Username:           u.Username,
 		DisplayName:        u.DisplayName,
 		AvatarURL:          u.AvatarURL,
@@ -82,7 +83,7 @@ func ToUserPublic(u models.User) UserPublic {
 func ToUserMe(u models.User) UserMe {
 
 	return UserMe{
-		ID:                 u.ID.String(),
+		ID:                 u.ID,
 		Username:           u.Username,
 		DisplayName:        u.DisplayName,
 		Email:              u.Email,

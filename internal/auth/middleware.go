@@ -31,7 +31,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Everything's alright, place the context for handlers
+		// Everything's alright, place the context for ws_handler and other handler
 		c.Set(CtxUserIDKey, claims.ID)
 		c.Set(CtxUsernameKey, claims.Username)
 
@@ -40,6 +40,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
+
 	}
 
 }
@@ -58,9 +59,7 @@ func GetTokenFromRequest(c *gin.Context) string {
 	return ""
 }
 
-// ---- UserID and Username from gin context ----
 func CurrentUserFromGinContext(c *gin.Context) (string, string, error) {
-
 	rawId, ok := c.Get(CtxUserIDKey)
 	if !ok {
 		return "", "", utils.ErrorNoUserIdInContext

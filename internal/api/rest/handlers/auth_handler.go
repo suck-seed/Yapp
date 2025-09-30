@@ -22,16 +22,16 @@ func NewAuthHandler(userService services.IUserService) *AuthHandler {
 
 func (h *AuthHandler) Signup(c *gin.Context) {
 
-	var u dto.SignupUserReq
+	u := &dto.SignupUserReq{}
 
-	if err := c.ShouldBindJSON(&u); err != nil {
+	if err := c.ShouldBindJSON(u); err != nil {
 
 		utils.WriteError(c, utils.ErrorInvalidInput)
 		return
 
 	}
 
-	res, err := h.IUserService.Signup(c.Request.Context(), &u)
+	res, err := h.IUserService.Signup(c.Request.Context(), u)
 	if err != nil {
 
 		utils.WriteError(c, err)
@@ -44,14 +44,15 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 
 func (h *AuthHandler) Signin(c *gin.Context) {
 
-	var user dto.SigninUserReq
+	user := &dto.SigninUserReq{}
 
-	if err := c.ShouldBindJSON(&user); err != nil {
+	if err := c.ShouldBindJSON(user); err != nil {
+
 		utils.WriteError(c, utils.ErrorInvalidInput)
 		return
 	}
 
-	u, err := h.IUserService.Signin(c.Request.Context(), &user)
+	u, err := h.IUserService.Signin(c.Request.Context(), user)
 	if err != nil {
 		utils.WriteError(c, err)
 		return

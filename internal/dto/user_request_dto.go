@@ -1,6 +1,9 @@
 package dto
 
-import "github.com/suck-seed/yapp/internal/models"
+import (
+	"github.com/google/uuid"
+	"github.com/suck-seed/yapp/internal/models"
+)
 
 // REQUESTS
 
@@ -26,8 +29,8 @@ type RefreshTokenReq struct {
 }
 
 type RevokeSessionReq struct {
-	DeviceID string `json:"device_id" binding:"omitempty,uuid4"`
-	All      bool   `json:"all"` // if true, revoke all sessions
+	DeviceID uuid.UUID `json:"device_id" binding:"omitempty,uuid4"`
+	All      bool      `json:"all"` // if true, revoke all sessions
 }
 
 type ForgotPasswordReq struct {

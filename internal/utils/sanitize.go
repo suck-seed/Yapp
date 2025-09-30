@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -10,10 +12,21 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+const FileSize int64 = 10
+
 var usernameRegex = regexp.MustCompile(`^[a-z0-9_.-]{3,32}$`)
+
 var hallNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.\- ]{3,32}$`)
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`)
 var hexRegex = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}){1,2}$`)
+
+var blockedExt = map[string]struct{}{
+	".exe": {}, ".bat": {}, ".cmd": {}, ".msix": {},
+	".scr": {}, ".pif": {}, ".dll": {}, ".jse": {}, ".vbs": {},
+	".vbe": {}, ".wsf": {}, ".wsh": {}, ".ps1": {}, ".psm1": {}, ".reg": {},
+	".jar": {}, ".dmg": {}, ".iso": {}, ".pkg": {}, ".sh": {},
+	".virus": {},
+}
 
 // NAME SECTION
 func SanitizeUsername(s string) (string, error) {
@@ -27,7 +40,7 @@ func SanitizeUsername(s string) (string, error) {
 
 func SanitizeHallname(s string) (string, error) {
 	s = strings.TrimSpace(s)
-	s = strings.Join(strings.Fields(s), " ")
+
 	if !hallNameRegex.MatchString(s) {
 		return "", ErrorInvalidHallName
 	}
@@ -144,4 +157,53 @@ func SanitizeText(text *string) (*string, error) {
 	s = p.Sanitize(s)
 
 	return &s, nil
+}
+
+func SanitizeMessageContent(content *string) *string {
+
+	// s = strings.Join(strings.Fields(s), " ")
+
+	s := strings.TrimSpace(*content)
+	s = norm.NFKC.String(s)
+
+	p := bluemonday.UGCPolicy()
+	s = p.Sanitize(s)
+
+	return &s
+
+}
+
+// FILE SECTION
+func ValidateFileName(fileName string) (string, error) {
+
+	s := strings.TrimSpace(fileName)
+
+	_, err := os.Stat(s)
+	if err == nil && os.IsNotExist(err) {
+		return s, nil
+	}
+
+	return "", ErrorInvalidFileName
+}
+
+func ValidateFileType(fileType *string, url string) (*string, error) {
+
+	//		check the url for the filetype
+	ext := strings.ToLower(filepath.Ext(url))
+
+	if _, bad := blockedExt[ext]; bad {
+		return nil, ErrorBadFileType
+	}
+
+	//	cross checking (condition, filetype != nil)
+	if fileType != nil {
+		if !strings.Contains(strings.ToLower(*fileType), ext) {
+
+			// fileType contains diff file than url
+			return nil, ErrorFileUnmatch
+
+		}
+	}
+
+	return &ext, nil
 }

@@ -11,13 +11,15 @@ import (
 
 type IUserRepository interface {
 	CreateUser(ctx context.Context, user *models.User) (*models.User, error)
-	UpdateUserById(ctx context.Context, userId uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error)
+	UpdateUserById(ctx context.Context, userID uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error)
 
 	GetUserWithPasswordHashByEmail(ctx context.Context, email string) (*models.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 	GetUserByNumber(ctx context.Context, number *string) (*models.User, error)
-	GetUserById(ctx context.Context, userId uuid.UUID) (*models.User, error)
+	GetUserById(ctx context.Context, userID uuid.UUID) (*models.User, error)
+
+	UserExists(ctx context.Context, userID uuid.UUID) (bool, error)
 }
 
 type userRepository struct {
@@ -31,7 +33,7 @@ func NewUserRepository(db PGXTX) IUserRepository {
 	}
 }
 
-func (userRepository *userRepository) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
+func (r *userRepository) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
 
 	saved := &models.User{}
 
@@ -42,7 +44,7 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 
    			`
 
-	row := userRepository.db.QueryRow(ctx, query,
+	row := r.db.QueryRow(ctx, query,
 		user.ID,
 		user.Username,
 		user.DisplayName,
@@ -70,7 +72,7 @@ func (userRepository *userRepository) CreateUser(ctx context.Context, user *mode
 	return saved, nil
 }
 
-func (userRepository *userRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
+func (r *userRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -80,7 +82,7 @@ func (userRepository *userRepository) GetUserByUsername(ctx context.Context, use
 				WHERE lower(username) = lower($1)
 			`
 
-	row := userRepository.db.QueryRow(ctx, query, username)
+	row := r.db.QueryRow(ctx, query, username)
 
 	err := row.Scan(
 		&user.ID,
@@ -102,7 +104,7 @@ func (userRepository *userRepository) GetUserByUsername(ctx context.Context, use
 	return user, nil
 }
 
-func (userRepository *userRepository) GetUserByNumber(ctx context.Context, number *string) (*models.User, error) {
+func (r *userRepository) GetUserByNumber(ctx context.Context, number *string) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -112,7 +114,7 @@ func (userRepository *userRepository) GetUserByNumber(ctx context.Context, numbe
 				WHERE phone_number = $1
 			`
 
-	row := userRepository.db.QueryRow(ctx, query, number)
+	row := r.db.QueryRow(ctx, query, number)
 
 	err := row.Scan(
 		&user.ID,
@@ -134,7 +136,7 @@ func (userRepository *userRepository) GetUserByNumber(ctx context.Context, numbe
 	return user, nil
 }
 
-func (userRepository *userRepository) GetUserWithPasswordHashByEmail(ctx context.Context, email string) (*models.User, error) {
+func (r *userRepository) GetUserWithPasswordHashByEmail(ctx context.Context, email string) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -145,7 +147,7 @@ func (userRepository *userRepository) GetUserWithPasswordHashByEmail(ctx context
 				WHERE lower(email) = lower($1)
 			`
 
-	row := userRepository.db.QueryRow(ctx, query, email)
+	row := r.db.QueryRow(ctx, query, email)
 
 	err := row.Scan(
 		&user.ID,
@@ -168,7 +170,7 @@ func (userRepository *userRepository) GetUserWithPasswordHashByEmail(ctx context
 	return user, nil
 }
 
-func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -179,7 +181,7 @@ func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email 
 				WHERE lower(email) = lower($1)
 			`
 
-	row := userRepository.db.QueryRow(ctx, query, email)
+	row := r.db.QueryRow(ctx, query, email)
 
 	err := row.Scan(
 		&user.ID,
@@ -201,7 +203,7 @@ func (userRepository *userRepository) GetUserByEmail(ctx context.Context, email 
 	return user, nil
 }
 
-func (userRepository *userRepository) GetUserById(ctx context.Context, userId uuid.UUID) (*models.User, error) {
+func (r *userRepository) GetUserById(ctx context.Context, userId uuid.UUID) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -212,7 +214,7 @@ func (userRepository *userRepository) GetUserById(ctx context.Context, userId uu
 				WHERE id = $1
 			`
 
-	row := userRepository.db.QueryRow(ctx, query, userId)
+	row := r.db.QueryRow(ctx, query, userId)
 
 	err := row.Scan(
 		&user.ID,
@@ -234,7 +236,7 @@ func (userRepository *userRepository) GetUserById(ctx context.Context, userId uu
 	return user, nil
 }
 
-func (userRepository *userRepository) UpdateUserById(ctx context.Context, userId uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error) {
+func (r *userRepository) UpdateUserById(ctx context.Context, userId uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -244,7 +246,7 @@ func (userRepository *userRepository) UpdateUserById(ctx context.Context, userId
         WHERE id = $5
         RETURNING username, display_name, email, avatar_url, avatar_thumbnail_url, active
     `
-	err := userRepository.db.QueryRow(ctx, query, req.DisplayName, req.AvatarURL, req.AvatarThumbnailURL, time.Now(), userId).Scan(
+	err := r.db.QueryRow(ctx, query, req.DisplayName, req.AvatarURL, req.AvatarThumbnailURL, time.Now(), userId).Scan(
 		&user.Username,
 		&user.DisplayName,
 		&user.Email,
@@ -256,4 +258,22 @@ func (userRepository *userRepository) UpdateUserById(ctx context.Context, userId
 		return nil, err
 	}
 	return user, nil
+}
+
+func (r *userRepository) UserExists(ctx context.Context, userId uuid.UUID) (bool, error) {
+
+	query := `
+
+		SELECT EXISTS (SELECT 1 FROM users WHERE id = $1)
+
+	`
+
+	var exists bool
+
+	err := r.db.QueryRow(ctx, query, userId).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

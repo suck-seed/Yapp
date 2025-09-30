@@ -101,15 +101,15 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	}
 
 	// calling the repo
-	r, err := s.IUserRepository.CreateUser(ctx, user)
+	userCRES, err := s.IUserRepository.CreateUser(ctx, user)
 	if err != nil {
 		return nil, utils.ErrorCreatingUser
 	}
 
 	// create a response
 	return &dto.SignupUserRes{
-		ID:       r.ID.String(),
-		Username: r.Username,
+		ID:       userCRES.ID,
+		Username: userCRES.Username,
 	}, nil
 }
 
@@ -149,7 +149,7 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 
 	return &dto.SigninUserRes{
 		AccessToken: signedToken,
-		ID:          user.ID.String(),
+		ID:          user.ID,
 		Username:    user.Username,
 	}, nil
 }

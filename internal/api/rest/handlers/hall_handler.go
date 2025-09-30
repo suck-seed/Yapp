@@ -10,7 +10,6 @@ import (
 )
 
 type HallHandler struct {
-	// inject IHallService
 	services.IHallService
 }
 
@@ -20,31 +19,23 @@ func NewHallHandler(hallService services.IHallService) *HallHandler {
 	}
 }
 
-func (h *HallHandler) Ping(c *gin.Context) {
-
-	c.JSON(200, gin.H{
-		"message": "ping",
-	})
-}
-
 func (h *HallHandler) CreateHall(c *gin.Context) {
 
-	var u dto.CreateHallReq
+	u := &dto.CreateHallReq{}
 
-	if err := c.ShouldBindJSON(&u); err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+	if err := c.ShouldBindJSON(u); err != nil {
+		utils.WriteError(c, utils.ErrorInvalidInput)
 		return
 	}
 
-	res, err := h.IHallService.CreateHall(c.Request.Context(), &u)
+	res, err := h.IHallService.CreateHall(c.Request.Context(), u)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusCreated, res)
+
 }
 
 func (h *HallHandler) GetUserHalls(c *gin.Context) {

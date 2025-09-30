@@ -32,12 +32,12 @@ func StartServer(cfg config.AppConfig) {
 	hallService := services.NewHallService(hallRepository)
 	floorService := services.NewFloorService(hallRepository, floorRepository)
 	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository)
-	messageService := services.NewMessageService(roomRepository, messageRepository)
+	messageService := services.NewMessageService(roomRepository, messageRepository, userRepository)
 
-	// Routes Handler
+	// Public Router ( Do not pass AuthMiddleware here pls )
 	rest.RegisterAuthRoutes(router, userService)
 
-	// Protected API routed (JWT required)
+	// Protected API routed (JWT required, AuthMiddleware Passed)
 	api := router.Group("/api")
 	api.Use(auth.AuthMiddleware())
 	{
@@ -48,7 +48,6 @@ func StartServer(cfg config.AppConfig) {
 		rest.RegisterMessageRoutes(api, messageService)
 
 	}
-	//TODO Add similar routers for other too
 
 	start(router, cfg)
 }

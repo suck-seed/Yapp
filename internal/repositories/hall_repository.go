@@ -31,6 +31,7 @@ func NewHallRepository(db PGXTX) IHallRepository {
 func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*models.Hall, error) {
 
 	query := `
+
 	INSERT INTO halls (id, name, icon_url, icon_thumbnail_url, banner_color, description, created_by_id)
     VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING id, name, icon_url, icon_thumbnail_url, banner_color, description, created_at, updated_at, created_by_id
@@ -43,7 +44,7 @@ func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*mo
 		hall.IconThumbnailURL,
 		hall.BannerColor,
 		hall.Description,
-		hall.CreatedBy,
+		hall.Owner,
 	)
 
 	saved := &models.Hall{}
@@ -55,9 +56,9 @@ func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*mo
 		&saved.IconThumbnailURL,
 		&saved.BannerColor,
 		&saved.Description,
+		&saved.Owner,
 		&saved.CreatedAt,
 		&saved.UpdatedAt,
-		&saved.CreatedBy,
 	)
 
 	if err != nil {
@@ -154,6 +155,7 @@ func (r *hallRepository) GetUserHallIDs(ctx context.Context, userID uuid.UUID) (
 func (r *hallRepository) GetHallByID(ctx context.Context, hallID uuid.UUID) (*models.Hall, error) {
 	hall := &models.Hall{}
 
+
 	query := `SELECT id, name, icon_url, icon_thumbnail_url, banner_color, description, created_at, updated_at, created_by_id
               FROM halls WHERE id = $1`
 
@@ -166,7 +168,7 @@ func (r *hallRepository) GetHallByID(ctx context.Context, hallID uuid.UUID) (*mo
 		&hall.Description,
 		&hall.CreatedAt,
 		&hall.UpdatedAt,
-		&hall.CreatedBy,
+		&hall.Owner,
 	)
 
 	if err != nil {

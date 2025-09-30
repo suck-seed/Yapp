@@ -74,6 +74,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	}
 
 	// package a hall struct
+
 	newHall := &models.Hall{
 		ID:               hallId,
 		Name:             canonHallname,
@@ -89,6 +90,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	if err != nil {
 		return nil, utils.ErrorCreatingHall
 	}
+
 
 	//
 	// Role Creation

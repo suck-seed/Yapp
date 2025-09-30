@@ -5,9 +5,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/repositories"
+	"github.com/suck-seed/yapp/internal/utils"
 )
 
 type IMessageService interface {
@@ -25,14 +27,16 @@ type IMessageService interface {
 type messageService struct {
 	repositories.IRoomRepository
 	repositories.IMessageRepository
+	repositories.IUserRepository
 	timeout time.Duration
 	mu      sync.RWMutex
 }
 
-func NewMessageService(roomRepo repositories.IRoomRepository, messageRepo repositories.IMessageRepository) IMessageService {
+func NewMessageService(roomRepo repositories.IRoomRepository, messageRepo repositories.IMessageRepository, userRepo repositories.IUserRepository) IMessageService {
 	return &messageService{
 		roomRepo,
 		messageRepo,
+		userRepo,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
 	}
@@ -44,7 +48,115 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	print(ctx)
+	// validate content
+	normalizedContent := utils.SanitizeMessageContent(req.Content)
+
+	// create a uuid
+	messageId, err := uuid.NewV7()
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	// create a message object
+	message := &models.Message{
+		ID:       messageId,
+		RoomId:   req.RoomId,
+		AuthorId: req.UserId,
+		Content:  *normalizedContent,
+	}
+
+	message.MentionEveryone = false
+	if req.MentionEveryone != nil && *req.MentionEveryone == true {
+		message.MentionEveryone = true
+	}
+
+	// call CreateMessage
+	messageCRES, err := s.IMessageRepository.CreateMessage(ctx, message)
+	if err != nil {
+		return nil, utils.ErrorWritingMessage
+	}
+
+	// else , create entry on message_mentions
+	mentions := uuid.UUIDs{}
+	if *req.MentionEveryone == false && req.Mentions != nil {
+
+		// validate if the userId acc exists or not
+		for _, mentionedUserIDString := range *req.Mentions {
+
+			// convert string into UUID
+
+			mentionedUserID, err := uuid.Parse(mentionedUserIDString)
+			if err != nil {
+				return nil, utils.ErrorInternal
+			}
+
+			exists, err := s.IUserRepository.UserExists(ctx, mentionedUserID)
+			if err != nil {
+				return nil, utils.ErrorInternal
+			}
+
+			if exists {
+
+				// Add to table message_mentions
+				if err := s.IMessageRepository.AddMessageMention(ctx, messageCRES.ID, mentionedUserID); err != nil {
+					return nil, utils.ErrorWritingMentions
+				}
+
+				mentions = append(mentions, mentionedUserID)
+			}
+
+		}
+
+	}
+
+	// attachments check
+	attachments := []models.Attachment{}
+	if *req.Attachments != nil {
+
+		for _, currentAttachment := range *req.Attachments {
+
+			//			validate fileName
+			canonFileName, err := utils.ValidateFileName(currentAttachment.FileName)
+			if err != nil {
+				return nil, err
+			}
+
+			validatedFileType, err := utils.ValidateFileType(currentAttachment.FileType, currentAttachment.URL)
+			if err != nil {
+				return nil, err
+			}
+
+			//			validate file size
+			if *currentAttachment.FileSize >= utils.FileSize {
+				return nil, utils.ErrorLargeFileSize
+
+			}
+
+			//			attachment_id
+			attachmentID, err := uuid.NewV7()
+			if err != nil {
+				return nil, utils.ErrorInternal
+			}
+
+			//			repo call
+			attachmentCRES, err := s.IMessageRepository.AddAttachment(ctx, &models.Attachment{
+				AttachmentID: attachmentID,
+				MessageID:    messageId,
+				FileName:     canonFileName,
+				URL:          currentAttachment.URL,
+				FileType:     validatedFileType,
+				FileSize:     currentAttachment.FileSize,
+			})
+
+			if err != nil {
+				return nil, utils.ErrorCreatingAttachment
+			}
+
+			//	append to attachments
+			attachments = append(attachments, *attachmentCRES)
+		}
+
+	}
 
 	return &models.Message{}, nil
 
