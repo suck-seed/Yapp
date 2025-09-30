@@ -62,7 +62,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 		ID:       messageId,
 		RoomId:   req.RoomID,
 		AuthorId: req.AuthorID,
-		Content:  *normalizedContent,
+		Content:  normalizedContent,
 	}
 
 	message.MentionEveryone = false
@@ -141,8 +141,8 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 				MessageID:    messageId,
 				FileName:     canonFileName,
 				URL:          currentAttachment.URL,
-				FileType:     *validatedFileType,
-				FileSize:     *currentAttachment.FileSize,
+				FileType:     validatedFileType,
+				FileSize:     currentAttachment.FileSize,
 			})
 
 			if err != nil {

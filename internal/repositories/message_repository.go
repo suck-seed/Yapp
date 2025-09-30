@@ -101,7 +101,6 @@ func (r *messageRepository) AddAttachment(ctx context.Context, attachment *model
 		attachment.URL,
 		attachment.FileType,
 		attachment.FileSize,
-
 	)
 
 	attachmentCRES := &models.Attachment{}

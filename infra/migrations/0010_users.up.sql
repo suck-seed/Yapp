@@ -4,6 +4,7 @@ CREATE TABLE users (
     display_name text NOT NULL,
     email text NOT NULL UNIQUE,
     password_hash text NOT NULL,
+    description text,
     phone_number text UNIQUE,
     avatar_url text,
     avatar_thumbnail_url text,

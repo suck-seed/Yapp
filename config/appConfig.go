@@ -68,7 +68,7 @@ func buildCORS() gin.HandlerFunc {
 	cfg := cors.Config{
 		AllowOrigins:     []string{origin},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowHeaders:     []string{"Authorization", "Content-Type", "X-CSRF-Token", "Origin"},
 		ExposeHeaders:    []string{"Set-Cookie"},
 		AllowCredentials: true, // <- required for cookies
 		MaxAge:           12 * time.Hour,

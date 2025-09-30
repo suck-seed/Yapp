@@ -39,7 +39,7 @@ func StartServer(cfg config.AppConfig) {
 	//	presist function
 	presistFunction := ws.MakePresistFunction(messageService, userService)
 	hub := ws.NewHub(presistFunction)
-	hub.Run()
+	go hub.Run()
 
 	// Public Router ( Do not pass AuthMiddleware here pls )
 	rest.RegisterAuthRoutes(router, userService)
@@ -56,11 +56,11 @@ func StartServer(cfg config.AppConfig) {
 
 	}
 
-	ws := router.Group("/ws")
-	ws.Use(auth.AuthMiddleware())
+	wsRouter := router.Group("/ws")
+	wsRouter.Use(auth.AuthMiddleware())
 	{
 
-		rest.RegisterWebSocketRoutes(api, &hub, messageService, hallService, roomService, userService)
+		rest.RegisterWebSocketRoutes(wsRouter, &hub, messageService, hallService, roomService, userService)
 	}
 
 	start(router, cfg)

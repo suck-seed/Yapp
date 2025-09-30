@@ -103,6 +103,7 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	// calling the repo
 	userCRES, err := s.IUserRepository.CreateUser(ctx, user)
 	if err != nil {
+		print(err)
 		return nil, utils.ErrorCreatingUser
 	}
 

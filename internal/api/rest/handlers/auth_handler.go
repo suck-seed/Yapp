@@ -33,7 +33,6 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 
 	res, err := h.IUserService.Signup(c.Request.Context(), u)
 	if err != nil {
-
 		utils.WriteError(c, err)
 		return
 	}
