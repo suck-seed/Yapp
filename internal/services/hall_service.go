@@ -82,7 +82,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 		IconThumbnailURL: req.IconThumbnailURL,
 		BannerColor:      canonBannerColor,
 		Description:      canonDescription,
-		CreatedBy:        userId,
+		Owner:            userId,
 	}
 
 	// pass to repo
@@ -90,7 +90,6 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	if err != nil {
 		return nil, utils.ErrorCreatingHall
 	}
-
 
 	//
 	// Role Creation
@@ -149,7 +148,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 		Description:      hall.Description,
 		CreatedAt:        hall.CreatedAt,
 		UpdatedAt:        hall.UpdatedAt,
-		CreatedBy:        hall.CreatedBy,
+		CreatedBy:        hall.Owner,
 	}, nil
 }
 
