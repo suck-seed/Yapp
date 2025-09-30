@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"github.com/suck-seed/yapp/internal/dto"
 	"time"
 
 	"github.com/google/uuid"

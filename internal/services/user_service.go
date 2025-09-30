@@ -108,7 +108,7 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 
 	// create a response
 	return &dto.SignupUserRes{
-		ID:       userCRES.ID.String(),
+		ID:       userCRES.ID,
 		Username: userCRES.Username,
 	}, nil
 }
@@ -149,7 +149,7 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 
 	return &dto.SigninUserRes{
 		AccessToken: signedToken,
-		ID:          user.ID.String(),
+		ID:          user.ID,
 		Username:    user.Username,
 	}, nil
 }
