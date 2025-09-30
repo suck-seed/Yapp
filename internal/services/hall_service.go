@@ -148,7 +148,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 		Description:      hall.Description,
 		CreatedAt:        hall.CreatedAt,
 		UpdatedAt:        hall.UpdatedAt,
-		CreatedBy:        hall.Owner,
+		Owner:            hall.Owner,
 	}, nil
 }
 
