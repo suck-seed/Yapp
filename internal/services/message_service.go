@@ -85,7 +85,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 
 			// convert string into UUID
 
-			exists, err := s.IUserRepository.UserExists(ctx, mentionedUserID)
+			exists, err := s.IUserRepository.DoesUserExists(ctx, mentionedUserID)
 			if err != nil {
 				return nil, utils.ErrorInternal
 			}

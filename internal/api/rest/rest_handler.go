@@ -77,9 +77,23 @@ func RegisterWebSocketRoutes(r *gin.RouterGroup, hub *ws.Hub, messageService ser
 
 func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService) {
 
+	floorHandler := handlers.NewFloorHandler(floorService)
+
+	floorGroup := r.Group("/floors")
+	{
+		floorGroup.POST("/", floorHandler.CreateFloor)
+	}
+
 }
 
 func RegisterRoomRoutes(r *gin.RouterGroup, roomService services.IRoomService) {
+
+	roomHandler := handlers.NewRoomHandler(roomService)
+
+	roomGroup := r.Group("/rooms")
+	{
+		roomGroup.POST("/", roomHandler.CreateRoom)
+	}
 
 }
 

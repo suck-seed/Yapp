@@ -19,7 +19,7 @@ type IUserRepository interface {
 	GetUserByNumber(ctx context.Context, number *string) (*models.User, error)
 	GetUserById(ctx context.Context, userID uuid.UUID) (*models.User, error)
 
-	UserExists(ctx context.Context, userID uuid.UUID) (bool, error)
+	DoesUserExists(ctx context.Context, userID uuid.UUID) (bool, error)
 }
 
 type userRepository struct {
@@ -203,7 +203,7 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 	return user, nil
 }
 
-func (r *userRepository) GetUserById(ctx context.Context, userId uuid.UUID) (*models.User, error) {
+func (r *userRepository) GetUserById(ctx context.Context, userID uuid.UUID) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -214,7 +214,7 @@ func (r *userRepository) GetUserById(ctx context.Context, userId uuid.UUID) (*mo
 				WHERE id = $1
 			`
 
-	row := r.db.QueryRow(ctx, query, userId)
+	row := r.db.QueryRow(ctx, query, userID)
 
 	err := row.Scan(
 		&user.ID,
@@ -236,7 +236,7 @@ func (r *userRepository) GetUserById(ctx context.Context, userId uuid.UUID) (*mo
 	return user, nil
 }
 
-func (r *userRepository) UpdateUserById(ctx context.Context, userId uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error) {
+func (r *userRepository) UpdateUserById(ctx context.Context, userID uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -246,7 +246,7 @@ func (r *userRepository) UpdateUserById(ctx context.Context, userId uuid.UUID, r
         WHERE id = $5
         RETURNING username, display_name, email, avatar_url, avatar_thumbnail_url, active
     `
-	err := r.db.QueryRow(ctx, query, req.DisplayName, req.AvatarURL, req.AvatarThumbnailURL, time.Now(), userId).Scan(
+	err := r.db.QueryRow(ctx, query, req.DisplayName, req.AvatarURL, req.AvatarThumbnailURL, time.Now(), userID).Scan(
 		&user.Username,
 		&user.DisplayName,
 		&user.Email,
@@ -260,7 +260,7 @@ func (r *userRepository) UpdateUserById(ctx context.Context, userId uuid.UUID, r
 	return user, nil
 }
 
-func (r *userRepository) UserExists(ctx context.Context, userId uuid.UUID) (bool, error) {
+func (r *userRepository) DoesUserExists(ctx context.Context, userID uuid.UUID) (bool, error) {
 
 	query := `
 
@@ -270,10 +270,10 @@ func (r *userRepository) UserExists(ctx context.Context, userId uuid.UUID) (bool
 
 	var exists bool
 
-	err := r.db.QueryRow(ctx, query, userId).Scan(&exists)
+	err := r.db.QueryRow(ctx, query, userID).Scan(&exists)
 	if err != nil {
 		return false, err
 	}
 
-	return true, nil
+	return exists, nil
 }

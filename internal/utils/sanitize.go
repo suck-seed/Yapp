@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/suck-seed/yapp/internal/models"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,6 +18,10 @@ const FileSize int64 = 10
 var usernameRegex = regexp.MustCompile(`^[a-z0-9_.-]{3,32}$`)
 
 var hallNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.\- ]{3,32}$`)
+var floorNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.\- ]{3,32}$`)
+
+var roomNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.\-]{3,32}$`)
+
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`)
 var hexRegex = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}){1,2}$`)
 
@@ -45,6 +50,41 @@ func SanitizeHallname(s string) (string, error) {
 		return "", ErrorInvalidHallName
 	}
 	return s, nil
+}
+
+func SanitizeFloorname(s string) (string, error) {
+
+	s = strings.TrimSpace(s)
+
+	if !floorNameRegex.MatchString(s) {
+		return "", ErrorInvalidFloorName
+	}
+
+	return s, nil
+
+}
+
+func SanitizeRoomname(s string) (string, error) {
+
+	s = strings.TrimSpace(s)
+
+	if !floorNameRegex.MatchString(s) {
+		return "", ErrorInvalidFloorName
+	}
+
+	return s, nil
+
+}
+
+func ParseRoomType(s string) (models.RoomType, error) {
+	switch strings.ToLower(s) {
+	case string(models.AudioRoom):
+		return models.AudioRoom, nil
+	case string(models.TextRoom):
+		return models.TextRoom, nil
+	default:
+		return "", ErrorInvalidRoomType
+	}
 }
 
 func SanitizeDisplayName(s string) (string, error) {
