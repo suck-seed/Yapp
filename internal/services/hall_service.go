@@ -16,6 +16,8 @@ import (
 type IHallService interface {
 	CreateHall(c context.Context, req *dto.CreateHallReq) (*dto.CreateHallRes, error)
 	IsMember(c context.Context, hallID *uuid.UUID, userId *uuid.UUID) (bool, error)
+
+	GetUserHalls(c context.Context) ([]*models.Hall, error)
 }
 
 type hallService struct {
@@ -32,11 +34,7 @@ func NewHallService(hallRepo repositories.IHallRepository) IHallService {
 	}
 }
 
-// ctx, cancel := context.WithTimeout(c, s.timeout)
-// 	defer cancel()
-
 func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dto.CreateHallRes, error) {
-
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
@@ -65,58 +63,129 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 		return nil, utils.ErrorInvalidUserIdInContext
 	}
 
-	// check if hallName already existing hallname
-	hallByName, _ := s.IHallRepository.GetHallByName(ctx, canonHallname)
+	//
+	// Hall Creation
+	//
 
-	if hallByName != nil {
-		return nil, utils.ErrorHallAlreadyExist
-	}
-
-	// generate id
-	id, err := uuid.NewV7()
+	// generate hall id
+	hallId, err := uuid.NewV7()
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
 
 	// package a hall struct
-	hall := &models.Hall{
-		ID:          id,
-		Name:        canonHallname,
-		IconURL:     req.IconURL,
-		BannerColor: canonBannerColor,
-		Description: canonDescription,
-		Owner:       userId,
+
+	newHall := &models.Hall{
+		ID:               hallId,
+		Name:             canonHallname,
+		IconURL:          req.IconURL,
+		IconThumbnailURL: req.IconThumbnailURL,
+		BannerColor:      canonBannerColor,
+		Description:      canonDescription,
+		CreatedBy:        userId,
 	}
 
-	// passing to repo
-	hallCRES, err := s.IHallRepository.CreateHall(ctx, hall)
+	// pass to repo
+	hall, err := s.IHallRepository.CreateHall(ctx, newHall)
 	if err != nil {
 		return nil, utils.ErrorCreatingHall
 	}
 
-	// additional setup
 
-	// roleID, err := uuid.NewV7()
-	// createRole(roleID, "admin")
-	// roleCRES :
-	// admin,
+	//
+	// Role Creation
+	//
 
-	// r.AddHallMember(ctx, hall_id, user_id, role_id)
+	// generate role id
+	roleId, err := uuid.NewV7()
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	// package a role struct
+	newRole := &models.Role{
+		ID:      roleId,
+		HallID:  hall.ID,
+		Name:    "creator",
+		IsAdmin: true,
+	}
+
+	// pass to repo
+	role, err := s.IHallRepository.CreateHallRole(ctx, newRole)
+	if err != nil {
+		return nil, utils.ErrorCreatingHallRole
+	}
+
+	//
+	// Hall Member Creation
+	//
+
+	// generate hall member id
+	hallMemberID, err := uuid.NewV7()
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	// package a hall-member struct
+	newHallMember := &models.HallMember{
+		ID:     hallMemberID,
+		HallID: hall.ID,
+		UserID: userId,
+		RoleID: role.ID,
+	}
+
+	// pass to repo
+	err = s.IHallRepository.CreateHallMember(ctx, newHallMember)
+	if err != nil {
+		return nil, utils.ErrorCreatingHallMember
+	}
 
 	return &dto.CreateHallRes{
-		ID:          hallCRES.ID,
-		Name:        hallCRES.Name,
-		IconURL:     hallCRES.IconURL,
-		BannerColor: hallCRES.BannerColor,
-		Description: hallCRES.Description,
-		CreatedAt:   hall.CreatedAt,
-		UpdatedAt:   hall.UpdatedAt,
-		Owner:       hallCRES.Owner,
+		ID:               hall.ID,
+		Name:             hall.Name,
+		IconURL:          hall.IconURL,
+		IconThumbnailURL: hall.IconThumbnailURL,
+		BannerColor:      hall.BannerColor,
+		Description:      hall.Description,
+		CreatedAt:        hall.CreatedAt,
+		UpdatedAt:        hall.UpdatedAt,
+		CreatedBy:        hall.CreatedBy,
 	}, nil
 }
 
-func (s *hallService) IsMember(c context.Context, hallID *uuid.UUID, userId *uuid.UUID) (bool, error) {
+func (s *hallService) GetUserHalls(c context.Context) ([]*models.Hall, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
 
+	// get userId from context.Context()
+	userIdString, _, err := auth.CurrentUserFromContext(c)
+	if err != nil {
+		return nil, err
+	}
+
+	userId, err := uuid.Parse(userIdString)
+	if err != nil {
+		return nil, utils.ErrorInvalidUserIdInContext
+	}
+
+	hallIds, err := s.IHallRepository.GetUserHallIDs(ctx, userId)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	var halls []*models.Hall
+	for _, hallId := range hallIds {
+		hall, err := s.IHallRepository.GetHallByID(ctx, hallId)
+		if err != nil {
+			return nil, utils.ErrorInternal
+		}
+		halls = append(halls, hall)
+	}
+
+	return halls, nil
+}
+
+func (s *hallService) IsMember(c context.Context, hallID *uuid.UUID, userId *uuid.UUID) (bool, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 

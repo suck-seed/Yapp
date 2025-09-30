@@ -37,3 +37,14 @@ func (h *HallHandler) CreateHall(c *gin.Context) {
 	c.JSON(http.StatusCreated, res)
 
 }
+
+func (h *HallHandler) GetUserHalls(c *gin.Context) {
+
+	res, err := h.IHallService.GetUserHalls(c.Request.Context())
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}

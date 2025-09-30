@@ -15,7 +15,8 @@ import (
 const FileSize int64 = 10
 
 var usernameRegex = regexp.MustCompile(`^[a-z0-9_.-]{3,32}$`)
-var hallNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.-]{3,32}$`)
+
+var hallNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.\- ]{3,32}$`)
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`)
 var hexRegex = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}){1,2}$`)
 
@@ -39,6 +40,7 @@ func SanitizeUsername(s string) (string, error) {
 
 func SanitizeHallname(s string) (string, error) {
 	s = strings.TrimSpace(s)
+
 	if !hallNameRegex.MatchString(s) {
 		return "", ErrorInvalidHallName
 	}
