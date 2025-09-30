@@ -17,13 +17,13 @@ type CreateRoomReq struct {
 }
 
 type CreateRoomRes struct {
-	ID        uuid.UUID  `json:"id"`
-	HallID    uuid.UUID  `json:"hall_id"`
-	FloorID   *uuid.UUID `json:"floor_id,omitempty"`
-	Name      string     `json:"name"`
-	RoomType  string     `json:"room_type"`
-	IsPrivate bool       `json:"is_private"`
-	CreatedAt string     `json:"created_at"`
+	ID        uuid.UUID `json:"id"`
+	HallID    uuid.UUID `json:"hall_id"`
+	FloorID   uuid.UUID `json:"floor_id"`
+	Name      string    `json:"name"`
+	RoomType  string    `json:"room_type"`
+	IsPrivate bool      `json:"is_private"`
+	CreatedAt string    `json:"created_at"`
 }
 
 type UpdateRoomReq struct {
@@ -33,14 +33,14 @@ type UpdateRoomReq struct {
 }
 
 type GetRoomRes struct {
-	ID        uuid.UUID  `json:"id"`
-	HallID    uuid.UUID  `json:"hall_id"`
-	FloorID   *uuid.UUID `json:"floor_id,omitempty"`
-	Name      string     `json:"name"`
-	RoomType  string     `json:"room_type"`
-	IsPrivate bool       `json:"is_private"`
-	CreatedAt string     `json:"created_at"`
-	UpdatedAt string     `json:"updated_at"`
+	ID        uuid.UUID `json:"id"`
+	HallID    uuid.UUID `json:"hall_id"`
+	FloorID   uuid.UUID `json:"floor_id"`
+	Name      string    `json:"name"`
+	RoomType  string    `json:"room_type"`
+	IsPrivate bool      `json:"is_private"`
+	CreatedAt string    `json:"created_at"`
+	UpdatedAt string    `json:"updated_at"`
 }
 
 type GetRoomsByHallReq struct {

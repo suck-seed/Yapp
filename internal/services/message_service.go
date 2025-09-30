@@ -13,7 +13,7 @@ import (
 )
 
 type IMessageService interface {
-	CreateMessage(c context.Context, req *dto.CreateMessageReq) (*models.Message, error)
+	CreateMessage(c context.Context, req *dto.CreateMessageReq) (*dto.CreateMessageRes, error)
 
 	GetMessageByID(c context.Context, req *dto.FetchMessageByIdReq) (*models.Message, error)
 
@@ -44,7 +44,7 @@ func NewMessageService(roomRepo repositories.IRoomRepository, messageRepo reposi
 
 // TODO Properly fill in these methods
 
-func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessageReq) (*models.Message, error) {
+func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessageReq) (*dto.CreateMessageRes, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
@@ -60,8 +60,8 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 	// create a message object
 	message := &models.Message{
 		ID:       messageId,
-		RoomId:   req.RoomId,
-		AuthorId: req.UserId,
+		RoomId:   req.RoomID,
+		AuthorId: req.AuthorID,
 		Content:  *normalizedContent,
 	}
 
@@ -77,18 +77,13 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 	}
 
 	// else , create entry on message_mentions
-	mentions := uuid.UUIDs{}
+	var mentions []dto.MentionResponseMinimal
 	if *req.MentionEveryone == false && req.Mentions != nil {
 
 		// validate if the userId acc exists or not
-		for _, mentionedUserIDString := range *req.Mentions {
+		for _, mentionedUserID := range *req.Mentions {
 
 			// convert string into UUID
-
-			mentionedUserID, err := uuid.Parse(mentionedUserIDString)
-			if err != nil {
-				return nil, utils.ErrorInternal
-			}
 
 			exists, err := s.IUserRepository.UserExists(ctx, mentionedUserID)
 			if err != nil {
@@ -102,7 +97,9 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 					return nil, utils.ErrorWritingMentions
 				}
 
-				mentions = append(mentions, mentionedUserID)
+				mentions = append(mentions, dto.MentionResponseMinimal{
+					ID: mentionedUserID,
+				})
 			}
 
 		}
@@ -110,7 +107,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 	}
 
 	// attachments check
-	attachments := []models.Attachment{}
+	var attachments []dto.AttachmentResponseMinimal
 	if *req.Attachments != nil {
 
 		for _, currentAttachment := range *req.Attachments {
@@ -144,8 +141,8 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 				MessageID:    messageId,
 				FileName:     canonFileName,
 				URL:          currentAttachment.URL,
-				FileType:     validatedFileType,
-				FileSize:     currentAttachment.FileSize,
+				FileType:     *validatedFileType,
+				FileSize:     *currentAttachment.FileSize,
 			})
 
 			if err != nil {
@@ -153,12 +150,26 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 			}
 
 			//	append to attachments
-			attachments = append(attachments, *attachmentCRES)
+			attachments = append(attachments, dto.AttachmentResponseMinimal{
+				ID:       attachmentCRES.AttachmentID,
+				URL:      attachmentCRES.URL,
+				FileName: attachmentCRES.FileName,
+				FileType: attachmentCRES.FileType,
+			})
 		}
 
 	}
 
-	return &models.Message{}, nil
+	return &dto.CreateMessageRes{
+		ID:               messageCRES.ID,
+		RoomID:           messageCRES.RoomId,
+		AuthorID:         messageCRES.AuthorId,
+		Content:          messageCRES.Content,
+		SentAt:           messageCRES.SentAt,
+		MentionsEveryone: messageCRES.MentionEveryone,
+		Mentions:         mentions,
+		Attachments:      attachments,
+	}, nil
 
 }
 

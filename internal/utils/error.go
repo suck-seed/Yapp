@@ -45,8 +45,8 @@ var (
 	ErrorInvalidRoomId = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Room Id, can not join room"}
 
 	// CONTEXT ERRORS
-	ErrorNoUserIdInContext        = &CustomError{Code: http.StatusBadRequest, Message: "No UserId in context"}
-	ErrorEmptyUserIdInContext     = &CustomError{Code: http.StatusBadRequest, Message: "Empty UserId in context"}
+	ErrorNoUserIdInContext        = &CustomError{Code: http.StatusBadRequest, Message: "No AuthorID in context"}
+	ErrorEmptyUserIdInContext     = &CustomError{Code: http.StatusBadRequest, Message: "Empty AuthorID in context"}
 	ErrorInvalidUserIdInContext   = &CustomError{Code: http.StatusUnauthorized, Message: "Bad Token user_id format (not uuid)"}
 	ErrorInvalidUsernameInContext = &CustomError{Code: http.StatusUnauthorized, Message: "Bad Token username format"}
 

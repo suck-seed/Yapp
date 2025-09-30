@@ -21,7 +21,7 @@ type HallUserRes struct {
 type HallMemberRes struct {
 	UserID    uuid.UUID `json:"user_id"`
 	Username  string    `json:"username"`
-	AvatarURL *string   `json:"avatar_url"`
+	AvatarURL string    `json:"avatar_url"`
 	Role      string    `json:"role"`
 	JoinedAt  time.Time `json:"joined_at"`
 }

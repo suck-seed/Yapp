@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"github.com/suck-seed/yapp/internal/dto"
 	"log"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 type Client struct {
 	// Connection essentials
 	Conn *websocket.Conn
-	Send chan *OutboundMessage
+	Send chan *dto.OutboundMessage
 
 	// Identity - only what's needed for routing
 	UserID uuid.UUID
@@ -80,7 +81,7 @@ func (c *Client) readPump(hub *Hub) {
 
 	for {
 
-		inboundMessage := &InboundMessage{}
+		inboundMessage := &dto.InboundMessage{}
 
 		if err := c.Conn.ReadJSON(&inboundMessage); err != nil {
 

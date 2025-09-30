@@ -122,11 +122,11 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	}
 
 	// Do this during registiring not here, race condition aauxa
-	// if _, exists := h.hub.Rooms[room.RoomId]; !exists {
+	// if _, exists := h.hub.Rooms[room.RoomID]; !exists {
 
 	// 	// add in the collection of rooms in hub
-	// 	h.hub.Rooms[room.RoomId] = &Room{
-	// 		RoomId:    room.RoomId,
+	// 	h.hub.Rooms[room.RoomID] = &Room{
+	// 		RoomID:    room.RoomID,
 	// 		HallID:    room.HallId,
 	// 		FloorID:   room.FloorId,
 	// 		Name:      room.Name,

@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 
+	"github.com/suck-seed/yapp/internal/dto"
+
 	"sync"
 	"time"
 
@@ -19,8 +21,8 @@ type Hub struct {
 	Unregister chan *Client
 
 	// Message processing
-	Inbound  chan *InboundMessage
-	Outbound chan *OutboundMessage
+	Inbound  chan *dto.InboundMessage
+	Outbound chan *dto.OutboundMessage
 
 	// Persistence callback
 	PersistFunc PersistFunction
@@ -34,8 +36,8 @@ func NewHub(p PersistFunction) Hub {
 		Rooms:       make(map[uuid.UUID]*Room),
 		Register:    make(chan *Client, 256),
 		Unregister:  make(chan *Client, 256),
-		Inbound:     make(chan *InboundMessage, 1024),
-		Outbound:    make(chan *OutboundMessage, 1024),
+		Inbound:     make(chan *dto.InboundMessage, 1024),
+		Outbound:    make(chan *dto.OutboundMessage, 1024),
 		PersistFunc: p,
 	}
 }
@@ -65,13 +67,13 @@ func (h *Hub) handleInboundMessage() {
 
 		switch inboundMessage.Type {
 
-		case MessageTypeText:
+		case dto.MessageTypeText:
 			h.processTextMessage(inboundMessage)
 
-		case MessageTypeTyping:
+		case dto.MessageTypeTyping:
 			h.processTypingIndicator(inboundMessage)
 
-		case MessageTypeRead:
+		case dto.MessageTypeRead:
 			h.processReadReciept(inboundMessage)
 
 		default:
@@ -109,11 +111,11 @@ func (h *Hub) registerClient(client *Client) {
 	room.Clients[client.UserID] = client
 
 	// Notift room of user joining via broadcast channel
-	joinMsg := &OutboundMessage{
-		Type:      MessageTypeJoin,
-		RoomID:    client.RoomID,
-		AuthorID:  client.UserID,
-		Timestamp: time.Now(),
+	joinMsg := &dto.OutboundMessage{
+		Type:     dto.MessageTypeJoin,
+		RoomID:   client.RoomID,
+		AuthorID: client.UserID,
+		SentAt:   time.Now(),
 	}
 
 	// broadcast
@@ -140,11 +142,11 @@ func (h *Hub) unregisterClient(client *Client) {
 	delete(room.Clients, client.UserID)
 	close(client.Send)
 
-	leavingMsg := &OutboundMessage{
-		Type:      MessageTypeLeave,
-		RoomID:    client.RoomID,
-		AuthorID:  client.UserID,
-		Timestamp: time.Now(),
+	leavingMsg := &dto.OutboundMessage{
+		Type:     dto.MessageTypeLeave,
+		RoomID:   client.RoomID,
+		AuthorID: client.UserID,
+		SentAt:   time.Now(),
 	}
 
 	// remove room from memory if no user
@@ -163,16 +165,16 @@ func (h *Hub) unregisterClient(client *Client) {
 }
 
 // MESSAGE PROCESSING
-func (h *Hub) processTextMessage(msg *InboundMessage) {
+func (h *Hub) processTextMessage(msg *dto.InboundMessage) {
 
 	outboundingMsg, err := h.PersistFunc(context.Background(), msg)
 	if err != nil {
-		errMsg := &OutboundMessage{
-			Type:      MessageTypeError,
-			RoomID:    msg.RoomID,
-			AuthorID:  msg.UserID,
-			Error:     "Failed to send message",
-			Timestamp: time.Now(),
+		errMsg := &dto.OutboundMessage{
+			Type:     dto.MessageTypeError,
+			RoomID:   msg.RoomID,
+			AuthorID: msg.UserID,
+			Error:    "Failed to send message",
+			SentAt:   time.Now(),
 		}
 
 		// send error the the concerning user only
@@ -185,20 +187,20 @@ func (h *Hub) processTextMessage(msg *InboundMessage) {
 	case h.Outbound <- outboundingMsg:
 
 	default:
-		log.Printf("Broadcast channel full, dropping message %s", outboundingMsg.ID)
+		//		log.Printf("Broadcast channel full, dropping message %s", outboundingMsg.)
 
 	}
 
 }
 
-func (h *Hub) processTypingIndicator(msg *InboundMessage) {
+func (h *Hub) processTypingIndicator(msg *dto.InboundMessage) {
 
-	typingMsg := &OutboundMessage{
-		Type:       MessageTypeTyping,
+	typingMsg := &dto.OutboundMessage{
+		Type:       dto.MessageTypeTyping,
 		RoomID:     msg.RoomID,
 		AuthorID:   msg.UserID,
-		Timestamp:  time.Now(),
-		TypingUser: &msg.UserID,
+		SentAt:     time.Now(),
+		TypingUser: msg.UserID,
 	}
 
 	select {
@@ -210,11 +212,11 @@ func (h *Hub) processTypingIndicator(msg *InboundMessage) {
 
 	go func() {
 		time.Sleep(5 * time.Second)
-		stopTyping := &OutboundMessage{
-			Type:      MessageTypeStopTyping,
-			RoomID:    msg.RoomID,
-			AuthorID:  msg.UserID,
-			Timestamp: time.Now(),
+		stopTyping := &dto.OutboundMessage{
+			Type:     dto.MessageTypeStopTyping,
+			RoomID:   msg.RoomID,
+			AuthorID: msg.UserID,
+			SentAt:   time.Now(),
 			// Typing User is nil, thus stopped typing
 		}
 
@@ -228,11 +230,11 @@ func (h *Hub) processTypingIndicator(msg *InboundMessage) {
 
 }
 
-func (h *Hub) processReadReciept(msg *InboundMessage) {
+func (h *Hub) processReadReciept(msg *dto.InboundMessage) {
 
 }
 
-func (h *Hub) deliverToRoom(roomId uuid.UUID, msg *OutboundMessage) {
+func (h *Hub) deliverToRoom(roomId uuid.UUID, msg *dto.OutboundMessage) {
 
 	h.mu.RLock()
 	room, exists := h.Rooms[roomId]
@@ -291,7 +293,7 @@ func (h *Hub) deliverToRoom(roomId uuid.UUID, msg *OutboundMessage) {
 
 }
 
-func (h *Hub) sendToUser(userID uuid.UUID, roomID uuid.UUID, msg *OutboundMessage) {
+func (h *Hub) sendToUser(userID uuid.UUID, roomID uuid.UUID, msg *dto.OutboundMessage) {
 	h.mu.RLock()
 	room, exists := h.Rooms[roomID]
 	if !exists {

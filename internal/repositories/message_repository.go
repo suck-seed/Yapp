@@ -288,7 +288,7 @@ func (r *messageRepository) AddMessageMention(ctx context.Context, messageId uui
 
    			`
 
-	_, err := r.db.Exec(ctx, query)
+	_, err := r.db.Exec(ctx, query, messageId, userID)
 
 	return err
 }
