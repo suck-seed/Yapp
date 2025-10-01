@@ -1,19 +1,19 @@
 package utils
 
 import (
-	"github.com/suck-seed/yapp/internal/models"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/suck-seed/yapp/internal/models"
 
 	"github.com/microcosm-cc/bluemonday"
 	passwordvalidator "github.com/wagslane/go-password-validator"
 	"golang.org/x/text/unicode/norm"
 )
 
-const FileSize int64 = 10
+const FileSize int64 = 10 * 1024 * 1024 // 10MB in bytes
 
 var usernameRegex = regexp.MustCompile(`^[a-z0-9_.-]{3,32}$`)
 
@@ -218,12 +218,16 @@ func ValidateFileName(fileName string) (string, error) {
 
 	s := strings.TrimSpace(fileName)
 
-	_, err := os.Stat(s)
-	if err == nil && os.IsNotExist(err) {
-		return s, nil
+	if len(s) == 0 {
+		return "", ErrorInvalidFileName
 	}
 
-	return "", ErrorInvalidFileName
+	// check for invalid characters in file
+	if strings.ContainsAny(s, "/\\:*?\"<>|") {
+		return "", ErrorInvalidFileName
+	}
+
+	return s, nil
 }
 
 func ValidateFileType(fileType *string, url string) (*string, error) {
@@ -235,7 +239,7 @@ func ValidateFileType(fileType *string, url string) (*string, error) {
 		return nil, ErrorBadFileType
 	}
 
-	//	cross checking (condition, filetype != nil)
+	// cross checking (condition, filetype != nil)
 	if fileType != nil {
 		if !strings.Contains(strings.ToLower(*fileType), ext) {
 

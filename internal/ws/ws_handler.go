@@ -1,13 +1,12 @@
 package ws
 
 import (
-	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/suck-seed/yapp/config"
 	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/services"
@@ -38,21 +37,23 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 
 		// get origin of frontend
-		origin := r.Header.Get("Origin")
-		return origin == config.FrontEndOrigin()
-		// return true
+		// origin := r.Header.Get("Origin")
+		// return origin == config.FrontEndOrigin()
+
+		// for dev return true to test using postgres
+		return true
 	},
 }
 
-// JoinRoom :
-func (h *WebsocketHandler) CreateRoom(c *gin.Context) {
-
-	req := dto.CreateRoomReq{}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-
-	}
-}
+//// JoinRoom :
+//func (h *WebsocketHandler) CreateRoom(c *gin.Context) {
+//
+//	req := dto.CreateRoomReq{}
+//
+//	if err := c.ShouldBindJSON(&req); err != nil {
+//
+//	}
+//}
 
 // Join Room
 // /ws/JoinRoom/:roomID
@@ -65,8 +66,6 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(userIdString)
-
 	// parse uuid
 	userId, err := uuid.Parse(userIdString)
 	if err != nil {
@@ -74,16 +73,12 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(userId)
-
-	// verify if user exists
+	// User Exists?
 	user, err := h.IUserService.GetUserById(c, userId)
 	if err != nil {
 		utils.WriteError(c, utils.ErrorUserNotFound)
 		return
 	}
-
-	fmt.Println(user)
 
 	// Parse room_id
 	roomIdStr := c.Param("room_id")
@@ -93,32 +88,40 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(roomIdStr)
-
-	// check if room exists
+	// Room exists? && Fetch Room
 	room, err := h.IRoomService.GetRoomByID(c, &roomId)
 	if err != nil {
 		utils.WriteError(c, utils.ErrorRoomDoesntExist)
 		return
 	}
 
-	fmt.Println(room)
+	//	Hall exists?
+	//	hall, err := h.IHallService.DoesHallExists(c, &room.HallId)
+	//	if err != nil {
+	//		utils.WriteError(c, err)
+	//	}
 
-	// check if user is in the hall or not
-	belongs, err := h.IHallService.IsMember(c, &room.HallId, &user.ID)
-	if err != nil || !belongs {
+	// Hall Member ?
+	belongs, err := h.IHallService.IsUserHallMember(c, &room.HallId, &user.ID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+	if !*belongs {
 		utils.WriteError(c, utils.ErrorUserDoesntBelongHall)
 		return
 	}
 
-	fmt.Println(belongs)
-
-	// if private, check if belongs or not
+	// Room Member ? ( ON PRIVATE ROOMS )
 	if room.IsPrivate {
 
 		// check on room_member table
-		belongs, err := h.IRoomService.IsMember(c, &room.ID, &user.ID)
-		if err != nil || !belongs {
+		belongs, err := h.IRoomService.IsUserRoomMember(c, &room.ID, &user.ID)
+		if err != nil {
+			utils.WriteError(c, err)
+			return
+		}
+		if !*belongs {
 			utils.WriteError(c, utils.ErrorUserDoesntBelongRoom)
 			return
 		}
@@ -154,17 +157,24 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	// }
 
 	// register client
+	const sendBuf = 1024
+
 	client := &Client{
-		Conn:   conn,
-		UserID: user.ID,
-		RoomID: room.ID,
+		Conn:        conn,
+		Send:        make(chan *dto.OutboundMessage, sendBuf),
+		UserID:      user.ID,
+		RoomID:      room.ID,
+		ConnectedAt: time.Now(),
 	}
 
 	h.hub.Register <- client
 
-	// write message & read for message
+	// write message & read for message (new thread to stop blocking)
 	go client.writePump()
-	client.readPump(h.hub)
+	go client.readPump(h.hub)
+
+	//handler can return if any error passed from writePump / readPump
+	return
 
 }
 

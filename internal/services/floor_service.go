@@ -2,12 +2,13 @@ package services
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/utils"
-	"sync"
-	"time"
 
 	"github.com/suck-seed/yapp/internal/repositories"
 )
@@ -48,7 +49,7 @@ func (s *floorService) CreateFloor(c context.Context, req *dto.CreateFloorReq) (
 
 	//	valid hallID
 	exists, err := s.IHallRepository.DoesHallExists(ctx, req.HallID)
-	if err != nil || !exists {
+	if err != nil || !*exists {
 		return nil, utils.ErrorHallDoesntExist
 	}
 

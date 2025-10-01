@@ -2,10 +2,11 @@ package services
 
 import (
 	"context"
-	"github.com/suck-seed/yapp/internal/dto"
-	"github.com/suck-seed/yapp/internal/utils"
 	"sync"
 	"time"
+
+	"github.com/suck-seed/yapp/internal/dto"
+	"github.com/suck-seed/yapp/internal/utils"
 
 	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/models"
@@ -16,7 +17,7 @@ type IRoomService interface {
 	CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dto.CreateRoomRes, error)
 	GetRoomByID(c context.Context, roomId *uuid.UUID) (*models.Room, error)
 
-	IsMember(c context.Context, roomId *uuid.UUID, userId *uuid.UUID) (bool, error)
+	IsUserRoomMember(c context.Context, roomId *uuid.UUID, userId *uuid.UUID) (*bool, error)
 }
 
 type roomService struct {
@@ -54,7 +55,7 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 	if err != nil {
 		return nil, utils.ErrorHallDoesntExist
 	}
-	if !hallExists {
+	if !*hallExists {
 		return nil, utils.ErrorHallDoesntExist
 	}
 
@@ -111,16 +112,24 @@ func (s *roomService) GetRoomByID(c context.Context, rooomId *uuid.UUID) (*model
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	return &models.Room{}, nil
+	roomCRES, err := s.IRoomRepository.GetRoomByID(ctx, rooomId)
+	if err != nil {
+		return nil, utils.ErrorFetchingRoom
+	}
+
+	return roomCRES, nil
 
 }
 
-func (s *roomService) IsMember(c context.Context, roomId *uuid.UUID, userId *uuid.UUID) (bool, error) {
+func (s *roomService) IsUserRoomMember(c context.Context, roomId *uuid.UUID, userId *uuid.UUID) (*bool, error) {
 
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	print(ctx)
+	isMember, err := s.IRoomRepository.IsUserRoomMember(ctx, roomId, userId)
+	if err != nil {
+		return nil, err
+	}
 
-	return true, nil
+	return isMember, nil
 }

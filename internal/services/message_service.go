@@ -108,7 +108,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 
 	// attachments check
 	var attachments []dto.AttachmentResponseMinimal
-	if *req.Attachments != nil {
+	if req.Attachments != nil && *req.Attachments != nil && len(*req.Attachments) > 0 {
 
 		for _, currentAttachment := range *req.Attachments {
 

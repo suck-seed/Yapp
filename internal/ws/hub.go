@@ -34,8 +34,8 @@ type Hub struct {
 func NewHub(p PersistFunction) Hub {
 	return Hub{
 		Rooms:       make(map[uuid.UUID]*Room),
-		Register:    make(chan *Client, 256),
-		Unregister:  make(chan *Client, 256),
+		Register:    make(chan *Client, 1024),
+		Unregister:  make(chan *Client, 1024),
 		Inbound:     make(chan *dto.InboundMessage, 1024),
 		Outbound:    make(chan *dto.OutboundMessage, 1024),
 		PersistFunc: p,
@@ -140,7 +140,7 @@ func (h *Hub) unregisterClient(client *Client) {
 
 	// if exists
 	delete(room.Clients, client.UserID)
-	close(client.Send)
+	client.SafeClose()
 
 	leavingMsg := &dto.OutboundMessage{
 		Type:     dto.MessageTypeLeave,
@@ -173,7 +173,7 @@ func (h *Hub) processTextMessage(msg *dto.InboundMessage) {
 			Type:     dto.MessageTypeError,
 			RoomID:   msg.RoomID,
 			AuthorID: msg.UserID,
-			Error:    "Failed to send message",
+			Error:    err.Error(),
 			SentAt:   time.Now(),
 		}
 
@@ -258,7 +258,7 @@ func (h *Hub) deliverToRoom(roomId uuid.UUID, msg *dto.OutboundMessage) {
 			// Client send buffer is full -
 			// Disconnect
 			log.Printf("Client %s buffer full, disconnecting", msg.AuthorID)
-			close(client.Send)
+			client.SafeClose()
 			disconnectedClients = append(disconnectedClients, userId)
 
 		}
@@ -316,7 +316,7 @@ func (h *Hub) sendToUser(userID uuid.UUID, roomID uuid.UUID, msg *dto.OutboundMe
 	default:
 		// buffer full, cleanup
 
-		close(client.Send)
+		client.SafeClose()
 
 		h.mu.Lock()
 		if room, exists := h.Rooms[roomID]; exists {
