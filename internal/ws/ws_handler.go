@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -64,6 +65,8 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 		return
 	}
 
+	fmt.Println(userIdString)
+
 	// parse uuid
 	userId, err := uuid.Parse(userIdString)
 	if err != nil {
@@ -71,12 +74,16 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 		return
 	}
 
+	fmt.Println(userId)
+
 	// verify if user exists
 	user, err := h.IUserService.GetUserById(c, userId)
 	if err != nil {
 		utils.WriteError(c, utils.ErrorUserNotFound)
 		return
 	}
+
+	fmt.Println(user)
 
 	// Parse room_id
 	roomIdStr := c.Param("room_id")
@@ -86,6 +93,8 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 		return
 	}
 
+	fmt.Println(roomIdStr)
+
 	// check if room exists
 	room, err := h.IRoomService.GetRoomByID(c, &roomId)
 	if err != nil {
@@ -93,12 +102,16 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 		return
 	}
 
+	fmt.Println(room)
+
 	// check if user is in the hall or not
 	belongs, err := h.IHallService.IsMember(c, &room.HallId, &user.ID)
 	if err != nil || !belongs {
 		utils.WriteError(c, utils.ErrorUserDoesntBelongHall)
 		return
 	}
+
+	fmt.Println(belongs)
 
 	// if private, check if belongs or not
 	if room.IsPrivate {

@@ -111,8 +111,6 @@ func (s *roomService) GetRoomByID(c context.Context, rooomId *uuid.UUID) (*model
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	print(ctx)
-
 	return &models.Room{}, nil
 
 }
