@@ -27,6 +27,7 @@ frontend/.next
 .idea/
 .vscode/
 .zed/
+.fleet/
 .tmp/
 !/tmp/
 
