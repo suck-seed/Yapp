@@ -24,19 +24,30 @@ var (
 	ErrorWrongPassword  = &CustomError{Code: http.StatusUnauthorized, Message: "Incorrect Password"}
 
 	// REQUEST ERRORS
-	ErrorInvalidInput       = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Data"}
-	ErrorInvalidUsername    = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Username"}
-	ErrorInvalidHallName    = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Hall Name"}
+	ErrorInvalidInput    = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Data"}
+	ErrorInvalidUsername = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Username"}
+	ErrorInvalidHallName = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Hall Name"}
+
+	ErrorInvalidFloorName = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Floor Name"}
+
 	ErrorInvalidEmail       = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Email"}
 	ErrorInvalidPhoneNumber = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Phone Number"}
 	ErrorInvalidDisplayName = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Display Name"}
 	ErrorInvalidPassword    = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Password Format"}
 	ErrorPasswordWhiteSpace = &CustomError{Code: http.StatusBadRequest, Message: "Password has whitespace"}
 
+	ErrorInvalidRoomType = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Room Type"}
+
 	// INTERNAL ERRROS
-	ErrorInternal           = &CustomError{Code: http.StatusInternalServerError, Message: "Internal server error"}
-	ErrorCreatingUser       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating user"}
-	ErrorCreatingHall       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall"}
+	ErrorInternal     = &CustomError{Code: http.StatusInternalServerError, Message: "Internal server error"}
+	ErrorCreatingUser = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating user"}
+	ErrorCreatingHall = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall"}
+
+	ErrorCreatingFloor = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Floor"}
+	ErrorCreatingRoom  = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Room"}
+
+	ErrorFetchingRoom = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Room"}
+
 	ErrorCreatingHallRole   = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Role"}
 	ErrorCreatingHallMember = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Member"}
 
@@ -56,8 +67,9 @@ var (
 	ErrorTokenExpired = &CustomError{Code: http.StatusUnauthorized, Message: "Token expired"}
 
 	// ROOM/FLOOR/MESSAGE DOESNT EXIST
-	ErrorRoomDoesntExist = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}
-	ErrorHallDoesntExist = &CustomError{Code: http.StatusBadRequest, Message: "Hall not found"}
+	ErrorRoomDoesntExist        = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}
+	ErrorHallDoesntExist        = &CustomError{Code: http.StatusBadRequest, Message: "Hall not found"}
+	ErrorFloorDoesntExistInHall = &CustomError{Code: http.StatusBadRequest, Message: "Floor not found in this hall"}
 
 	ErrorUserDoesntBelongRoom = &CustomError{Code: http.StatusBadRequest, Message: "User is not allowded in this room"}
 	ErrorUserDoesntBelongHall = &CustomError{Code: http.StatusBadRequest, Message: "User is not allowded in this hall"}

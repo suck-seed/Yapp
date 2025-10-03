@@ -69,17 +69,29 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 func RegisterWebSocketRoutes(r *gin.RouterGroup, hub *ws.Hub, messageService services.IMessageService, hallService services.IHallService, roomService services.IRoomService, userService services.IUserService) {
 	wsHandler := ws.NewWebsocketHandler(hub, messageService, hallService, roomService, userService)
 
-	wsGroup := r.Group("/ws")
-	{
-		wsGroup.GET("/rooms/{room_id}", wsHandler.JoinRoom)
-	}
+	r.GET("/rooms/:room_id", wsHandler.JoinRoom)
+
 }
 
 func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService) {
 
+	floorHandler := handlers.NewFloorHandler(floorService)
+
+	floorGroup := r.Group("/floors")
+	{
+		floorGroup.POST("/", floorHandler.CreateFloor)
+	}
+
 }
 
 func RegisterRoomRoutes(r *gin.RouterGroup, roomService services.IRoomService) {
+
+	roomHandler := handlers.NewRoomHandler(roomService)
+
+	roomGroup := r.Group("/rooms")
+	{
+		roomGroup.POST("/", roomHandler.CreateRoom)
+	}
 
 }
 

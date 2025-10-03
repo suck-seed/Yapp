@@ -15,7 +15,7 @@ import (
 
 type IHallService interface {
 	CreateHall(c context.Context, req *dto.CreateHallReq) (*dto.CreateHallRes, error)
-	IsMember(c context.Context, hallID *uuid.UUID, userId *uuid.UUID) (bool, error)
+	IsUserHallMember(c context.Context, hallID *uuid.UUID, userId *uuid.UUID) (*bool, error)
 
 	GetUserHalls(c context.Context) ([]*models.Hall, error)
 }
@@ -184,11 +184,14 @@ func (s *hallService) GetUserHalls(c context.Context) ([]*models.Hall, error) {
 	return halls, nil
 }
 
-func (s *hallService) IsMember(c context.Context, hallID *uuid.UUID, userId *uuid.UUID) (bool, error) {
+func (s *hallService) IsUserHallMember(c context.Context, hallID *uuid.UUID, userID *uuid.UUID) (*bool, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	print(ctx)
+	isMember, err := s.IHallRepository.IsUserHallMember(ctx, *hallID, *userID)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
 
-	return true, nil
+	return isMember, nil
 }

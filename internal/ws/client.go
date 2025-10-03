@@ -1,9 +1,11 @@
 package ws
 
 import (
-	"github.com/suck-seed/yapp/internal/dto"
 	"log"
+	"sync"
 	"time"
+
+	"github.com/suck-seed/yapp/internal/dto"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -22,46 +24,18 @@ type Client struct {
 	// Connection metadata
 	ConnectedAt time.Time
 	LastPing    time.Time
+
+	// Channel state tracking
+	closed bool
+	mu     sync.Mutex
 }
 
-func (c *Client) writePump() {
-
-	ticker := time.NewTicker(60 * time.Second)
-	defer func() {
-		ticker.Stop()
-		c.Conn.Close()
-	}()
-
-	for {
-
-		select {
-
-		case message, ok := <-c.Send:
-			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-
-			if !ok {
-				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
-
-			if err := c.Conn.WriteJSON(message); err != nil {
-				log.Printf("Websocket write wrror %v", err)
-				return
-			}
-
-		case <-ticker.C:
-			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-
-			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-
-				return
-			}
-
-		}
-
-	}
-
-}
+const (
+	writeWait      = 10 * time.Second
+	pongWait       = 60 * time.Second
+	pingPeriod     = (pongWait * 9) / 10 // send pings a bit before the pong deadline
+	maxMessageSize = 512 << 10           // 512KB (set what you want)
+)
 
 // readPump : Continously Reads the upcoming json stream from the websocket connection and passes incoming/inboundMessage to Hub to be handled
 func (c *Client) readPump(hub *Hub) {
@@ -70,11 +44,11 @@ func (c *Client) readPump(hub *Hub) {
 		c.Conn.Close()
 	}()
 
-	c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	// c.Conn.SetReadLimit(maxMessageSize)
+	c.Conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.Conn.SetPongHandler(func(string) error {
 
-		c.LastPing = time.Now()
-		c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		c.Conn.SetReadDeadline(time.Now().Add(pongWait))
 		return nil
 
 	})
@@ -97,6 +71,59 @@ func (c *Client) readPump(hub *Hub) {
 		inboundMessage.RoomID = c.RoomID
 
 		hub.Inbound <- inboundMessage
+	}
+
+}
+
+func (c *Client) writePump() {
+
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		ticker.Stop()
+		c.Conn.Close()
+	}()
+
+	c.Conn.EnableWriteCompression(true)
+
+	for {
+
+		select {
+
+		case out, ok := <-c.Send:
+			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
+
+			if !ok {
+				_ = c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+
+			if err := c.Conn.WriteJSON(out); err != nil {
+				log.Printf("Websocket write wrror %v", err)
+				return
+			}
+
+		case <-ticker.C:
+			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
+
+			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+
+				return
+			}
+
+		}
+
+	}
+
+}
+
+func (c *Client) SafeClose() {
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if !c.closed {
+		close(c.Send)
+		c.closed = true
 	}
 
 }

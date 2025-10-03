@@ -15,6 +15,9 @@ type IHallRepository interface {
 
 	GetUserHallIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	GetHallByID(ctx context.Context, hallID uuid.UUID) (*models.Hall, error)
+
+	DoesHallExists(ctx context.Context, hallID uuid.UUID) (*bool, error)
+	IsUserHallMember(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*bool, error)
 }
 
 type hallRepository struct {
@@ -175,4 +178,39 @@ func (r *hallRepository) GetHallByID(ctx context.Context, hallID uuid.UUID) (*mo
 	}
 
 	return hall, nil
+}
+
+func (r *hallRepository) DoesHallExists(ctx context.Context, hallID uuid.UUID) (*bool, error) {
+
+	query := `
+
+		SELECT EXISTS (SELECT 1 FROM halls WHERE id = $1)
+
+	`
+
+	var exists bool
+
+	err := r.db.QueryRow(ctx, query, hallID).Scan(&exists)
+	if err != nil {
+		return nil, err
+	}
+
+	return &exists, nil
+}
+
+func (r *hallRepository) IsUserHallMember(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*bool, error) {
+
+	query := `
+
+	SELECT EXISTS (SELECT 1 FROM hall_members WHERE hall_id = $1 and user_id = $2)
+`
+
+	var exists bool
+
+	if err := r.db.QueryRow(ctx, query, hallID, userID).Scan(&exists); err != nil {
+		return nil, err
+	}
+
+	return &exists, nil
+
 }

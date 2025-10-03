@@ -42,8 +42,8 @@ type OutboundMessage struct {
 	RoomID           uuid.UUID                   `json:"room_id"`
 	AuthorID         uuid.UUID                   `json:"author_id"`
 	Content          *string                     `json:"content"`
-	SentAt           time.Time                   `json:"sentAt"`
-	MentionsEveryone bool                        `json:"mentionsEveryone"`
+	SentAt           time.Time                   `json:"sent_at"`
+	MentionsEveryone bool                        `json:"mentions_everyone"`
 	Mentions         []MentionResponseMinimal    `json:"mentions"`
 	Attachments      []AttachmentResponseMinimal `json:"attachments"`
 
@@ -56,8 +56,8 @@ type OutboundMessage struct {
 type CreateMessageReq struct {
 
 	// we will get author id from headers
-	RoomID      uuid.UUID `json:"room_id" binding:"required"`
-	AuthorID    uuid.UUID
+	RoomID      uuid.UUID         `json:"room_id" binding:"required"`
+	AuthorID    uuid.UUID         `json:"author_id" binding:"required"`
 	Content     *string           `json:"content,omitempty" binding:"min=1,max=8000"`
 	Attachments *[]AttachmentType `json:"attachments,omitempty"`
 

@@ -1,22 +1,27 @@
 package utils
 
 import (
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/suck-seed/yapp/internal/models"
 
 	"github.com/microcosm-cc/bluemonday"
 	passwordvalidator "github.com/wagslane/go-password-validator"
 	"golang.org/x/text/unicode/norm"
 )
 
-const FileSize int64 = 10
+const FileSize int64 = 10 * 1024 * 1024 // 10MB in bytes
 
 var usernameRegex = regexp.MustCompile(`^[a-z0-9_.-]{3,32}$`)
 
 var hallNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.\- ]{3,32}$`)
+var floorNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.\- ]{3,32}$`)
+
+var roomNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.\-]{3,32}$`)
+
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`)
 var hexRegex = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}){1,2}$`)
 
@@ -45,6 +50,41 @@ func SanitizeHallname(s string) (string, error) {
 		return "", ErrorInvalidHallName
 	}
 	return s, nil
+}
+
+func SanitizeFloorname(s string) (string, error) {
+
+	s = strings.TrimSpace(s)
+
+	if !floorNameRegex.MatchString(s) {
+		return "", ErrorInvalidFloorName
+	}
+
+	return s, nil
+
+}
+
+func SanitizeRoomname(s string) (string, error) {
+
+	s = strings.TrimSpace(s)
+
+	if !floorNameRegex.MatchString(s) {
+		return "", ErrorInvalidFloorName
+	}
+
+	return s, nil
+
+}
+
+func ParseRoomType(s string) (models.RoomType, error) {
+	switch strings.ToLower(s) {
+	case string(models.AudioRoom):
+		return models.AudioRoom, nil
+	case string(models.TextRoom):
+		return models.TextRoom, nil
+	default:
+		return "", ErrorInvalidRoomType
+	}
 }
 
 func SanitizeDisplayName(s string) (string, error) {
@@ -178,12 +218,16 @@ func ValidateFileName(fileName string) (string, error) {
 
 	s := strings.TrimSpace(fileName)
 
-	_, err := os.Stat(s)
-	if err == nil && os.IsNotExist(err) {
-		return s, nil
+	if len(s) == 0 {
+		return "", ErrorInvalidFileName
 	}
 
-	return "", ErrorInvalidFileName
+	// check for invalid characters in file
+	if strings.ContainsAny(s, "/\\:*?\"<>|") {
+		return "", ErrorInvalidFileName
+	}
+
+	return s, nil
 }
 
 func ValidateFileType(fileType *string, url string) (*string, error) {
@@ -195,7 +239,7 @@ func ValidateFileType(fileType *string, url string) (*string, error) {
 		return nil, ErrorBadFileType
 	}
 
-	//	cross checking (condition, filetype != nil)
+	// cross checking (condition, filetype != nil)
 	if fileType != nil {
 		if !strings.Contains(strings.ToLower(*fileType), ext) {
 

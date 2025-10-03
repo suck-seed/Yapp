@@ -1,6 +1,9 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"time"
+)
 
 type CreateRoomReq struct {
 	// As usual we will fetch the creating user ID from
@@ -23,7 +26,8 @@ type CreateRoomRes struct {
 	Name      string     `json:"name"`
 	RoomType  string     `json:"room_type"`
 	IsPrivate bool       `json:"is_private"`
-	CreatedAt string     `json:"created_at"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at" `
 }
 
 type UpdateRoomReq struct {
