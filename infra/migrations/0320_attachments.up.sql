@@ -5,7 +5,7 @@ CREATE TABLE attachments (
     file_name text NOT NULL,
     url text NOT NULL,
     file_type text,
-    file_size text,
+    file_size INT,
 
     created_at timestamptz NOT NULL DEFAULT now (),
     updated_at timestamptz NOT NULL DEFAULT now ()

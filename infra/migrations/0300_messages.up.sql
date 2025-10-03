@@ -2,7 +2,7 @@ CREATE TABLE messages (
     id uuid PRIMARY KEY ,
     room_id uuid NOT NULL REFERENCES rooms (id) ON DELETE CASCADE,
     author_id uuid NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
-    content text NOT NULL,
+    content text,
     mention_everyone boolean NOT NULL DEFAULT false,
 
     sent_at timestamptz NOT NULL DEFAULT now (),

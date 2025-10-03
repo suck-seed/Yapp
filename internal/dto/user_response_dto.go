@@ -1,8 +1,9 @@
 package dto
 
 import (
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/suck-seed/yapp/internal/models"
 )
@@ -15,7 +16,7 @@ type SignupUserRes struct {
 }
 
 type SigninUserRes struct {
-	AccessToken string
+	AccessToken string    `json:"-"`
 	ID          uuid.UUID `json:"id" db:"id"`
 	Username    string    `json:"username" db:"username"`
 }
@@ -24,8 +25,8 @@ type UserPublic struct {
 	ID                 uuid.UUID `json:"id"`
 	Username           string    `json:"username"`
 	DisplayName        string    `json:"display_name"`
-	AvatarURL          string    `json:"avatar_url,omitempty"`
-	AvatarThumbnailURL string    `json:"avatar_thumbnail_url,omitempty"`
+	AvatarURL          *string   `json:"avatar_url,omitempty"`
+	AvatarThumbnailURL *string   `json:"avatar_thumbnail_url,omitempty"`
 }
 
 type UserMe struct {
@@ -33,10 +34,10 @@ type UserMe struct {
 	Username           string    `json:"username"`
 	DisplayName        string    `json:"display_name"`
 	Email              string    `json:"email"`
-	PhoneNumber        string    `json:"phone_number,omitempty"`
-	AvatarURL          string    `json:"avatar_url,omitempty"`
-	AvatarThumbnailURL string    `json:"avatar_thumbnail_url,omitempty"`
-	Description        string    `json:"description,omitempty"`
+	PhoneNumber        *string   `json:"phone_number,omitempty"`
+	AvatarURL          *string   `json:"avatar_url,omitempty"`
+	AvatarThumbnailURL *string   `json:"avatar_thumbnail_url,omitempty"`
+	Description        *string   `json:"description,omitempty"`
 	FriendPolicy       string    `json:"friend_policy"`
 	Active             bool      `json:"active"`
 	//LastSeen     *time.Time          `json:"last_seen,omitempty"`

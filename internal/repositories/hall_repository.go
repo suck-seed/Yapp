@@ -32,9 +32,9 @@ func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*mo
 
 	query := `
 
-	INSERT INTO halls (id, name, icon_url, icon_thumbnail_url, banner_color, description, created_by_id)
+	INSERT INTO halls (id, name, icon_url, icon_thumbnail_url, banner_color, description, owner)
     VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING id, name, icon_url, icon_thumbnail_url, banner_color, description, created_at, updated_at, created_by_id
+    RETURNING id, name, icon_url, icon_thumbnail_url, banner_color, description, owner, created_at, updated_at
 	`
 
 	row := r.db.QueryRow(ctx, query,
@@ -107,7 +107,7 @@ func (r *hallRepository) CreateHallRole(ctx context.Context, hallRole *models.Ro
 
 func (r *hallRepository) CreateHallMember(ctx context.Context, hallMember *models.HallMember) error {
 	query := `
-    INSERT INTO hall_members (id, hall_id, user_id, role_id)
+    INSERT INTO hall_members (id, hall_id, user_id,role_id)
     VALUES ($1, $2, $3, $4)
     `
 
@@ -154,7 +154,6 @@ func (r *hallRepository) GetUserHallIDs(ctx context.Context, userID uuid.UUID) (
 
 func (r *hallRepository) GetHallByID(ctx context.Context, hallID uuid.UUID) (*models.Hall, error) {
 	hall := &models.Hall{}
-
 
 	query := `SELECT id, name, icon_url, icon_thumbnail_url, banner_color, description, created_at, updated_at, created_by_id
               FROM halls WHERE id = $1`

@@ -59,10 +59,10 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 	{
 
 		hallGroup.GET("/", hallHandler.GetUserHalls)
+		hallGroup.POST("/", hallHandler.CreateHall)
+
 		hallGroup.GET("/{hall_id}")
 		hallGroup.GET("/{hall_id}/floors")
-
-		hallGroup.POST("/create", hallHandler.CreateHall)
 	}
 }
 
@@ -71,7 +71,7 @@ func RegisterWebSocketRoutes(r *gin.RouterGroup, hub *ws.Hub, messageService ser
 
 	wsGroup := r.Group("/ws")
 	{
-		wsGroup.GET("/rooms/:room_id", wsHandler.JoinRoom)
+		wsGroup.GET("/rooms/{room_id}", wsHandler.JoinRoom)
 	}
 }
 

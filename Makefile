@@ -18,7 +18,7 @@ removeContainerData:
 
 startApp:
 	docker compose up -d
-	cd frontend && npm run dev
+	cd yapp-frontend && npm run dev
 
 
 

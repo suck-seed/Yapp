@@ -7,16 +7,16 @@ import (
 )
 
 type Message struct {
-	ID              uuid.UUID `json:"id" db:"id"`
-	RoomId          uuid.UUID `json:"room_id" db:"room_id"`
-	AuthorId        uuid.UUID `json:"author_id" db:"author_id"`
-	Content         string    `json:"content" db:"content"`
-	SentAt          time.Time `json:"sent_at" db:"sent_at"`
-	EditedAt        time.Time `json:"edited_at" db:"edited_at"`
-	DeletedAt       time.Time `json:"deleted_at" db:"deleted_at"`
-	MentionEveryone bool      `json:"mention_everyone" db:"mention_everyone"`
-	CreatedAt       time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at" db:"updated_at"`
+	ID              uuid.UUID  `json:"id" db:"id"`
+	RoomId          uuid.UUID  `json:"room_id" db:"room_id"`
+	AuthorId        uuid.UUID  `json:"author_id" db:"author_id"`
+	Content         *string    `json:"content" db:"content"`
+	SentAt          time.Time  `json:"sent_at" db:"sent_at"`
+	EditedAt        *time.Time `json:"edited_at" db:"edited_at"`
+	DeletedAt       *time.Time `json:"deleted_at" db:"deleted_at"`
+	MentionEveryone bool       `json:"mention_everyone" db:"mention_everyone"`
+	CreatedAt       time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 type Attachment struct {
@@ -24,8 +24,8 @@ type Attachment struct {
 	MessageID    uuid.UUID
 	FileName     string    `json:"file_name"`
 	URL          string    `json:"url"`
-	FileType     string    `json:"file_type,omitempty"`
-	FileSize     int64     `json:"file_size,omitempty"`
+	FileType     *string   `json:"file_type"`
+	FileSize     *int64    `json:"file_size"`
 	CreatedAt    time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
 }

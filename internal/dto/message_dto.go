@@ -41,7 +41,7 @@ type OutboundMessage struct {
 	ID               uuid.UUID                   `json:"id"`
 	RoomID           uuid.UUID                   `json:"room_id"`
 	AuthorID         uuid.UUID                   `json:"author_id"`
-	Content          string                      `json:"content"`
+	Content          *string                     `json:"content"`
 	SentAt           time.Time                   `json:"sentAt"`
 	MentionsEveryone bool                        `json:"mentionsEveryone"`
 	Mentions         []MentionResponseMinimal    `json:"mentions"`
@@ -83,7 +83,7 @@ type AttachmentResponseMinimal struct {
 	ID       uuid.UUID `json:"id"`
 	URL      string    `json:"URL"`
 	FileName string    `json:"fileName"`
-	FileType string    `json:"fileType,omitempty"`
+	FileType *string   `json:"fileType,omitempty"`
 }
 
 type MentionResponseMinimal struct {
@@ -95,7 +95,7 @@ type CreateMessageRes struct {
 	ID               uuid.UUID                   `json:"id"`
 	RoomID           uuid.UUID                   `json:"roomID"`
 	AuthorID         uuid.UUID                   `json:"authorID"`
-	Content          string                      `json:"content"`
+	Content          *string                     `json:"content"`
 	SentAt           time.Time                   `json:"sentAt"`
 	MentionsEveryone bool                        `json:"mentionsEveryone"`
 	Mentions         []MentionResponseMinimal    `json:"mentions"`
