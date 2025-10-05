@@ -45,16 +45,6 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-//// JoinRoom :
-//func (h *WebsocketHandler) CreateRoom(c *gin.Context) {
-//
-//	req := dto.CreateRoomReq{}
-//
-//	if err := c.ShouldBindJSON(&req); err != nil {
-//
-//	}
-//}
-
 // Join Room
 // /ws/JoinRoom/:roomID
 func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
@@ -95,11 +85,15 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 		return
 	}
 
-	//	Hall exists?
-	//	hall, err := h.IHallService.DoesHallExists(c, &room.HallId)
-	//	if err != nil {
-	//		utils.WriteError(c, err)
-	//	}
+	// Hall exists?
+	hallExists, err := h.IHallService.DoesHallExists(c, &room.HallId)
+	if err != nil {
+		utils.WriteError(c, err)
+	}
+	if !*hallExists {
+		utils.WriteError(c, utils.ErrorHallDoesntExist)
+		return
+	}
 
 	// Hall Member ?
 	belongs, err := h.IHallService.IsUserHallMember(c, &room.HallId, &user.ID)
