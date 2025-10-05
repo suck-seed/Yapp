@@ -51,7 +51,7 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 		return nil, err
 	}
 
-	hallExists, err := s.IHallRepository.DoesHallExists(ctx, req.HallID)
+	hallExists, err := s.IHallRepository.DoesHallExist(ctx, req.HallID)
 	if err != nil {
 		return nil, utils.ErrorHallDoesntExist
 	}

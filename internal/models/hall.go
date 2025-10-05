@@ -17,5 +17,5 @@ type Hall struct {
 	UpdatedAt        time.Time `json:"updated_at" db:"updated_at"`
 
 	// createdby
-	Owner uuid.UUID `json:"owner" db:"owner"`
+	OwnerID uuid.UUID `json:"owner_id" db:"owner_id"`
 }

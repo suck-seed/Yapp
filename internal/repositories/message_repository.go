@@ -202,7 +202,7 @@ func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, roomID uuid
 func (r *messageRepository) GetRoomMessages(ctx context.Context, roomID uuid.UUID, before *time.Time, limit int) ([]*models.Message, error) {
 
 	var query string
-	var args []interface{}
+	var args []any
 
 	if before != nil {
 		query = `
@@ -213,7 +213,7 @@ func (r *messageRepository) GetRoomMessages(ctx context.Context, roomID uuid.UUI
 			LIMIT $3
 		`
 
-		args = []interface{}{roomID, *before, limit}
+		args = []any{roomID, *before, limit}
 
 	} else {
 		query = `
@@ -223,7 +223,7 @@ func (r *messageRepository) GetRoomMessages(ctx context.Context, roomID uuid.UUI
 			ORDER BY sent_at DESC
 		`
 
-		args = []interface{}{roomID, limit}
+		args = []any{roomID, limit}
 
 	}
 

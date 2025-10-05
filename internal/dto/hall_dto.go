@@ -23,5 +23,5 @@ type CreateHallRes struct {
 	Description      *string   `json:"description" binding:"omitempty,max=500"`
 	CreatedAt        time.Time `json:"created_at" binding:"required"`
 	UpdatedAt        time.Time `json:"updated_at" binding:"required"`
-	Owner            uuid.UUID `json:"owner" binding:"required"`
+	OwnerID          uuid.UUID `json:"owner_id" binding:"required"`
 }
