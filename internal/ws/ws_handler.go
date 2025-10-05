@@ -86,7 +86,7 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	}
 
 	// Hall exists?
-	hallExists, err := h.IHallService.DoesHallExists(c, &room.HallId)
+	hallExists, err := h.IHallService.DoesHallExist(c, &room.HallId)
 	if err != nil {
 		utils.WriteError(c, err)
 	}
