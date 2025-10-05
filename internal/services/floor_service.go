@@ -48,7 +48,7 @@ func (s *floorService) CreateFloor(c context.Context, req *dto.CreateFloorReq) (
 	}
 
 	//	valid hallID
-	exists, err := s.IHallRepository.DoesHallExists(ctx, req.HallID)
+	exists, err := s.IHallRepository.DoesHallExist(ctx, req.HallID)
 	if err != nil || !*exists {
 		return nil, utils.ErrorHallDoesntExist
 	}

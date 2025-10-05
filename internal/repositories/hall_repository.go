@@ -16,7 +16,7 @@ type IHallRepository interface {
 	GetUserHallIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	GetHallByID(ctx context.Context, hallID uuid.UUID) (*models.Hall, error)
 
-	DoesHallExists(ctx context.Context, hallID uuid.UUID) (*bool, error)
+	DoesHallExist(ctx context.Context, hallID uuid.UUID) (*bool, error)
 	IsUserHallMember(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*bool, error)
 }
 
@@ -35,9 +35,9 @@ func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*mo
 
 	query := `
 
-	INSERT INTO halls (id, name, icon_url, icon_thumbnail_url, banner_color, description, owner)
+	INSERT INTO halls (id, name, icon_url, icon_thumbnail_url, banner_color, description, owner_id)
     VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING id, name, icon_url, icon_thumbnail_url, banner_color, description, owner, created_at, updated_at
+    RETURNING id, name, icon_url, icon_thumbnail_url, banner_color, description, owner_id, created_at, updated_at
 	`
 
 	row := r.db.QueryRow(ctx, query,
@@ -47,7 +47,7 @@ func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*mo
 		hall.IconThumbnailURL,
 		hall.BannerColor,
 		hall.Description,
-		hall.Owner,
+		hall.OwnerID,
 	)
 
 	saved := &models.Hall{}
@@ -59,7 +59,7 @@ func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*mo
 		&saved.IconThumbnailURL,
 		&saved.BannerColor,
 		&saved.Description,
-		&saved.Owner,
+		&saved.OwnerID,
 		&saved.CreatedAt,
 		&saved.UpdatedAt,
 	)
@@ -158,7 +158,7 @@ func (r *hallRepository) GetUserHallIDs(ctx context.Context, userID uuid.UUID) (
 func (r *hallRepository) GetHallByID(ctx context.Context, hallID uuid.UUID) (*models.Hall, error) {
 	hall := &models.Hall{}
 
-	query := `SELECT id, name, icon_url, icon_thumbnail_url, banner_color, description, created_at, updated_at, created_by_id
+	query := `SELECT id, name, icon_url, icon_thumbnail_url, banner_color, description, created_at, updated_at, owner_id
               FROM halls WHERE id = $1`
 
 	err := r.db.QueryRow(ctx, query, hallID).Scan(
@@ -170,7 +170,7 @@ func (r *hallRepository) GetHallByID(ctx context.Context, hallID uuid.UUID) (*mo
 		&hall.Description,
 		&hall.CreatedAt,
 		&hall.UpdatedAt,
-		&hall.Owner,
+		&hall.OwnerID,
 	)
 
 	if err != nil {
@@ -180,7 +180,7 @@ func (r *hallRepository) GetHallByID(ctx context.Context, hallID uuid.UUID) (*mo
 	return hall, nil
 }
 
-func (r *hallRepository) DoesHallExists(ctx context.Context, hallID uuid.UUID) (*bool, error) {
+func (r *hallRepository) DoesHallExist(ctx context.Context, hallID uuid.UUID) (*bool, error) {
 
 	query := `
 
