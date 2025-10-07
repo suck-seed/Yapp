@@ -148,10 +148,12 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 		return nil, utils.ErrorCreatingUser
 	}
 
+	userMe := dto.ToUserMe(*user)
+
 	return &dto.SigninUserRes{
 		AccessToken: signedToken,
-		ID:          user.ID,
-		Username:    user.Username,
+		Success:     true,
+		UserMe:      userMe,
 	}, nil
 }
 

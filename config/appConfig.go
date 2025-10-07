@@ -73,7 +73,7 @@ func buildCORS() gin.HandlerFunc {
 		AllowCredentials: true, // <- required for cookies
 		MaxAge:           12 * time.Hour,
 	}
-
+	cfg.AddAllowHeaders("Vary")
 	return cors.New(cfg)
 }
 

@@ -38,20 +38,17 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, res)
-
 }
 
 func (h *AuthHandler) Signin(c *gin.Context) {
+	userSignIn := &dto.SigninUserReq{}
 
-	user := &dto.SigninUserReq{}
-
-	if err := c.ShouldBindJSON(user); err != nil {
-
+	if err := c.ShouldBindJSON(userSignIn); err != nil {
 		utils.WriteError(c, utils.ErrorInvalidInput)
 		return
 	}
 
-	u, err := h.IUserService.Signin(c.Request.Context(), user)
+	SignInRes, err := h.IUserService.Signin(c.Request.Context(), userSignIn)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
@@ -59,19 +56,16 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 
 	// set cookie
 	const cookieSecond = 24 * 60 * 60
-
 	c.SetSameSite(http.SameSiteLaxMode)
-	// Use host-only cookie (empty domain) for flexibility across localhost/127.0.0.1
-	c.SetCookie("jwt", u.AccessToken, cookieSecond, "/", "", false, true)
+	c.SetCookie("jwt", SignInRes.AccessToken, cookieSecond, "/", "", false, true)
 
-	// a filtered req as we do not want to implicitly pass accessToken to client
+	// filtered response
 	res := &dto.SigninUserRes{
-		ID:       u.ID,
-		Username: u.Username,
+		UserMe:  SignInRes.UserMe,
+		Success: SignInRes.Success,
 	}
 
 	c.JSON(http.StatusOK, res)
-
 }
 
 func (h *AuthHandler) Signout(c *gin.Context) {
