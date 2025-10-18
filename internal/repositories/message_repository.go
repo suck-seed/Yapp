@@ -121,6 +121,20 @@ func (r *messageRepository) AddAttachment(ctx context.Context, attachment *model
 	return attachmentCRES, nil
 }
 
+func (r *messageRepository) AddMessageMention(ctx context.Context, messageId uuid.UUID, userID uuid.UUID) error {
+
+	query := `
+  				INSERT INTO message_mentions (message_id,user_id)
+      			VALUES ($1, $2)
+        		ON CONFLICT (message_id, user_id) DO NOTHING
+
+   			`
+
+	_, err := r.db.Exec(ctx, query, messageId, userID)
+
+	return err
+}
+
 func (r *messageRepository) GetMessageByID(ctx context.Context, messageID uuid.UUID) (*models.Message, error) {
 
 	query := `
@@ -155,7 +169,7 @@ func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, roomID uuid
 
 	query := `
 		SELECT id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
-		FROM messagesCRES
+		FROM messages
 		WHERE room_id = $1 AND deleted_at IS NULL
 		ORDER BY sent_at DESC
 		LIMIT $2 OFFSET $3
@@ -207,7 +221,7 @@ func (r *messageRepository) GetRoomMessages(ctx context.Context, roomID uuid.UUI
 	if before != nil {
 		query = `
 			SELECT id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
-			FROM messagesCRES
+			FROM messages
 			WHERE room_id = $1 AND deleted_at IS NULL AND sent_at < $2
 			ORDER BY sent_at DESC
 			LIMIT $3
@@ -218,7 +232,7 @@ func (r *messageRepository) GetRoomMessages(ctx context.Context, roomID uuid.UUI
 	} else {
 		query = `
 			SELECT id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
-			FROM messagesCRES
+			FROM messages
 			WHERE room_id = $1 AND deleted_at IS NULL
 			ORDER BY sent_at DESC
 		`
@@ -276,18 +290,4 @@ func (r *messageRepository) UpdateMessage(ctx context.Context, message *models.M
 func (r *messageRepository) DeleteMessage(ctx context.Context, message *models.Message) error {
 
 	return nil
-}
-
-func (r *messageRepository) AddMessageMention(ctx context.Context, messageId uuid.UUID, userID uuid.UUID) error {
-
-	query := `
-  				INSERT INTO message_mentions (message_id,user_id)
-      			VALUES ($1, $2)
-        		ON CONFLICT (message_id, user_id) DO NOTHING
-
-   			`
-
-	_, err := r.db.Exec(ctx, query, messageId, userID)
-
-	return err
 }
