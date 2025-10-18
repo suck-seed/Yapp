@@ -53,18 +53,6 @@ type OutboundMessage struct {
 
 }
 
-type CreateMessageReq struct {
-
-	// we will get author id from headers
-	RoomID      uuid.UUID         `json:"room_id" binding:"required"`
-	AuthorID    uuid.UUID         `json:"author_id" binding:"required"`
-	Content     *string           `json:"content,omitempty" binding:"min=1,max=8000"`
-	Attachments *[]AttachmentType `json:"attachments,omitempty"`
-
-	MentionEveryone *bool        `json:"mention_everyone,omitempty"`
-	Mentions        *[]uuid.UUID `json:"mentions,omitempty"`
-}
-
 type AttachmentType struct {
 	FileName string  `json:"file_name"`
 	URL      string  `json:"url"`
@@ -89,48 +77,4 @@ type AttachmentResponseMinimal struct {
 type MentionResponseMinimal struct {
 	ID       uuid.UUID `json:"id"`
 	Username string    `json:"username"`
-}
-
-type CreateMessageRes struct {
-	ID               uuid.UUID                   `json:"id"`
-	RoomID           uuid.UUID                   `json:"roomID"`
-	AuthorID         uuid.UUID                   `json:"authorID"`
-	Content          *string                     `json:"content"`
-	SentAt           time.Time                   `json:"sentAt"`
-	MentionsEveryone bool                        `json:"mentionsEveryone"`
-	Mentions         []MentionResponseMinimal    `json:"mentions"`
-	Attachments      []AttachmentResponseMinimal `json:"attachments"`
-}
-
-type FetchMessageByIdReq struct {
-	ID uuid.UUID `json:"id" binding:"required"`
-}
-
-type FetchMessageByRoomIDReq struct {
-	RoomId uuid.UUID `json:"room_id" binding:"required"`
-	Limit  int       `json:"limit" binding:"required"`
-	Offset int       `json:"offset" binding:"required"`
-}
-
-type FetchRoomMessageReq struct {
-	RoomId uuid.UUID `json:"room_id" binding:"required"`
-	Time   time.Time `json:"time" binding:"required"`
-	Limit  int       `json:"limit" binding:"required"`
-}
-
-// To update
-// Fetch 1. Message , check if AuthorId == userId
-
-type UpdateMessageReq struct {
-	ID              uuid.UUID `json:"id" binding:"required"`
-	Content         string    `json:"content" binding:"required,min=1,max=8000"`
-	MentionEveryone bool      `json:"mention_everyone" binding:"omitempty"`
-}
-
-// To Delete
-// Fetch 1. Message , check if AuthorId == userId
-// Or 2. Message, Find user in hall_members, fetch role_id from it, ani check role_permissions ma if text_manage_message is available or not
-
-type DeleteMessageReq struct {
-	ID uuid.UUID `json:"id" binding:"required"`
 }
