@@ -22,6 +22,11 @@ type FetchMessageByIdReq struct {
 	ID uuid.UUID `json:"id" binding:"required"`
 }
 
+type FetchMessageByRoomIDReq struct {
+
+}
+
+
 type FetchRoomMessageReq struct {
 	RoomID uuid.UUID  `json:"room_id" binding:"required"`
 	UserID uuid.UUID  `json:"user_id" binding:"required"` // For authorization (for private room and type shi)
