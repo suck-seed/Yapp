@@ -8,8 +8,10 @@ tmp_dir = "tmp"
 
 [build]
   args_bin = []
-  # cmd = "go build -o ./tmp/main.exe ./cmd/yapp-server"
-  cmd = "go build -o ./tmp/main ./cmd/yapp-server"
+  #cmd = "go build -o ./tmp/main.exe ./cmd/yapp-server"
+  # cmd = "go build -o ./tmp/main ./cmd/yapp-server"
+  cmd = "go build -buildvcs=false -o ./tmp/main ./cmd/yapp-server"
+
   # bin =  "tmp\\main.exe"
   bin = "tmp/main"
   delay = 1000
