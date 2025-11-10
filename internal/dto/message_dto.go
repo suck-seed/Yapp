@@ -24,11 +24,11 @@ const (
 )
 
 type InboundMessage struct {
-	Type            MessageType       `json:"type"`
-	Content         *string           `json:"content,omitempty" binding:"min=1,max=8000"`
-	MentionEveryone *bool             `json:"mention_everyone,omitempty"`
-	Mentions        *[]uuid.UUID      `json:"mentions,omitempty"` // array of user IDs
-	Attachments     *[]AttachmentType `json:"attachments,omitempty"`
+	Type            MessageType      `json:"type"`
+	Content         *string          `json:"content,omitempty" binding:"min=1,max=8000"`
+	MentionEveryone *bool            `json:"mention_everyone,omitempty"`
+	Mentions        *[]uuid.UUID     `json:"mentions,omitempty"` // array of user IDs
+	Attachments     *[]AttachmentReq `json:"attachments,omitempty"`
 
 	// These are set by server, not client, BUT KEEP THEM HERE for simplicity
 	UserID uuid.UUID `json:"-"`
@@ -53,7 +53,7 @@ type OutboundMessage struct {
 
 }
 
-type AttachmentType struct {
+type AttachmentReq struct {
 	FileName string  `json:"file_name"`
 	URL      string  `json:"url"`
 	FileType *string `json:"file_type,omitempty"`
@@ -61,17 +61,15 @@ type AttachmentType struct {
 
 }
 
-type MentionType struct {
-	ID       uuid.UUID `json:"id"`
-	Username string    `json:"username"`
-}
-
-// RESPONSE TO MESSAGE CREATION
+// RESPONSE TYPES FOR MESSAGE
 type AttachmentResponseMinimal struct {
-	ID       uuid.UUID `json:"id"`
-	URL      string    `json:"URL"`
-	FileName string    `json:"fileName"`
-	FileType *string   `json:"fileType,omitempty"`
+	ID        uuid.UUID `json:"id"`
+	MessageID uuid.UUID `json:"message_id"`
+	URL       string    `json:"URL"`
+	FileName  string    `json:"fileName"`
+	FileType  *string   `json:"fileType,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type MentionResponseMinimal struct {
