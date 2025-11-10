@@ -58,7 +58,7 @@ type MessageDetailed struct {
 	Author      UserBasic                   `json:"author"`
 	Attachments []AttachmentResponseMinimal `json:"attachments,omitempty"`
 	Reactions   []ReactionGroup             `json:"reactions,omitempty"`
-	Mentions    []UserPublic                `json:"mentions,omitempty"`
+	Mentions    []UserBasic                 `json:"mentions,omitempty"`
 }
 
 type MessageListResponse struct {
