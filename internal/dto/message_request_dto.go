@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -10,11 +12,22 @@ type CreateMessageReq struct {
 	RoomID      uuid.UUID        `json:"room_id" binding:"required"`
 	AuthorID    uuid.UUID        `json:"author_id" binding:"required"`
 	Content     *string          `json:"content,omitempty" binding:"min=1,max=8000"`
+	SentAt      time.Time        `json:"sent_at" binding:"required"`
 	Attachments *[]AttachmentReq `json:"attachments,omitempty"`
 
 	MentionEveryone *bool        `json:"mention_everyone,omitempty"`
 	Mentions        *[]uuid.UUID `json:"mentions,omitempty"`
 }
+
+type AttachmentReq struct {
+	FileName string  `json:"file_name"`
+	URL      string  `json:"url"`
+	FileType *string `json:"file_type,omitempty"`
+	FileSize *int64  `json:"file_size,omitempty"` // in bytes
+
+}
+
+// TO REQUEST MESSAGE (PAGINATION)
 
 type MessageQueryParams struct {
 	RoomID uuid.UUID

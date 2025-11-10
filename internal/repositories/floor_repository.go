@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+
 	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/models"
 )
@@ -52,7 +53,6 @@ func (r *floorRepository) CreateFloor(ctx context.Context, floor *models.Floor) 
 		&floorCRES.IsPrivate,
 		&floorCRES.CreatedAt,
 		&floorCRES.UpdatedAt,
-
 	)
 
 	if err != nil {

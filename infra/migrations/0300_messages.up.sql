@@ -5,6 +5,10 @@ CREATE TABLE messages (
     content text,
     mention_everyone boolean NOT NULL DEFAULT false,
 
+
+    -- Always send your sent_at in ISO 8601 / RFC 3339 UTC
+    -- In JS : sent_at: new Date().toISOString()
+    -- In Postman : 2025-11-10T17:20:00Z
     sent_at timestamptz NOT NULL DEFAULT now (),
     edited_at timestamptz,
     deleted_at timestamptz,

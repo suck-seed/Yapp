@@ -55,6 +55,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 		RoomId:   req.RoomID,
 		AuthorId: req.AuthorID,
 		Content:  normalizedContent,
+		SentAt:   req.SentAt,
 	}
 
 	message.MentionEveryone = false
@@ -69,7 +70,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 	}
 
 	// else , create entry on message_mentions
-	var mentions []dto.MentionResponseMinimal
+	var mentions []dto.UserBasic
 	if *req.MentionEveryone == false && req.Mentions != nil {
 
 		// validate if the userId acc exists or not
@@ -89,8 +90,17 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 					return nil, utils.ErrorWritingMentions
 				}
 
-				mentions = append(mentions, dto.MentionResponseMinimal{
-					ID: mentionedUserID,
+				// get userBasic information for generation
+				userCRES, err := s.IUserRepository.GetUserById(ctx, mentionedUserID)
+				if err != nil {
+					return nil, utils.ErrorFetchingUser
+				}
+
+				mentions = append(mentions, dto.UserBasic{
+					ID:        userCRES.ID,
+					Username:  userCRES.Username,
+					Email:     userCRES.Email,
+					AvatarURL: userCRES.AvatarURL,
 				})
 			}
 
@@ -99,7 +109,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 	}
 
 	// attachments check
-	var attachments []dto.AttachmentResponseMinimal
+	var attachments []models.Attachment
 	if req.Attachments != nil && *req.Attachments != nil && len(*req.Attachments) > 0 {
 
 		for _, currentAttachment := range *req.Attachments {
@@ -129,12 +139,12 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 
 			//			repo call
 			attachmentCRES, err := s.IMessageRepository.AddAttachment(ctx, &models.Attachment{
-				AttachmentID: attachmentID,
-				MessageID:    messageId,
-				FileName:     canonFileName,
-				URL:          currentAttachment.URL,
-				FileType:     validatedFileType,
-				FileSize:     currentAttachment.FileSize,
+				ID:        attachmentID,
+				MessageID: messageId,
+				FileName:  canonFileName,
+				URL:       currentAttachment.URL,
+				FileType:  validatedFileType,
+				FileSize:  currentAttachment.FileSize,
 			})
 
 			if err != nil {
@@ -142,12 +152,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 			}
 
 			//	append to attachments
-			attachments = append(attachments, dto.AttachmentResponseMinimal{
-				ID:       attachmentCRES.AttachmentID,
-				URL:      attachmentCRES.URL,
-				FileName: attachmentCRES.FileName,
-				FileType: attachmentCRES.FileType,
-			})
+			attachments = append(attachments, *attachmentCRES)
 		}
 
 	}
@@ -161,6 +166,11 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 		MentionsEveryone: messageCRES.MentionEveryone,
 		Mentions:         mentions,
 		Attachments:      attachments,
+
+		CreatedAt: messageCRES.CreatedAt,
+		EditedAt:  messageCRES.EditedAt,
+		DeletedAt: messageCRES.DeletedAt,
+		UpdatedAt: messageCRES.UpdatedAt,
 	}, nil
 
 }

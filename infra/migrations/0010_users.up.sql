@@ -11,6 +11,7 @@ CREATE TABLE users (
     friend_policy friend_policy DEFAULT 'everyone',
     active boolean NOT NULL DEFAULT false, -- consider derived via Redis; keep for compatibility
     last_seen timestamptz,
+
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );

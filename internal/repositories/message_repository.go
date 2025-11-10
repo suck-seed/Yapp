@@ -39,8 +39,8 @@ func NewMessageRepository(db PGXTX) IMessageRepository {
 func (r *messageRepository) CreateMessage(ctx context.Context, message *models.Message) (*models.Message, error) {
 
 	query := `
-			INSERT INTO messages (id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			INSERT INTO messages (id, room_id, author_id, content, sent_at, mention_everyone)
+			VALUES ($1, $2, $3, $4, $5, $6)
 
 			RETURNING id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
 
@@ -54,11 +54,7 @@ func (r *messageRepository) CreateMessage(ctx context.Context, message *models.M
 		message.AuthorId,
 		message.Content,
 		message.SentAt,
-		message.EditedAt,
-		message.DeletedAt,
 		message.MentionEveryone,
-		message.CreatedAt,
-		message.UpdatedAt,
 	)
 
 	messageCRES := &models.Message{}
@@ -97,7 +93,7 @@ func (r *messageRepository) AddAttachment(ctx context.Context, attachment *model
 	row := r.db.QueryRow(
 		ctx,
 		query,
-		attachment.AttachmentID,
+		attachment.ID,
 		attachment.MessageID,
 		attachment.FileName,
 		attachment.URL,
@@ -107,7 +103,7 @@ func (r *messageRepository) AddAttachment(ctx context.Context, attachment *model
 
 	attachmentCRES := &models.Attachment{}
 	err := row.Scan(
-		&attachmentCRES.AttachmentID,
+		&attachmentCRES.ID,
 		&attachmentCRES.MessageID,
 		&attachmentCRES.FileName,
 		&attachmentCRES.URL,
