@@ -14,14 +14,6 @@ import (
 
 type IMessageService interface {
 	CreateMessage(c context.Context, req *dto.CreateMessageReq) (*dto.CreateMessageRes, error)
-
-	GetMessageByID(c context.Context, req *dto.FetchMessageByIdReq) (*models.Message, error)
-
-	GetMessagesByRoomID(c context.Context, req *dto.FetchMessageByRoomIDReq) ([]*models.Message, error)
-	GetRoomMessages(c context.Context, req *dto.FetchRoomMessageReq) ([]*models.Message, error)
-
-	UpdateMessage(c context.Context, req *dto.UpdateMessageReq) (*models.Message, error)
-	DeleteMessage(c context.Context, req *dto.DeleteMessageReq) error
 }
 
 type messageService struct {
@@ -170,54 +162,5 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 		Mentions:         mentions,
 		Attachments:      attachments,
 	}, nil
-
-}
-
-func (s *messageService) GetMessageByID(c context.Context, req *dto.FetchMessageByIdReq) (*models.Message, error) {
-	ctx, cancel := context.WithTimeout(c, s.timeout)
-	defer cancel()
-
-	print(ctx)
-
-	return &models.Message{}, nil
-
-}
-
-func (s *messageService) GetMessagesByRoomID(c context.Context, req *dto.FetchMessageByRoomIDReq) ([]*models.Message, error) {
-	ctx, cancel := context.WithTimeout(c, s.timeout)
-	defer cancel()
-
-	print(ctx)
-
-	return []*models.Message{}, nil
-
-}
-func (s *messageService) GetRoomMessages(c context.Context, req *dto.FetchRoomMessageReq) ([]*models.Message, error) {
-	ctx, cancel := context.WithTimeout(c, s.timeout)
-	defer cancel()
-
-	print(ctx)
-
-	return []*models.Message{}, nil
-
-}
-
-func (s *messageService) UpdateMessage(c context.Context, req *dto.UpdateMessageReq) (*models.Message, error) {
-	ctx, cancel := context.WithTimeout(c, s.timeout)
-	defer cancel()
-
-	print(ctx)
-
-	return &models.Message{}, nil
-
-}
-
-func (s *messageService) DeleteMessage(c context.Context, req *dto.DeleteMessageReq) error {
-	ctx, cancel := context.WithTimeout(c, s.timeout)
-	defer cancel()
-
-	print(ctx)
-
-	return nil
 
 }

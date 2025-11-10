@@ -228,6 +228,8 @@ func (r *messageRepository) GetMessages(ctx context.Context, queryParams *dto.Me
                 AND m.deleted_at IS NULL
         `
 
+	return []*models.Message{}, nil
+
 }
 
 // TODO : Implement message  update and delete
