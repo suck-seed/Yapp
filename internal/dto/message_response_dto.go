@@ -8,14 +8,14 @@ import (
 )
 
 type CreateMessageRes struct {
-	ID               uuid.UUID                   `json:"id"`
-	RoomID           uuid.UUID                   `json:"room_id"`
-	AuthorID         uuid.UUID                   `json:"author_id"`
-	Content          *string                     `json:"content"`
-	SentAt           time.Time                   `json:"sent_at"`
-	MentionsEveryone bool                        `json:"mentions_everyone"`
-	Mentions         []UserBasic                 `json:"mentions"`
-	Attachments      []AttachmentResponseMinimal `json:"attachments"`
+	ID               uuid.UUID           `json:"id"`
+	RoomID           uuid.UUID           `json:"room_id"`
+	AuthorID         uuid.UUID           `json:"author_id"`
+	Content          *string             `json:"content"`
+	SentAt           time.Time           `json:"sent_at"`
+	MentionsEveryone bool                `json:"mentions_everyone"`
+	Mentions         []UserBasic         `json:"mentions"`
+	Attachments      []models.Attachment `json:"attachments"`
 
 	EditedAt  *time.Time `json:"edited_at"`
 	DeletedAt *time.Time `json:"deleted_at"`

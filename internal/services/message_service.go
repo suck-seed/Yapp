@@ -109,7 +109,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 	}
 
 	// attachments check
-	var attachments []dto.AttachmentResponseMinimal
+	var attachments []models.Attachment
 	if req.Attachments != nil && *req.Attachments != nil && len(*req.Attachments) > 0 {
 
 		for _, currentAttachment := range *req.Attachments {
@@ -152,12 +152,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 			}
 
 			//	append to attachments
-			attachments = append(attachments, dto.AttachmentResponseMinimal{
-				ID:       attachmentCRES.ID,
-				URL:      attachmentCRES.URL,
-				FileName: attachmentCRES.FileName,
-				FileType: attachmentCRES.FileType,
-			})
+			attachments = append(attachments, *attachmentCRES)
 		}
 
 	}
