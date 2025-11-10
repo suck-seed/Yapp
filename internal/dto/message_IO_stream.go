@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// DTO HERE DEALS WITH I/O STREAM
+
 type MessageType string
 
 const (
@@ -23,9 +25,11 @@ const (
 	MessageTypeError MessageType = "error"
 )
 
+// InboundMessage : InboundMessage is mapped to CreateMessageReq for MessageTypeText
 type InboundMessage struct {
 	Type            MessageType      `json:"type"`
 	Content         *string          `json:"content,omitempty" binding:"min=1,max=8000"`
+	SentAt          time.Time        `json:"sent_at" binding:"required"`
 	MentionEveryone *bool            `json:"mention_everyone,omitempty"`
 	Mentions        *[]uuid.UUID     `json:"mentions,omitempty"` // array of user IDs
 	Attachments     *[]AttachmentReq `json:"attachments,omitempty"`
@@ -44,35 +48,16 @@ type OutboundMessage struct {
 	Content          *string                     `json:"content"`
 	SentAt           time.Time                   `json:"sent_at"`
 	MentionsEveryone bool                        `json:"mentions_everyone"`
-	Mentions         []MentionResponseMinimal    `json:"mentions"`
+	Mentions         []UserBasic                 `json:"mentions"`
 	Attachments      []AttachmentResponseMinimal `json:"attachments"`
+
+	EditedAt  *time.Time `json:"edited_at"`
+	DeletedAt *time.Time `json:"deleted_at"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 
 	// Optional fields for specific message types
 	TypingUser uuid.UUID `json:"typing_user"` // for typing indicators
 	Error      string    `json:"error"`       // for error messages
 
-}
-
-type AttachmentReq struct {
-	FileName string  `json:"file_name"`
-	URL      string  `json:"url"`
-	FileType *string `json:"file_type,omitempty"`
-	FileSize *int64  `json:"file_size,omitempty"` // in bytes
-
-}
-
-// RESPONSE TYPES FOR MESSAGE
-type AttachmentResponseMinimal struct {
-	ID        uuid.UUID `json:"id"`
-	MessageID uuid.UUID `json:"message_id"`
-	URL       string    `json:"URL"`
-	FileName  string    `json:"fileName"`
-	FileType  *string   `json:"fileType,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-type MentionResponseMinimal struct {
-	ID       uuid.UUID `json:"id"`
-	Username string    `json:"username"`
 }

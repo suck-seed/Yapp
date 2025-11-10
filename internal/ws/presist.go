@@ -18,6 +18,7 @@ func MakePresistFunction(messageService services.IMessageService, userService se
 			RoomID:          in.RoomID,
 			AuthorID:        in.UserID,
 			Content:         in.Content,
+			SentAt:          in.SentAt,
 			Attachments:     in.Attachments,
 			MentionEveryone: in.MentionEveryone,
 			Mentions:        in.Mentions,
@@ -30,11 +31,17 @@ func MakePresistFunction(messageService services.IMessageService, userService se
 		return &dto.OutboundMessage{
 			Type: in.Type,
 
-			ID:               saved.ID,
-			RoomID:           saved.RoomID,
-			AuthorID:         saved.AuthorID,
-			Content:          saved.Content,
-			SentAt:           saved.SentAt,
+			ID:       saved.ID,
+			RoomID:   saved.RoomID,
+			AuthorID: saved.AuthorID,
+			Content:  saved.Content,
+			SentAt:   saved.SentAt,
+
+			CreatedAt: saved.CreatedAt,
+			EditedAt:  saved.EditedAt,
+			DeletedAt: saved.DeletedAt,
+			UpdatedAt: saved.UpdatedAt,
+
 			MentionsEveryone: saved.MentionsEveryone,
 			Mentions:         saved.Mentions,
 			Attachments:      saved.Attachments,

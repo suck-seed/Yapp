@@ -18,6 +18,7 @@ type IUserRepository interface {
 	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
 	GetUserByNumber(ctx context.Context, number *string) (*models.User, error)
 	GetUserById(ctx context.Context, userID uuid.UUID) (*models.User, error)
+	// GetUserBasics(ctx context.Context, userID uuid.UUID) (*dto.UserBasic, error)
 
 	DoesUserExists(ctx context.Context, userID uuid.UUID) (bool, error)
 }

@@ -4,35 +4,64 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/suck-seed/yapp/internal/models"
 )
 
 type CreateMessageRes struct {
 	ID               uuid.UUID                   `json:"id"`
-	RoomID           uuid.UUID                   `json:"roomID"`
-	AuthorID         uuid.UUID                   `json:"authorID"`
-	Content          *string                     `json:"content"`
-	SentAt           time.Time                   `json:"sentAt"`
-	MentionsEveryone bool                        `json:"mentionsEveryone"`
-	Mentions         []MentionResponseMinimal    `json:"mentions"`
-	Attachments      []AttachmentResponseMinimal `json:"attachments"`
-}
-
-type GetRoomMessagesResponse struct {
-	Messages   []EnrichedMessage `json:"messages"`
-	HasMore    bool              `json:"has_more"`
-	NextCursor *time.Time        `json:"next_cursor,omitempty"`
-}
-
-type EnrichedMessage struct {
-	ID               uuid.UUID                   `json:"id"`
 	RoomID           uuid.UUID                   `json:"room_id"`
 	AuthorID         uuid.UUID                   `json:"author_id"`
-	AuthorUsername   string                      `json:"author_username"`
-	AuthorAvatar     *string                     `json:"author_avatar"`
 	Content          *string                     `json:"content"`
 	SentAt           time.Time                   `json:"sent_at"`
-	EditedAt         *time.Time                  `json:"edited_at"`
 	MentionsEveryone bool                        `json:"mentions_everyone"`
-	Mentions         []MentionResponseMinimal    `json:"mentions"`
+	Mentions         []UserBasic                 `json:"mentions"`
 	Attachments      []AttachmentResponseMinimal `json:"attachments"`
+
+	EditedAt  *time.Time `json:"edited_at"`
+	DeletedAt *time.Time `json:"deleted_at"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+// RESPONSE TYPES FOR MESSAGE
+type AttachmentResponseMinimal struct {
+	ID        uuid.UUID `json:"id"`
+	MessageID uuid.UUID `json:"message_id"`
+	URL       string    `json:"URL"`
+	FileName  string    `json:"fileName"`
+	FileType  *string   `json:"fileType,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type MentionResponseMinimal struct {
+	ID       uuid.UUID `json:"id"`
+	Username string    `json:"username"`
+}
+
+// MESSAGE FETCH RESPONSE
+type UserBasic struct {
+	ID        uuid.UUID `json:"id" db:"id"`
+	Username  string    `json:"username" db:"username"`
+	Email     string    `json:"email" db:"email"`
+	AvatarURL *string   `json:"avatar_url,omitempty" db:"avatar_url"`
+}
+
+type ReactionGroup struct {
+	Emoji   string      `json:"emoji"`
+	Count   int         `json:"count"`
+	UserIDs []uuid.UUID `json:"user_ids"` // Users who reacted with this emoji
+}
+
+type MessageDetailed struct {
+	models.Message
+	Author      UserBasic                   `json:"author"`
+	Attachments []AttachmentResponseMinimal `json:"attachments,omitempty"`
+	Reactions   []ReactionGroup             `json:"reactions,omitempty"`
+	Mentions    []UserPublic                `json:"mentions,omitempty"`
+}
+
+type MessageListResponse struct {
+	Messages []MessageDetailed `json:"messages"`
+	HasMore  bool              `json:"has_more"`
 }
