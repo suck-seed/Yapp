@@ -46,8 +46,9 @@ var (
 	ErrorCreatingFloor = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Floor"}
 	ErrorCreatingRoom  = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Room"}
 
-	ErrorFetchingRoom = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Room"}
-	ErrorFetchingUser = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching User"}
+	ErrorFetchingRoom     = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Room"}
+	ErrorFetchingUser     = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching User"}
+	ErrorFetchingMessages = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Messages"}
 
 	ErrorCreatingHallRole   = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Role"}
 	ErrorCreatingHallMember = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Member"}

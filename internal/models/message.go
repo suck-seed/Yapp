@@ -22,11 +22,20 @@ type Message struct {
 
 type Attachment struct {
 	ID        uuid.UUID `json:"id" db:"id"`
-	MessageID uuid.UUID
+	MessageID uuid.UUID `json:"message_id"`
 	FileName  string    `json:"file_name"`
 	URL       string    `json:"url"`
 	FileType  *string   `json:"file_type"`
 	FileSize  *int64    `json:"file_size"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+}
+
+type Reaction struct {
+	ID        uuid.UUID `json:"id"`
+	MessageID uuid.UUID `json:"message_id"`
+	UserID    uuid.UUID `json:"user_id" db:"user_id"`
+	Emoji     string    `json:"emoji"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
