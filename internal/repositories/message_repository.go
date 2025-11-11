@@ -19,7 +19,7 @@ type IMessageRepository interface {
 	GetMessageByID(ctx context.Context, messageID uuid.UUID) (*models.Message, error)
 	GetMessagesByRoomID(ctx context.Context, roomID uuid.UUID, limit int, offset int) ([]*models.Message, error)
 
-	GetMessages(ctx context.Context, queryParams *dto.MessageQueryParams) ([]*models.Message, error)
+	GetMessages(ctx context.Context, params *dto.MessageQueryParams) ([]*dto.MessageDetailed, error)
 
 	UpdateMessage(ctx context.Context, message *models.Message) (*models.Message, error)
 	DeleteMessage(ctx context.Context, message *models.Message) error
@@ -211,7 +211,7 @@ func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, roomID uuid
 	return messagesCRES, nil
 }
 
-func (r *messageRepository) GetMessages(ctx context.Context, queryParams *dto.MessageQueryParams) ([]*models.Message, error) {
+func (r *messageRepository) GetMessages(ctx context.Context, params *dto.MessageQueryParams) ([]*dto.MessageDetailed, error) {
 
 	// query := `
 	//            SELECT
@@ -223,7 +223,7 @@ func (r *messageRepository) GetMessages(ctx context.Context, queryParams *dto.Me
 	//                AND m.deleted_at IS NULL
 	//        `
 
-	return []*models.Message{}, nil
+	return []*dto.MessageDetailed{}, nil
 
 }
 
