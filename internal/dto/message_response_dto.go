@@ -27,9 +27,9 @@ type CreateMessageRes struct {
 type AttachmentResponseMinimal struct {
 	ID        uuid.UUID `json:"id"`
 	MessageID uuid.UUID `json:"message_id"`
-	URL       string    `json:"URL"`
-	FileName  string    `json:"fileName"`
-	FileType  *string   `json:"fileType,omitempty"`
+	URL       string    `json:"url"`
+	FileName  string    `json:"file_name"`
+	FileType  *string   `json:"file_type,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
