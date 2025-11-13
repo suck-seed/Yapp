@@ -48,9 +48,10 @@ type UserBasic struct {
 }
 
 type ReactionGroup struct {
-	Emoji   string      `json:"emoji"`
-	Count   int         `json:"count"`
-	UserIDs []uuid.UUID `json:"user_ids"` // Users who reacted with this emoji
+	Emoji    string      `json:"emoji"`
+	Count    int         `json:"count"`
+	Reactors []UserBasic `json:"user_ids"` // Users who reacted with this emoji
+
 }
 
 type MessageDetailed struct {

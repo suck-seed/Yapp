@@ -53,6 +53,9 @@ var (
 	ErrorCreatingHallRole   = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Role"}
 	ErrorCreatingHallMember = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Member"}
 
+	// ITERATING
+	ErrorMessageRowsIteration = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while iterating message rows"}
+
 	// WEBSOCKET ERRORS
 	ErrorFailedUpgrade = &CustomError{Code: http.StatusBadRequest, Message: "Failed to upgrade connection"}
 	ErrorInvalidRoomId = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Room Id, can not join room"}
