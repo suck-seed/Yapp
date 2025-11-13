@@ -344,14 +344,6 @@ func (r *messageRepository) scanMessagesWithDetails(rows interface {
 	Scan(dest ...interface{}) error
 }) ([]*dto.MessageDetailed, error) {
 
-	messageMap := make(map[uuid.UUID]*dto.MessageDetailed)
-	messageOrder := []uuid.UUID{}
-
-	// iterate over the rows
-	for rows.Next() {
-
-	}
-	return nil, nil
 }
 
 // TODO : Implement message  update and delete
