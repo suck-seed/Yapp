@@ -1,0 +1,77 @@
+###############################################################################
+# GLOBAL SETTINGS
+###############################################################################
+
+# Normalize all text files to LF in the repo
+* text=auto eol=lf
+
+# Force Git to treat all files as UTF-8 text unless binary patterns match
+*.go      text eol=lf
+*.mod     text eol=lf
+*.sum     text eol=lf
+*.sql     text eol=lf
+*.json    text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.toml    text eol=lf
+*.md      text eol=lf
+*.env     text eol=lf
+*.dockerignore text eol=lf
+Dockerfile* text eol=lf
+
+###############################################################################
+# WINDOWS-SPECIFIC FILES (must stay CRLF)
+###############################################################################
+
+# PowerShell scripts
+*.ps1     text eol=crlf
+
+# Batch files
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+
+###############################################################################
+# BINARY FILES – Git should NEVER alter these
+###############################################################################
+
+# Images
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.webp    binary
+*.ico     binary
+
+# Draw.io diagrams
+*.drawio            binary
+*.drawio.bkp        binary
+*.$*.drawio.bkp     binary
+
+# PDFs
+*.pdf     binary
+
+# Archives
+*.zip     binary
+*.gz      binary
+*.tar     binary
+*.tgz     binary
+
+###############################################################################
+# IDEs / Editors
+###############################################################################
+
+# JetBrains Fleet
+.fleet/** text eol=lf
+
+# VSCode
+.vscode/** text eol=lf
+
+###############################################################################
+# OS-related
+###############################################################################
+
+# Don't try to enforce LF on executables or binaries
+*.exe     binary
+*.dll     binary
+*.so      binary
+*.wasm    binary

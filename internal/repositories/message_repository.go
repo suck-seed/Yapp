@@ -343,6 +343,22 @@ func (r *messageRepository) scanMessagesWithDetails(rows interface {
 	Err() error
 	Scan(dest ...interface{}) error
 }) ([]*dto.MessageDetailed, error) {
+	messageMap := make(map[uuid.UUID]*dto.MessageDetailed)
+	messageOrder := []uuid.UUID{}
+
+	// iterate over the rows
+	for rows.Next() {
+
+		// define variables
+		var (
+			message    models.Message
+			author     dto.UserBasic
+			attachment *dto.AttachmentResponseMinimal
+			mention    *dto.UserBasic
+		)
+
+	}
+	return nil, nil
 
 }
 
