@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/utils"
 )
 
@@ -78,21 +79,25 @@ func CurrentUserFromGinContext(c *gin.Context) (string, string, error) {
 }
 
 // ---- UserID and Username from context ----
-func CurrentUserFromContext(c context.Context) (id string, username string, err error) {
+func CurrentUserFromContext(c context.Context) (id *uuid.UUID, username *string, err error) {
 
 	rawId := c.Value(CtxUserIDKey)
 	if rawId == nil {
-		return "", "", utils.ErrorNoUserIdInContext
+		return nil, nil, utils.ErrorNoUserIdInContext
 	}
 
 	idString, _ := rawId.(string)
 	if idString == "" {
-		return "", "", utils.ErrorEmptyUserIdInContext
+		return nil, nil, utils.ErrorEmptyUserIdInContext
+	}
 
+	userId, err := utils.ParseUUID(idString)
+	if err != nil {
+		return nil, nil, utils.ErrorInvalidUserUUID
 	}
 
 	usernameString, _ := c.Value(CtxUsernameKey).(string)
 
-	return idString, usernameString, nil
+	return userId, &usernameString, nil
 
 }

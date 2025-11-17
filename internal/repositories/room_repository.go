@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+
 	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/models"
 )
@@ -10,6 +11,8 @@ type IRoomRepository interface {
 	CreateRoom(ctx context.Context, room *models.Room) (*models.Room, error)
 	GetRoomByID(ctx context.Context, roomID *uuid.UUID) (*models.Room, error)
 	IsUserRoomMember(c context.Context, roomId *uuid.UUID, userId *uuid.UUID) (*bool, error)
+
+	DoesRoomExists(ctx context.Context, roomID *uuid.UUID) (*bool, error)
 }
 
 type roomRepository struct {
@@ -111,5 +114,24 @@ func (r *roomRepository) IsUserRoomMember(c context.Context, roomID *uuid.UUID, 
 	}
 
 	return &exists, err
+
+}
+
+func (r *roomRepository) DoesRoomExists(ctx context.Context, roomID *uuid.UUID) (*bool, error) {
+
+	query := `
+
+		SELECT EXISTS (SELECT 1 FROM rooms WHERE id = $1)
+
+	`
+
+	var exists bool
+
+	err := r.db.QueryRow(ctx, query, roomID).Scan(&exists)
+	if err != nil {
+		return nil, err
+	}
+
+	return &exists, nil
 
 }

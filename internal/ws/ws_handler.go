@@ -50,16 +50,9 @@ var upgrader = websocket.Upgrader{
 func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	// cant trust user with sending their userID, so we fetch it from context
 
-	userIdString, _, err := auth.CurrentUserFromContext(c)
+	userId, _, err := auth.CurrentUserFromContext(c)
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidToken)
-		return
-	}
-
-	// parse uuid
-	userId, err := uuid.Parse(userIdString)
-	if err != nil {
-		utils.WriteError(c, utils.ErrorInvalidUserIdInContext)
 		return
 	}
 
