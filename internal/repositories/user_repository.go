@@ -11,16 +11,16 @@ import (
 
 type IUserRepository interface {
 	CreateUser(ctx context.Context, user *models.User) (*models.User, error)
-	UpdateUserById(ctx context.Context, userID uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error)
+	UpdateUserById(ctx context.Context, userID *uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error)
 
-	GetUserWithPasswordHashByEmail(ctx context.Context, email string) (*models.User, error)
-	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
-	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
+	GetUserWithPasswordHashByEmail(ctx context.Context, email *string) (*models.User, error)
+	GetUserByEmail(ctx context.Context, email *string) (*models.User, error)
+	GetUserByUsername(ctx context.Context, username *string) (*models.User, error)
 	GetUserByNumber(ctx context.Context, number *string) (*models.User, error)
-	GetUserById(ctx context.Context, userID uuid.UUID) (*models.User, error)
+	GetUserById(ctx context.Context, userID *uuid.UUID) (*models.User, error)
 	// GetUserBasics(ctx context.Context, userID uuid.UUID) (*dto.UserBasic, error)
 
-	DoesUserExists(ctx context.Context, userID uuid.UUID) (bool, error)
+	DoesUserExists(ctx context.Context, userID *uuid.UUID) (bool, error)
 }
 
 type userRepository struct {
@@ -73,7 +73,7 @@ func (r *userRepository) CreateUser(ctx context.Context, user *models.User) (*mo
 	return saved, nil
 }
 
-func (r *userRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
+func (r *userRepository) GetUserByUsername(ctx context.Context, username *string) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -137,7 +137,7 @@ func (r *userRepository) GetUserByNumber(ctx context.Context, number *string) (*
 	return user, nil
 }
 
-func (r *userRepository) GetUserWithPasswordHashByEmail(ctx context.Context, email string) (*models.User, error) {
+func (r *userRepository) GetUserWithPasswordHashByEmail(ctx context.Context, email *string) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -171,7 +171,7 @@ func (r *userRepository) GetUserWithPasswordHashByEmail(ctx context.Context, ema
 	return user, nil
 }
 
-func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+func (r *userRepository) GetUserByEmail(ctx context.Context, email *string) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -204,7 +204,7 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 	return user, nil
 }
 
-func (r *userRepository) GetUserById(ctx context.Context, userID uuid.UUID) (*models.User, error) {
+func (r *userRepository) GetUserById(ctx context.Context, userID *uuid.UUID) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -237,7 +237,7 @@ func (r *userRepository) GetUserById(ctx context.Context, userID uuid.UUID) (*mo
 	return user, nil
 }
 
-func (r *userRepository) UpdateUserById(ctx context.Context, userID uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error) {
+func (r *userRepository) UpdateUserById(ctx context.Context, userID *uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -261,7 +261,7 @@ func (r *userRepository) UpdateUserById(ctx context.Context, userID uuid.UUID, r
 	return user, nil
 }
 
-func (r *userRepository) DoesUserExists(ctx context.Context, userID uuid.UUID) (bool, error) {
+func (r *userRepository) DoesUserExists(ctx context.Context, userID *uuid.UUID) (bool, error) {
 
 	query := `
 

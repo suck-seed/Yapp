@@ -49,6 +49,7 @@ var (
 	ErrorFetchingRoom     = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Room"}
 	ErrorFetchingUser     = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching User"}
 	ErrorFetchingMessages = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Messages"}
+	ErrorFetchingHall     = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Hall"}
 
 	ErrorCreatingHallRole   = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Role"}
 	ErrorCreatingHallMember = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Member"}
@@ -66,10 +67,16 @@ var (
 	ErrorInvalidUserIdInContext   = &CustomError{Code: http.StatusUnauthorized, Message: "Bad Token user_id format (not uuid)"}
 	ErrorInvalidUsernameInContext = &CustomError{Code: http.StatusUnauthorized, Message: "Bad Token username format"}
 
+	// INVALID UUID
+	ErrorInvalidUserUUID = &CustomError{Code: http.StatusBadGateway, Message: "Invalid user UUID in context"}
+
 	// TOKENS
 	ErrorMissingToken = &CustomError{Code: http.StatusUnauthorized, Message: "Missing Token"}
 	ErrorInvalidToken = &CustomError{Code: http.StatusUnauthorized, Message: "Invalid Token"}
 	ErrorTokenExpired = &CustomError{Code: http.StatusUnauthorized, Message: "Token expired"}
+
+	// CURSOR COMBINATION
+	ErrorInvalidCursorCombination = &CustomError{Code: http.StatusBadRequest, Message: "Invalid cursor combination, Only 1 cursor is to be sent !"}
 
 	// ROOM/FLOOR/MESSAGE DOESNT EXIST
 	ErrorRoomDoesntExist        = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}

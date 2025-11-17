@@ -54,14 +54,9 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	}
 
 	// get userId from context.Context()
-	userIdString, _, err := auth.CurrentUserFromContext(c)
+	userId, _, err := auth.CurrentUserFromContext(c)
 	if err != nil {
 		return nil, err
-	}
-
-	userId, err := uuid.Parse(userIdString)
-	if err != nil {
-		return nil, utils.ErrorInvalidUserIdInContext
 	}
 
 	//
@@ -83,7 +78,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 		IconThumbnailURL: req.IconThumbnailURL,
 		BannerColor:      canonBannerColor,
 		Description:      canonDescription,
-		OwnerID:          userId,
+		OwnerID:          *userId,
 	}
 
 	// pass to repo
@@ -130,7 +125,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	newHallMember := &models.HallMember{
 		ID:     hallMemberID,
 		HallID: hall.ID,
-		UserID: userId,
+		UserID: *userId,
 		RoleID: role.ID,
 	}
 
@@ -158,17 +153,12 @@ func (s *hallService) GetUserHalls(c context.Context) ([]*models.Hall, error) {
 	defer cancel()
 
 	// get userId from context.Context()
-	userIdString, _, err := auth.CurrentUserFromContext(c)
+	userId, _, err := auth.CurrentUserFromContext(c)
 	if err != nil {
 		return nil, err
 	}
 
-	userId, err := uuid.Parse(userIdString)
-	if err != nil {
-		return nil, utils.ErrorInvalidUserIdInContext
-	}
-
-	hallIds, err := s.IHallRepository.GetUserHallIDs(ctx, userId)
+	hallIds, err := s.IHallRepository.GetUserHallIDs(ctx, *userId)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}

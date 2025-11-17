@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/repositories"
@@ -14,9 +15,11 @@ import (
 
 type IMessageService interface {
 	CreateMessage(c context.Context, req *dto.CreateMessageReq) (*dto.CreateMessageRes, error)
+	FetchMessages(c context.Context, req *dto.MessageQueryParams) ([]*dto.MessageListResponse, error)
 }
 
 type messageService struct {
+	repositories.IHallRepository
 	repositories.IRoomRepository
 	repositories.IMessageRepository
 	repositories.IUserRepository
@@ -24,8 +27,9 @@ type messageService struct {
 	mu      sync.RWMutex
 }
 
-func NewMessageService(roomRepo repositories.IRoomRepository, messageRepo repositories.IMessageRepository, userRepo repositories.IUserRepository) IMessageService {
+func NewMessageService(hallRepo repositories.IHallRepository, roomRepo repositories.IRoomRepository, messageRepo repositories.IMessageRepository, userRepo repositories.IUserRepository) IMessageService {
 	return &messageService{
+		hallRepo,
 		roomRepo,
 		messageRepo,
 		userRepo,
@@ -76,9 +80,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 		// validate if the userId acc exists or not
 		for _, mentionedUserID := range *req.Mentions {
 
-			// convert string into UUID
-
-			exists, err := s.IUserRepository.DoesUserExists(ctx, mentionedUserID)
+			exists, err := s.IUserRepository.DoesUserExists(ctx, &mentionedUserID)
 			if err != nil {
 				return nil, utils.ErrorInternal
 			}
@@ -91,7 +93,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 				}
 
 				// get userBasic information for generation
-				userCRES, err := s.IUserRepository.GetUserById(ctx, mentionedUserID)
+				userCRES, err := s.IUserRepository.GetUserById(ctx, &mentionedUserID)
 				if err != nil {
 					return nil, utils.ErrorFetchingUser
 				}
@@ -173,4 +175,102 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 		UpdatedAt: messageCRES.UpdatedAt,
 	}, nil
 
+}
+
+func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryParams) ([]*dto.MessageListResponse, error) {
+
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	// validate only single cursor is used
+	cursorCount := 0
+
+	if req.Before != nil {
+		cursorCount++
+	}
+	if req.After != nil {
+		cursorCount++
+	}
+	if req.Around != nil {
+		cursorCount++
+	}
+
+	if cursorCount > 1 {
+		return nil, utils.ErrorInvalidCursorCombination
+	}
+
+	// Validate Limit
+	if req.Limit <= 0 {
+		req.Limit = 50
+	}
+	if req.Limit > 100 {
+		req.Limit = 100
+	}
+
+	// Check if room exists
+	roomExist, err := s.IRoomRepository.DoesRoomExists(ctx, &req.RoomID)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	if !*roomExist {
+		return nil, utils.ErrorRoomDoesntExist
+	}
+
+	// Get userId from context
+	userId, _, err := auth.CurrentUserFromContext(ctx)
+	if err != nil {
+		return nil, utils.ErrorInvalidUserUUID
+	}
+
+	// get the room
+	room, err := s.IRoomRepository.GetRoomByID(ctx, &req.RoomID)
+	if err != nil {
+		return nil, utils.ErrorFetchingRoom
+	}
+
+	// does hall exist
+	hallExist, err := s.IHallRepository.DoesHallExist(ctx, room.HallId)
+	if err != nil {
+		return nil, utils.ErrorFetchingHall
+	}
+
+	if !*hallExist {
+		return nil, utils.ErrorHallDoesntExist
+	}
+
+	// does user belong to hall and room
+	userBelongsToHall, err := s.IHallRepository.IsUserHallMember(ctx, room.HallId, *userId)
+	if err != nil {
+		return nil, utils.ErrorFetchingHall
+	}
+
+	if !*userBelongsToHall {
+		return nil, utils.ErrorUserDoesntBelongHall
+	}
+
+	// if room = private , check if user belongs to the room
+	if room.IsPrivate {
+		userBelongsToRoom, err := s.IRoomRepository.IsUserRoomMember(ctx, &room.ID, userId)
+
+		if err != nil {
+			return nil, utils.ErrorFetchingRoom
+		}
+
+		if !*userBelongsToRoom {
+			return nil, utils.ErrorUserDoesntBelongRoom
+		}
+	}
+
+	// Validate Limit
+	// Validate Before, After and Around
+	// type MessageQueryParams struct {
+	// 	RoomID uuid.UUID
+	// 	Limit  int        // default: 50, max: 100
+	// 	Before *uuid.UUID // Get messages before this message ID
+	// 	After  *uuid.UUID // Get messages after this message ID
+	// 	Around *uuid.UUID // Get messages around this message ID
+	// }
+
+	return nil, nil
 }

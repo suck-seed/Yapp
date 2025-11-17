@@ -34,7 +34,7 @@ func StartServer(cfg config.AppConfig) {
 	hallService := services.NewHallService(hallRepository)
 	floorService := services.NewFloorService(hallRepository, floorRepository)
 	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository)
-	messageService := services.NewMessageService(roomRepository, messageRepository, userRepository)
+	messageService := services.NewMessageService(hallRepository, roomRepository, messageRepository, userRepository)
 
 	//	presist function
 	presistFunction := ws.MakePresistFunction(messageService, userService)

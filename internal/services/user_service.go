@@ -18,7 +18,7 @@ type IUserService interface {
 	Signin(c context.Context, req *dto.SigninUserReq) (*dto.SigninUserRes, error)
 
 	GetUserMe(c context.Context) (*models.User, error)
-	GetUserById(c context.Context, userId uuid.UUID) (*models.User, error)
+	GetUserById(c context.Context, userId *uuid.UUID) (*models.User, error)
 
 	UpdateUserMe(c context.Context, req *dto.UpdateUserMeReq) (*models.User, error)
 }
@@ -66,8 +66,8 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	}
 
 	// check username, email and number for existing records
-	userByUsername, _ := s.IUserRepository.GetUserByUsername(ctx, canonUsername)
-	userByEmail, _ := s.IUserRepository.GetUserByEmail(ctx, canonEmail)
+	userByUsername, _ := s.IUserRepository.GetUserByUsername(ctx, &canonUsername)
+	userByEmail, _ := s.IUserRepository.GetUserByEmail(ctx, &canonEmail)
 
 	// userByNumber, _ := s.IUserRepository.GetUserByNumber(ctx, canonPhone)
 
@@ -123,7 +123,7 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 
 	canonEmail, err := utils.SanitizeEmail(req.Email)
 	if err == nil {
-		user, _ = s.IUserRepository.GetUserWithPasswordHashByEmail(ctx, canonEmail)
+		user, _ = s.IUserRepository.GetUserWithPasswordHashByEmail(ctx, &canonEmail)
 	}
 
 	canonPassword, err := utils.SanitizePasswordPolicy(req.Password)
@@ -162,15 +162,9 @@ func (s *userService) GetUserMe(c context.Context) (*models.User, error) {
 	defer cancel()
 
 	// Extract user info from context (already validated by middleware)
-	userIdString, _, err := auth.CurrentUserFromContext(c)
+	userId, _, err := auth.CurrentUserFromContext(c)
 	if err != nil {
-		return nil, utils.ErrorUserNotFound
-	}
-
-	// parse uuid
-	userId, err := uuid.Parse(userIdString)
-	if err != nil {
-		return nil, err
+		return nil, utils.ErrorInvalidUserUUID
 	}
 
 	// Fetch the user from the repository
@@ -191,15 +185,9 @@ func (s *userService) UpdateUserMe(c context.Context, req *dto.UpdateUserMeReq) 
 	defer cancel()
 
 	// Extract user info from context (already validated by middleware)
-	userIdString, _, err := auth.CurrentUserFromContext(c)
+	userId, _, err := auth.CurrentUserFromContext(c)
 	if err != nil {
-		return nil, utils.ErrorUserNotFound
-	}
-
-	// parse uuid
-	userId, err := uuid.Parse(userIdString)
-	if err != nil {
-		return nil, err
+		return nil, utils.ErrorInvalidUserUUID
 	}
 
 	user, err := s.IUserRepository.UpdateUserById(ctx, userId, req)
@@ -214,7 +202,7 @@ func (s *userService) UpdateUserMe(c context.Context, req *dto.UpdateUserMeReq) 
 	return user, nil
 }
 
-func (s *userService) GetUserById(c context.Context, userId uuid.UUID) (*models.User, error) {
+func (s *userService) GetUserById(c context.Context, userId *uuid.UUID) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
