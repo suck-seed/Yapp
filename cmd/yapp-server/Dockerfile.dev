@@ -7,14 +7,13 @@ RUN apk add --no-cache git \
 
 WORKDIR /app
 
-# Only download modules, source will be bind-mounted
+# Only download modules, they will be installed afai
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy air config
+# copying air.toml
 COPY .air.toml ./
 
 # In dev we mount the source directory, so no COPY for source
-
 # Run air to watch, rebuild, and restart
 CMD ["air"]

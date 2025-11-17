@@ -1,15 +1,9 @@
 package config
 
 import (
-	"errors"
-	"fmt"
 	"os"
-	"strconv"
-	"time"
 
-	"github.com/gin-contrib/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/joho/godotenv"
 	"github.com/suck-seed/yapp/internal/database"
 
 	"github.com/gin-gonic/gin"
