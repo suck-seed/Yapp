@@ -339,7 +339,75 @@ func (r *messageRepository) GetMessages(ctx context.Context, params *dto.Message
 // GET MESSAGES AROUND A MESSAGE
 func (r *messageRepository) getMessagesAround(ctx context.Context, params *dto.MessageQueryParams) ([]*dto.MessageDetailed, error) {
 
-	return []*dto.MessageDetailed{}, nil
+	// before and after equally lina paryo so
+	halfLimit := params.Limit / 2
+
+	// query
+	query := `
+
+	WITH target_messages AS (
+	    (
+	    SELECT m.id, m.room_id, m.author_id, m.content, m.mention_everyone,
+					m.sent_at, m.edited_at, m.created_at, m.updated_at
+		FROM messages m
+		WHERE m.room_id = $1
+		    AND m.deleted_at IS NULL
+			AND (
+			    m.sent_at < (SELECT sent_at FROM messages WHERE id = $2)
+				OR (
+				    m.sent_at = (SELECT sent_at FROM messages WHERE id = $2)
+					AND m.id <= 2
+				)
+			)
+		ORDER BY m.sent_at DECS, m.id DESC
+		LIMIT $3
+		)
+
+		UNION ALL (
+		SELECT m.id, m.room_id, m.author_id, m.content, m.mention_everyone,
+		m.sent_at, m.edited_at, m.created_at, m.updated_at
+		FROM messages m
+		WHERE m.room_id = $1
+		    AND m.deleted_at IS NULL
+			AND (
+			    m.sent_at < (SELECT sent_at FROM messages WHERE id = $2)
+				OR (
+				m.sent_at = (SELECT sent_at FROM messages WHERE id = $2)
+				AND m.id <= 2
+				)
+			)
+			ORDER BY m.sent_at ASC, m.id ASC
+			LIMIT $4
+		)
+	)
+
+	SELECT
+	tm.id, tm.room_id, tm.author_id, tm.content, tm.mention_everyone,
+	tm.sent_at, tm.edited_at, tm.created_at, tm.updated_at
+
+	u.id, u.username, u.email, u.avatar_url
+
+	a.id, a.message_id, a.url, a.file_name, a.file_type, a.created_at, a.updated_at
+
+	r.id, r.emoji, r.user_id, ru.username, ru.avatar_url
+
+	FROM target_messages as tm
+	INNER JOIN users u ON tm.author_id=u.id
+	LEFT JOIN attachments a ON tm.id = a.message_id
+	LEFT JOIN reactions r ON tm.id = r.message_id
+	LEFT JOIN users ru ON r.user_id = ru.user_id
+
+	ORDER BY tm.sent_at ASC, tm.id ASC
+	`
+
+	rows, err := r.db.Query(ctx, query, params.RoomID, params.Around, halfLimit, halfLimit)
+	if err != nil {
+		return nil, utils.ErrorFetchingMessages
+	}
+
+	defer rows.Close()
+
+	return r.scanMessagesWithDetails(rows)
 
 }
 
