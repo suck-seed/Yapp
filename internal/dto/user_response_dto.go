@@ -16,9 +16,9 @@ type SignupUserRes struct {
 }
 
 type SigninUserRes struct {
-	AccessToken string    `json:"-"`
-	ID          uuid.UUID `json:"id" db:"id"`
-	Username    string    `json:"username" db:"username"`
+	AccessToken string `json:"-"`
+	UserMe
+	Success bool `json:"success", default:"false"`
 }
 
 type UserPublic struct {
