@@ -18,7 +18,7 @@ type SignupUserRes struct {
 type SigninUserRes struct {
 	AccessToken string `json:"-"`
 	UserMe
-	Success bool `json:"success", default:"false"`
+	Success bool `json:"success" default:"false"`
 }
 
 type UserPublic struct {
