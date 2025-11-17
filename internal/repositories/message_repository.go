@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/dto"
@@ -231,7 +232,7 @@ func (r *messageRepository) GetMessages(ctx context.Context, params *dto.Message
 		-- continued
 	`
 
-	args := []interface{}{params.RoomID}
+	args := []any{params.RoomID}
 	argCount := 1
 
 	// CURSOR BASED PAGINATION
@@ -294,6 +295,10 @@ func (r *messageRepository) GetMessages(ctx context.Context, params *dto.Message
 	// tm for Message
 	// u for userbasic
 
+	// LEFT JOIN is used for scenarios where a record in the left table can correspond to zero, one, or multiple (0...N) records in the right table
+	// attachments a (0..N per message)
+	// reactions r (0..N per message)
+
 	query += `
 	 )
 		SELECT
@@ -304,12 +309,13 @@ func (r *messageRepository) GetMessages(ctx context.Context, params *dto.Message
 
 		a.id, a.message_id, a.url, a.file_name, a.file_type, a.created_at, a.updated_at
 
-		r.id, r.emoji, r.user_id
+		r.id, r.emoji, r.user_id, ru.username, ru.avatar_url
 
 		FROM target_messages as tm
 		INNER JOIN users u ON tm.author_id=u.id
 		LEFT JOIN attachments a ON tm.id = a.message_id
 		LEFT JOIN reactions r ON tm.id = r.message_id
+		LEFT JOIN users ru ON r.user_id = ru.user_id
 
 		ORDER BY tm.sent_at ASC, tm.id ASC
 	`
@@ -341,7 +347,7 @@ func (r *messageRepository) getMessagesAround(ctx context.Context, params *dto.M
 func (r *messageRepository) scanMessagesWithDetails(rows interface {
 	Next() bool
 	Err() error
-	Scan(dest ...interface{}) error
+	Scan(dest ...any) error
 }) ([]*dto.MessageDetailed, error) {
 	messageMap := make(map[uuid.UUID]*dto.MessageDetailed)
 	messageOrder := []uuid.UUID{}
@@ -351,14 +357,189 @@ func (r *messageRepository) scanMessagesWithDetails(rows interface {
 
 		// define variables
 		var (
-			message    models.Message
-			author     dto.UserBasic
-			attachment *dto.AttachmentResponseMinimal
-			mention    *dto.UserBasic
+			message models.Message
+			author  dto.UserBasic
+
+			attachmentID    *uuid.UUID
+			attachmentMsgID *uuid.UUID
+			url             *string
+			fileName        *string
+			fileType        *string
+			attCreatedAt    *time.Time
+			attUpdatedAt    *time.Time
+
+			// REACTION (COUNT NEEDED SO DOING IT LIKE THIS)
+			reactionID       *uuid.UUID
+			emoji            *string
+			reactorUserID    *uuid.UUID
+			reactorUsername  *string
+			reactorAvatarURL *string
 		)
 
+		// gotta be in the same order
+		err := rows.Scan(
+			// tm
+			&message.ID,
+			&message.RoomId,
+			&message.AuthorId,
+			&message.Content,
+			&message.MentionEveryone,
+			&message.SentAt,
+			&message.EditedAt,
+			&message.CreatedAt,
+			&message.UpdatedAt,
+
+			// author
+			&author.ID,
+			&author.Username,
+			&author.Email,
+			&author.AvatarURL,
+
+			// attachment
+			&attachmentID,
+			&attachmentMsgID,
+			&url,
+			&fileName,
+			&fileType,
+			&attCreatedAt,
+			&attUpdatedAt,
+
+			// reaction
+			&reactionID,
+			&emoji,
+			&reactorUserID,
+			&reactorUsername,
+			&reactorAvatarURL,
+		)
+
+		if err != nil {
+			return nil, utils.ErrorFetchingMessages
+		}
+
+		// Check if message already exist in map or not
+		msgDetailed, ok := messageMap[message.ID]
+
+		// if doesnt exist
+		if !ok {
+			msgDetailed = &dto.MessageDetailed{
+				Message: message,
+				Author:  author,
+
+				// we will handles these down below
+				Attachments: []dto.AttachmentResponseMinimal{},
+				Reactions:   []dto.ReactionGroup{},
+				Mentions:    []dto.UserBasic{},
+			}
+
+			// add above messageDetailed on messagemap
+			messageMap[message.ID] = msgDetailed
+
+			// we order them serially on the way they came from db (ASC/DES)
+			messageOrder = append(messageOrder, message.ID)
+		}
+
+		// ATTACHMENTS if exists and not added already
+		if attachmentID != nil {
+
+			// check if already exists
+			found := false
+			for _, attachment := range msgDetailed.Attachments {
+
+				if attachment.ID == *attachmentID {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				attachment := &dto.AttachmentResponseMinimal{
+					ID:        *attachmentID,
+					MessageID: *attachmentMsgID,
+					URL:       *url,
+					FileName:  *fileName,
+					FileType:  fileType,
+					CreatedAt: *attCreatedAt,
+					UpdatedAt: *attCreatedAt,
+				}
+
+				// add the attachment to the Attachments in msgDetailed
+				msgDetailed.Attachments = append(msgDetailed.Attachments, *attachment)
+			}
+
+		}
+
+		// REACTION IF EXISTS
+		if reactionID != nil && emoji != nil {
+			found := false
+			for i := range msgDetailed.Reactions {
+
+				// is this emoji already added
+				if msgDetailed.Reactions[i].Emoji == *emoji {
+					found = true
+
+					// is this current userAdded in the userlist?
+					userFound := false
+					// loop through the reactors
+					for _, reactor := range msgDetailed.Reactions[i].Reactors {
+						// loop over reactors
+						if reactorUserID != nil && reactor.ID == *reactorUserID {
+							userFound = true
+							break
+						}
+					}
+
+					if userFound && reactorUserID != nil {
+
+						// add user
+						currentReactor := &dto.UserBasic{
+							ID:        *reactorUserID,
+							Username:  *reactorUsername,
+							AvatarURL: reactorAvatarURL,
+						}
+						msgDetailed.Reactions[i].Reactors = append(msgDetailed.Reactions[i].Reactors, *currentReactor)
+
+					}
+					break
+				}
+
+			}
+
+			// NOT FOUND, NEW EMOJI
+			if !found {
+				reactionGroup := &dto.ReactionGroup{
+					Emoji:    *emoji,
+					Count:    1,
+					Reactors: []dto.UserBasic{},
+				}
+
+				// add user
+				if reactorUserID != nil {
+					currentReactor := &dto.UserBasic{
+						ID:        *reactorUserID,
+						Username:  *reactorUsername,
+						AvatarURL: reactorAvatarURL,
+					}
+					reactionGroup.Reactors = append(reactionGroup.Reactors, *currentReactor)
+
+				}
+
+				// add this emoji group to Reaction in msgDetailed
+				msgDetailed.Reactions = append(msgDetailed.Reactions, *reactionGroup)
+			}
+		}
 	}
-	return nil, nil
+
+	if err := rows.Err(); err != nil {
+		return nil, utils.ErrorMessageRowsIteration
+	}
+
+	// convert map to ordered slice
+	result := make([]*dto.MessageDetailed, 0, len(messageOrder))
+	for _, msgID := range messageOrder {
+		result = append(result, messageMap[msgID])
+	}
+
+	return result, nil
 
 }
 
