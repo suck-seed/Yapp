@@ -232,7 +232,7 @@ func (r *messageRepository) GetMessages(ctx context.Context, params *dto.Message
 		-- continued
 	`
 
-	args := []interface{}{params.RoomID}
+	args := []any{params.RoomID}
 	argCount := 1
 
 	// CURSOR BASED PAGINATION
@@ -347,7 +347,7 @@ func (r *messageRepository) getMessagesAround(ctx context.Context, params *dto.M
 func (r *messageRepository) scanMessagesWithDetails(rows interface {
 	Next() bool
 	Err() error
-	Scan(dest ...interface{}) error
+	Scan(dest ...any) error
 }) ([]*dto.MessageDetailed, error) {
 	messageMap := make(map[uuid.UUID]*dto.MessageDetailed)
 	messageOrder := []uuid.UUID{}
