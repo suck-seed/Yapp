@@ -77,6 +77,7 @@ var (
 
 	// CURSOR COMBINATION
 	ErrorInvalidCursorCombination = &CustomError{Code: http.StatusBadRequest, Message: "Invalid cursor combination, Only 1 cursor is to be sent !"}
+	ErrorInvalidCursorLimit       = &CustomError{Code: http.StatusBadRequest, Message: "Invalid cursor Limit, Has to be > 0 !"}
 
 	// ROOM/FLOOR/MESSAGE DOESNT EXIST
 	ErrorRoomDoesntExist        = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}

@@ -63,6 +63,6 @@ type MessageDetailed struct {
 }
 
 type MessageListResponse struct {
-	Messages []MessageDetailed `json:"messages"`
-	HasMore  bool              `json:"has_more"`
+	Messages []*MessageDetailed `json:"messages"`
+	HasMore  bool               `json:"has_more"`
 }
