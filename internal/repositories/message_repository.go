@@ -229,7 +229,6 @@ func (r *messageRepository) GetMessages(ctx context.Context, params *dto.Message
 		FROM messages m
 		WHERE m.room_id = $1
 		AND m.deleted_at IS NULL
-		-- continued
 	`
 
 	args := []any{params.RoomID}
@@ -303,11 +302,11 @@ func (r *messageRepository) GetMessages(ctx context.Context, params *dto.Message
 	 )
 		SELECT
 		tm.id, tm.room_id, tm.author_id, tm.content, tm.mention_everyone,
-		tm.sent_at, tm.edited_at, tm.created_at, tm.updated_at
+		tm.sent_at, tm.edited_at, tm.created_at, tm.updated_at,
 
-		u.id, u.username, u.email, u.avatar_url
+		u.id, u.username, u.email, u.avatar_url,
 
-		a.id, a.message_id, a.url, a.file_name, a.file_type, a.created_at, a.updated_at
+		a.id, a.message_id, a.url, a.file_name, a.file_type, a.created_at, a.updated_at,
 
 		r.id, r.emoji, r.user_id, ru.username, ru.avatar_url
 
@@ -315,7 +314,7 @@ func (r *messageRepository) GetMessages(ctx context.Context, params *dto.Message
 		INNER JOIN users u ON tm.author_id=u.id
 		LEFT JOIN attachments a ON tm.id = a.message_id
 		LEFT JOIN reactions r ON tm.id = r.message_id
-		LEFT JOIN users ru ON r.user_id = ru.user_id
+		LEFT JOIN users ru ON r.user_id = ru.id
 
 		ORDER BY tm.sent_at ASC, tm.id ASC
 	`
@@ -383,11 +382,11 @@ func (r *messageRepository) getMessagesAround(ctx context.Context, params *dto.M
 
 	SELECT
 	tm.id, tm.room_id, tm.author_id, tm.content, tm.mention_everyone,
-	tm.sent_at, tm.edited_at, tm.created_at, tm.updated_at
+	tm.sent_at, tm.edited_at, tm.created_at, tm.updated_at,
 
-	u.id, u.username, u.email, u.avatar_url
+	u.id, u.username, u.email, u.avatar_url,
 
-	a.id, a.message_id, a.url, a.file_name, a.file_type, a.created_at, a.updated_at
+	a.id, a.message_id, a.url, a.file_name, a.file_type, a.created_at, a.updated_at,
 
 	r.id, r.emoji, r.user_id, ru.username, ru.avatar_url
 

@@ -37,6 +37,6 @@ func (h *MessageHandler) FetchMessage(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusFound, res)
+	c.JSON(http.StatusOK, res)
 
 }

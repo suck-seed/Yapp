@@ -97,4 +97,11 @@ func RegisterRoomRoutes(r *gin.RouterGroup, roomService services.IRoomService) {
 
 func RegisterMessageRoutes(r *gin.RouterGroup, messageService services.IMessageService) {
 
+	messageHandler := handlers.NewMessageHandler(messageService)
+
+	messageGroup := r.Group("/messages")
+	{
+		messageGroup.GET("/", messageHandler.FetchMessage)
+	}
+
 }

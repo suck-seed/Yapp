@@ -15,7 +15,7 @@ import (
 
 type IMessageService interface {
 	CreateMessage(c context.Context, req *dto.CreateMessageReq) (*dto.CreateMessageRes, error)
-	FetchMessages(c context.Context, req *dto.MessageQueryParams) ([]*dto.MessageListResponse, error)
+	FetchMessages(c context.Context, req *dto.MessageQueryParams) (*dto.MessageListResponse, error)
 }
 
 type messageService struct {
@@ -177,7 +177,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 
 }
 
-func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryParams) ([]*dto.MessageListResponse, error) {
+func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryParams) (*dto.MessageListResponse, error) {
 
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
@@ -195,16 +195,13 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 		cursorCount++
 	}
 
-	if cursorCount > 1 {
+	if cursorCount > 1 || cursorCount < 1 {
 		return nil, utils.ErrorInvalidCursorCombination
 	}
 
 	// Validate Limit
 	if req.Limit <= 0 {
-		req.Limit = 50
-	}
-	if req.Limit > 100 {
-		req.Limit = 100
+		return nil, utils.ErrorInvalidCursorLimit
 	}
 
 	// Check if room exists
@@ -262,15 +259,30 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 		}
 	}
 
-	// Validate Limit
-	// Validate Before, After and Around
-	// type MessageQueryParams struct {
-	// 	RoomID uuid.UUID
-	// 	Limit  int        // default: 50, max: 100
-	// 	Before *uuid.UUID // Get messages before this message ID
-	// 	After  *uuid.UUID // Get messages after this message ID
-	// 	Around *uuid.UUID // Get messages around this message ID
-	// }
+	// call repository
+	messages, err := s.IMessageRepository.GetMessages(ctx, &dto.MessageQueryParams{
+		RoomID: req.RoomID,
+		Before: req.Before,
+		After:  req.After,
+		Around: req.Around,
+		Limit:  req.Limit + 1,
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	// Check if we got +1 more message
+	hasMore := len(messages) > req.Limit
+
+	if hasMore {
+		// trim messages to limit
+		messages = messages[:req.Limit]
+	}
+
+	messageListResponse := &dto.MessageListResponse{
+		Messages: messages,
+		HasMore:  hasMore,
+	}
+
+	return messageListResponse, nil
 }
