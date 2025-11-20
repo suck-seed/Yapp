@@ -31,9 +31,8 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 	userGroup := r.Group("/users")
 	{
 		userGroup.GET("/", userHandler.Ping)
-		userGroup.GET("/{user_id}")
-		userGroup.GET("/{user_id}/mutual")
-
+		userGroup.GET("/:user_id")
+		userGroup.GET("/:user_id/mutual")
 		userGroup.POST("/")
 	}
 
@@ -61,8 +60,8 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 		hallGroup.GET("/", hallHandler.GetUserHalls)
 		hallGroup.POST("/", hallHandler.CreateHall)
 
-		hallGroup.GET("/{hall_id}")
-		hallGroup.GET("/{hall_id}/floors")
+		hallGroup.GET("/:hall_id")
+		hallGroup.GET("/:hall_id/floors")
 	}
 }
 
@@ -91,6 +90,7 @@ func RegisterRoomRoutes(r *gin.RouterGroup, roomService services.IRoomService) {
 	roomGroup := r.Group("/rooms")
 	{
 		roomGroup.POST("/", roomHandler.CreateRoom)
+		roomGroup.POST("/add_member")
 	}
 
 }
@@ -101,7 +101,7 @@ func RegisterMessageRoutes(r *gin.RouterGroup, messageService services.IMessageS
 
 	messageGroup := r.Group("/messages")
 	{
-		messageGroup.GET("/", messageHandler.FetchMessage)
+		messageGroup.POST("/", messageHandler.FetchMessage)
 	}
 
 }
