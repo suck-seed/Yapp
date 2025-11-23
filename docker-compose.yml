@@ -53,9 +53,33 @@ services:
         air
       "
 
+  nginx:
+    image: nginx:latest
+    restart: always
+    ports:
+      - "80:80"
+
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./assets:/app/assets:ro # static files haru server garna lai
+      - nginx_logs:/var/log/nginx
+
+    depends_on:
+      - yapp-server
+
+    networks:
+      - yapp-net
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget", "--quite", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
   postgres_data:
-  cassandra_data:
+  redis_data:
+  nginx_logs:
 
 networks:
   yapp-net:
