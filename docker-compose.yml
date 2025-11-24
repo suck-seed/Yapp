@@ -16,6 +16,25 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       retries: 5
+    networks:
+      - yapp-net
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    env_file:
+      - ./.env
+    ports:
+      - "${REDIS_PORT}"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+    networks:
+      - yapp-net
 
   migrate:
     image: migrate/migrate:latest
@@ -29,7 +48,7 @@ services:
         condition: service_healthy
     command: ["-path", "/migrations", "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable", "up"]
 
-  yapp-server:
+  yapp-server-1:
     build:
       context: .
       dockerfile: cmd/yapp-server/Dockerfile.dev
@@ -37,8 +56,8 @@ services:
       - ./.env
     volumes:
       - ./:/app
-    ports:
-      - "${HTTP_PORT}:${HTTP_PORT}"
+    expose:
+      - "${HTTP_PORT}"
     restart: always
     depends_on:
       postgres:
@@ -52,6 +71,8 @@ services:
         echo '🚀 Starting Yapp server';
         air
       "
+    networks:
+      - yapp-net
 
   nginx:
     image: nginx:latest
@@ -63,13 +84,10 @@ services:
       - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./assets:/app/assets:ro # static files haru server garna lai
       - nginx_logs:/var/log/nginx
-
     depends_on:
-      - yapp-server
-
+      - yapp-server-1
     networks:
       - yapp-net
-
     healthcheck:
       test: ["CMD-SHELL", "wget", "--quite", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
