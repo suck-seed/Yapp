@@ -234,6 +234,11 @@ func (h *Hub) processReadReciept(msg *dto.InboundMessage) {
 
 }
 
+// Todo: Finish this function to close hub connection
+func (h *Hub) Close() error {
+	return nil
+}
+
 func (h *Hub) deliverToRoom(roomId uuid.UUID, msg *dto.OutboundMessage) {
 
 	h.mu.RLock()
