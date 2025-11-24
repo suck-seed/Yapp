@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/suck-seed/yapp/internal/ws"
 
@@ -64,6 +65,26 @@ func StartServer(cfg config.AppConfig) {
 	}
 
 	start(router, cfg)
+}
+
+func startGracefully(router *gin.Engine, cfg config.AppConfig) {
+
+	server := http.Server{
+		Addr:    ":" + cfg.ServerPort,
+		Handler: router,
+	}
+
+	// starting server in a go routine
+	go func() {
+
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Printf("error: %v\n", err)
+		}
+
+	}()
+
+	// Shutdown handler
+
 }
 
 func start(router *gin.Engine, cfg config.AppConfig) {
