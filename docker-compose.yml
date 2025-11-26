@@ -46,7 +46,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: ["-path", "/migrations", "-database", "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable", "up"]
+    command:
+      [
+        "-path",
+        "/migrations",
+        "-database",
+        "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable",
+        "up",
+      ]
 
     networks:
       - yapppp-net
@@ -104,7 +111,15 @@ services:
       - yapppp-net
 
     healthcheck:
-      test: ["CMD-SHELL", "wget", "--quite", "--tries=1", "--spider", "http://localhost/health"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget",
+          "--quite",
+          "--tries=1",
+          "--spider",
+          "http://localhost/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3

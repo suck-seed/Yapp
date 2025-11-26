@@ -8,7 +8,7 @@ startNoLogsBackend:
 	docker compose up -d
 
 
-removeContainer:
+stopBackend:
 	docker compose down
 
 

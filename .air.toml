@@ -10,7 +10,7 @@ tmp_dir = "tmp"
   args_bin = []
   #cmd = "go build -o ./tmp/main.exe ./cmd/yapp-server"
   # cmd = "go build -o ./tmp/main ./cmd/yapp-server"
-  cmd = "go build -buildvcs=false -o ./tmp/main ./cmd/yapp-server"
+  cmd = "go build -buildvcs=false -o ./tmp/main ./cmd/yapppp-server"
 
   # bin =  "tmp\\main.exe"
   bin = "tmp/main"
