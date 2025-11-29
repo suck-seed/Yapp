@@ -14,7 +14,4 @@ type HallMember struct {
 	JoinedAt  time.Time `db:"joined_at"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
-
-	// Hall *Hall `db:"-"`
-	// User *User `db:"-"`
 }
