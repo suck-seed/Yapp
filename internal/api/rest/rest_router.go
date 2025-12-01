@@ -54,14 +54,75 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 	hallHandler := handlers.NewHallHandler(hallService)
 
-	hallGroup := r.Group("/halls")
+	halls := r.Group("/halls")
 	{
 
-		hallGroup.GET("/", hallHandler.GetUserHalls)
-		hallGroup.POST("/", hallHandler.CreateHall)
+		// TOP LEVEL HALL OPERATIONS
+		halls.GET("", hallHandler.GetUserHalls)
+		halls.POST("", hallHandler.CreateHall)
 
-		hallGroup.GET("/:hall_id")
-		hallGroup.GET("/:hall_id/floors")
+		// SINGLE HALL RUD
+		halls.GET("/:hallID")
+		halls.PATCH("/:hallID")
+		halls.DELETE("/:hallID")
+
+		// SETTING SCOPE
+
+		settings := halls.Group("/:hallID/settings")
+		{
+
+			// PROFILE MANAGEMENT
+			settings.GET("/profile")
+			settings.PATCH("/profile")
+
+			// MEMBERS MANAGEMENT
+			members := settings.Group("/members")
+			{
+				members.GET("")
+				members.POST("")
+				members.PATCH("/:memberID") // updates nickname, timeout, kick, ban, roles, transfer ownership
+				members.DELETE("/:memberID")
+			}
+
+			// ROLES MANAGEMENT
+			roles := settings.Group("/roles")
+			{
+				roles.GET("")
+				roles.POST("")
+				roles.PATCH("/:roleID")
+				roles.DELETE("/:roleID")
+
+				// roles ko permission
+				roles.GET("/:roleID/permissions")
+				roles.PATCH("/:roleID/permissions")
+
+			}
+
+			// INVITES MANAGEMENT
+			invites := settings.Group("/invites")
+			{
+				invites.GET("")
+				invites.POST("")
+				invites.DELETE("/:inviteID") // revoke invite
+			}
+
+			// JOIN REQUESTS MANAGEMENT
+			requests := settings.Group("/requests")
+			{
+				requests.GET("")
+				requests.POST("")                    // create requests
+				requests.PATCH("/:requestID/accept") // accept request
+				requests.DELETE("/:requestID")       // accept request
+			}
+
+			// BANS
+			bans := settings.Group("/bans")
+			{
+				bans.GET("")
+				bans.POST("")          // ban someone
+				bans.DELETE("/:banID") // unban
+			}
+		}
 	}
 }
 
