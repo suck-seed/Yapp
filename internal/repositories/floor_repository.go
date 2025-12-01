@@ -4,27 +4,25 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/suck-seed/yapp/internal/database"
 	"github.com/suck-seed/yapp/internal/models"
 )
 
 type IFloorRepository interface {
-	CreateFloor(ctx context.Context, floor *models.Floor) (*models.Floor, error)
-	DoesFloorExistsInRoom(ctx context.Context, floorID *uuid.UUID, hallID *uuid.UUID) (bool, error)
+	CreateFloor(ctx context.Context, db database.DBRunner, floor *models.Floor) (*models.Floor, error)
+	DoesFloorExistsInRoom(ctx context.Context, db database.DBRunner, floorID *uuid.UUID, hallID *uuid.UUID) (bool, error)
 }
 
 type floorRepository struct {
-	db PGXTX
 }
 
-func NewFloorRepository(db PGXTX) IFloorRepository {
+func NewFloorRepository() IFloorRepository {
 
-	return &floorRepository{
-		db: db,
-	}
+	return &floorRepository{}
 
 }
 
-func (r *floorRepository) CreateFloor(ctx context.Context, floor *models.Floor) (*models.Floor, error) {
+func (r *floorRepository) CreateFloor(ctx context.Context, db database.DBRunner, floor *models.Floor) (*models.Floor, error) {
 
 	query := `
 
@@ -34,7 +32,7 @@ func (r *floorRepository) CreateFloor(ctx context.Context, floor *models.Floor) 
 
 	`
 
-	row := r.db.QueryRow(ctx, query,
+	row := db.QueryRow(ctx, query,
 
 		floor.ID,
 		floor.HallID,
@@ -62,7 +60,7 @@ func (r *floorRepository) CreateFloor(ctx context.Context, floor *models.Floor) 
 	return floorCRES, nil
 }
 
-func (r *floorRepository) DoesFloorExistsInRoom(ctx context.Context, floorID *uuid.UUID, hallID *uuid.UUID) (bool, error) {
+func (r *floorRepository) DoesFloorExistsInRoom(ctx context.Context, db database.DBRunner, floorID *uuid.UUID, hallID *uuid.UUID) (bool, error) {
 
 	query := `
 
@@ -72,7 +70,7 @@ func (r *floorRepository) DoesFloorExistsInRoom(ctx context.Context, floorID *uu
 
 	var exists bool
 
-	err := r.db.QueryRow(ctx, query, floorID, hallID).Scan(&exists)
+	err := db.QueryRow(ctx, query, floorID, hallID).Scan(&exists)
 	if err != nil {
 		return false, err
 	}

@@ -5,36 +5,34 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/suck-seed/yapp/internal/database"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 )
 
 type IUserRepository interface {
-	CreateUser(ctx context.Context, user *models.User) (*models.User, error)
-	UpdateUserById(ctx context.Context, userID *uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error)
+	CreateUser(ctx context.Context, db database.DBRunner, user *models.User) (*models.User, error)
+	UpdateUserById(ctx context.Context, db database.DBRunner, userID *uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error)
 
-	GetUserWithPasswordHashByEmail(ctx context.Context, email *string) (*models.User, error)
-	GetUserByEmail(ctx context.Context, email *string) (*models.User, error)
-	GetUserByUsername(ctx context.Context, username *string) (*models.User, error)
-	GetUserByNumber(ctx context.Context, number *string) (*models.User, error)
-	GetUserById(ctx context.Context, userID *uuid.UUID) (*models.User, error)
+	GetUserWithPasswordHashByEmail(ctx context.Context, db database.DBRunner, email *string) (*models.User, error)
+	GetUserByEmail(ctx context.Context, db database.DBRunner, email *string) (*models.User, error)
+	GetUserByUsername(ctx context.Context, db database.DBRunner, username *string) (*models.User, error)
+	GetUserByNumber(ctx context.Context, db database.DBRunner, number *string) (*models.User, error)
+	GetUserById(ctx context.Context, db database.DBRunner, userID *uuid.UUID) (*models.User, error)
 	// GetUserBasics(ctx context.Context, userID uuid.UUID) (*dto.UserBasic, error)
 
-	DoesUserExists(ctx context.Context, userID *uuid.UUID) (bool, error)
+	DoesUserExists(ctx context.Context, db database.DBRunner, userID *uuid.UUID) (bool, error)
 }
 
 type userRepository struct {
-	db PGXTX
 }
 
-func NewUserRepository(db PGXTX) IUserRepository {
+func NewUserRepository() IUserRepository {
 
-	return &userRepository{
-		db: db,
-	}
+	return &userRepository{}
 }
 
-func (r *userRepository) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
+func (r *userRepository) CreateUser(ctx context.Context, db database.DBRunner, user *models.User) (*models.User, error) {
 
 	saved := &models.User{}
 
@@ -45,7 +43,7 @@ func (r *userRepository) CreateUser(ctx context.Context, user *models.User) (*mo
 
    			`
 
-	row := r.db.QueryRow(ctx, query,
+	row := db.QueryRow(ctx, query,
 		user.ID,
 		user.Username,
 		user.DisplayName,
@@ -73,7 +71,7 @@ func (r *userRepository) CreateUser(ctx context.Context, user *models.User) (*mo
 	return saved, nil
 }
 
-func (r *userRepository) GetUserByUsername(ctx context.Context, username *string) (*models.User, error) {
+func (r *userRepository) GetUserByUsername(ctx context.Context, db database.DBRunner, username *string) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -83,7 +81,7 @@ func (r *userRepository) GetUserByUsername(ctx context.Context, username *string
 				WHERE lower(username) = lower($1)
 			`
 
-	row := r.db.QueryRow(ctx, query, username)
+	row := db.QueryRow(ctx, query, username)
 
 	err := row.Scan(
 		&user.ID,
@@ -105,7 +103,7 @@ func (r *userRepository) GetUserByUsername(ctx context.Context, username *string
 	return user, nil
 }
 
-func (r *userRepository) GetUserByNumber(ctx context.Context, number *string) (*models.User, error) {
+func (r *userRepository) GetUserByNumber(ctx context.Context, db database.DBRunner, number *string) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -115,7 +113,7 @@ func (r *userRepository) GetUserByNumber(ctx context.Context, number *string) (*
 				WHERE phone_number = $1
 			`
 
-	row := r.db.QueryRow(ctx, query, number)
+	row := db.QueryRow(ctx, query, number)
 
 	err := row.Scan(
 		&user.ID,
@@ -137,7 +135,7 @@ func (r *userRepository) GetUserByNumber(ctx context.Context, number *string) (*
 	return user, nil
 }
 
-func (r *userRepository) GetUserWithPasswordHashByEmail(ctx context.Context, email *string) (*models.User, error) {
+func (r *userRepository) GetUserWithPasswordHashByEmail(ctx context.Context, db database.DBRunner, email *string) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -148,7 +146,7 @@ func (r *userRepository) GetUserWithPasswordHashByEmail(ctx context.Context, ema
 				WHERE lower(email) = lower($1)
 			`
 
-	row := r.db.QueryRow(ctx, query, email)
+	row := db.QueryRow(ctx, query, email)
 
 	err := row.Scan(
 		&user.ID,
@@ -171,7 +169,7 @@ func (r *userRepository) GetUserWithPasswordHashByEmail(ctx context.Context, ema
 	return user, nil
 }
 
-func (r *userRepository) GetUserByEmail(ctx context.Context, email *string) (*models.User, error) {
+func (r *userRepository) GetUserByEmail(ctx context.Context, db database.DBRunner, email *string) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -182,7 +180,7 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email *string) (*mo
 				WHERE lower(email) = lower($1)
 			`
 
-	row := r.db.QueryRow(ctx, query, email)
+	row := db.QueryRow(ctx, query, email)
 
 	err := row.Scan(
 		&user.ID,
@@ -204,7 +202,7 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email *string) (*mo
 	return user, nil
 }
 
-func (r *userRepository) GetUserById(ctx context.Context, userID *uuid.UUID) (*models.User, error) {
+func (r *userRepository) GetUserById(ctx context.Context, db database.DBRunner, userID *uuid.UUID) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -215,7 +213,7 @@ func (r *userRepository) GetUserById(ctx context.Context, userID *uuid.UUID) (*m
 				WHERE id = $1
 			`
 
-	row := r.db.QueryRow(ctx, query, userID)
+	row := db.QueryRow(ctx, query, userID)
 
 	err := row.Scan(
 		&user.ID,
@@ -237,7 +235,7 @@ func (r *userRepository) GetUserById(ctx context.Context, userID *uuid.UUID) (*m
 	return user, nil
 }
 
-func (r *userRepository) UpdateUserById(ctx context.Context, userID *uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error) {
+func (r *userRepository) UpdateUserById(ctx context.Context, db database.DBRunner, userID *uuid.UUID, req *dto.UpdateUserMeReq) (*models.User, error) {
 
 	user := &models.User{}
 
@@ -247,7 +245,7 @@ func (r *userRepository) UpdateUserById(ctx context.Context, userID *uuid.UUID, 
         WHERE id = $5
         RETURNING username, display_name, email, avatar_url, avatar_thumbnail_url, active
     `
-	err := r.db.QueryRow(ctx, query, req.DisplayName, req.AvatarURL, req.AvatarThumbnailURL, time.Now(), userID).Scan(
+	err := db.QueryRow(ctx, query, req.DisplayName, req.AvatarURL, req.AvatarThumbnailURL, time.Now(), userID).Scan(
 		&user.Username,
 		&user.DisplayName,
 		&user.Email,
@@ -261,7 +259,7 @@ func (r *userRepository) UpdateUserById(ctx context.Context, userID *uuid.UUID, 
 	return user, nil
 }
 
-func (r *userRepository) DoesUserExists(ctx context.Context, userID *uuid.UUID) (bool, error) {
+func (r *userRepository) DoesUserExists(ctx context.Context, db database.DBRunner, userID *uuid.UUID) (bool, error) {
 
 	query := `
 
@@ -271,7 +269,7 @@ func (r *userRepository) DoesUserExists(ctx context.Context, userID *uuid.UUID) 
 
 	var exists bool
 
-	err := r.db.QueryRow(ctx, query, userID).Scan(&exists)
+	err := db.QueryRow(ctx, query, userID).Scan(&exists)
 	if err != nil {
 		return false, err
 	}
