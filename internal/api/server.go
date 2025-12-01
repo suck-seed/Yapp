@@ -30,18 +30,18 @@ func StartServer(cfg config.AppConfig) {
 	router.Use(cfg.CORS)
 
 	// repositories
-	userRepository := repositories.NewUserRepository(cfg.Postgres)
-	hallRepository := repositories.NewHallRepository(cfg.Postgres)
-	floorRepository := repositories.NewFloorRepository(cfg.Postgres)
-	roomRepository := repositories.NewRoomRepository(cfg.Postgres)
-	messageRepository := repositories.NewMessageRepository(cfg.Postgres)
+	userRepository := repositories.NewUserRepository()
+	hallRepository := repositories.NewHallRepository()
+	floorRepository := repositories.NewFloorRepository()
+	roomRepository := repositories.NewRoomRepository()
+	messageRepository := repositories.NewMessageRepository()
 
 	// Service & Dependency Injection for services
-	userService := services.NewUserService(userRepository)
-	hallService := services.NewHallService(hallRepository)
-	floorService := services.NewFloorService(hallRepository, floorRepository)
-	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository)
-	messageService := services.NewMessageService(hallRepository, roomRepository, messageRepository, userRepository)
+	userService := services.NewUserService(userRepository, cfg.PostgresPool)
+	hallService := services.NewHallService(hallRepository, cfg.PostgresPool)
+	floorService := services.NewFloorService(hallRepository, floorRepository, cfg.PostgresPool)
+	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository, cfg.PostgresPool)
+	messageService := services.NewMessageService(hallRepository, roomRepository, messageRepository, userRepository, cfg.PostgresPool)
 
 	//	presist function
 	presistFunction := ws.MakePresistFunction(messageService, userService)
@@ -128,7 +128,7 @@ func startGracefully(router *gin.Engine, cfg config.AppConfig, hub *ws.Hub) {
 	}
 
 	// close postgres db
-	cfg.Postgres.Close()
+	cfg.PostgresPool.Close()
 
 	// log message
 	log.Printf("Gracefully stopped server")

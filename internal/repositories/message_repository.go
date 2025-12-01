@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/suck-seed/yapp/internal/database"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/utils"
@@ -14,32 +15,29 @@ import (
 type IMessageRepository interface {
 
 	//	Message creation flow
-	CreateMessage(ctx context.Context, message *models.Message) (*models.Message, error)
-	AddMessageMention(ctx context.Context, messageId uuid.UUID, userID uuid.UUID) error
-	AddAttachment(ctx context.Context, attachment *models.Attachment) (*models.Attachment, error)
+	CreateMessage(ctx context.Context, db database.DBRunner, message *models.Message) (*models.Message, error)
+	AddMessageMention(ctx context.Context, db database.DBRunner, messageId uuid.UUID, userID uuid.UUID) error
+	AddAttachment(ctx context.Context, db database.DBRunner, attachment *models.Attachment) (*models.Attachment, error)
 
 	//	Additional
-	GetMessageByID(ctx context.Context, messageID uuid.UUID) (*models.Message, error)
-	GetMessagesByRoomID(ctx context.Context, roomID uuid.UUID, limit int, offset int) ([]*models.Message, error)
+	GetMessageByID(ctx context.Context, db database.DBRunner, messageID uuid.UUID) (*models.Message, error)
+	GetMessagesByRoomID(ctx context.Context, db database.DBRunner, roomID uuid.UUID, limit int, offset int) ([]*models.Message, error)
 
-	GetMessages(ctx context.Context, params *dto.MessageQueryParams) ([]*dto.MessageDetailed, error)
+	GetMessages(ctx context.Context, db database.DBRunner, params *dto.MessageQueryParams) ([]*dto.MessageDetailed, error)
 
-	UpdateMessage(ctx context.Context, message *models.Message) (*models.Message, error)
-	DeleteMessage(ctx context.Context, message *models.Message) error
+	UpdateMessage(ctx context.Context, db database.DBRunner, message *models.Message) (*models.Message, error)
+	DeleteMessage(ctx context.Context, db database.DBRunner, message *models.Message) error
 }
 
 type messageRepository struct {
-	db PGXTX
 }
 
-func NewMessageRepository(db PGXTX) IMessageRepository {
+func NewMessageRepository() IMessageRepository {
 
-	return &messageRepository{
-		db: db,
-	}
+	return &messageRepository{}
 }
 
-func (r *messageRepository) CreateMessage(ctx context.Context, message *models.Message) (*models.Message, error) {
+func (r *messageRepository) CreateMessage(ctx context.Context, db database.DBRunner, message *models.Message) (*models.Message, error) {
 
 	query := `
 			INSERT INTO messages (id, room_id, author_id, content, sent_at, mention_everyone)
@@ -49,7 +47,7 @@ func (r *messageRepository) CreateMessage(ctx context.Context, message *models.M
 
 			`
 
-	row := r.db.QueryRow(
+	row := db.QueryRow(
 		ctx,
 		query,
 		message.ID,
@@ -83,7 +81,7 @@ func (r *messageRepository) CreateMessage(ctx context.Context, message *models.M
 
 }
 
-func (r *messageRepository) AddAttachment(ctx context.Context, attachment *models.Attachment) (*models.Attachment, error) {
+func (r *messageRepository) AddAttachment(ctx context.Context, db database.DBRunner, attachment *models.Attachment) (*models.Attachment, error) {
 
 	query := `
 			INSERT INTO attachments (id, message_id, file_name, url, file_type, file_size)
@@ -93,7 +91,7 @@ func (r *messageRepository) AddAttachment(ctx context.Context, attachment *model
 
 			`
 
-	row := r.db.QueryRow(
+	row := db.QueryRow(
 		ctx,
 		query,
 		attachment.ID,
@@ -122,7 +120,7 @@ func (r *messageRepository) AddAttachment(ctx context.Context, attachment *model
 	return attachmentCRES, nil
 }
 
-func (r *messageRepository) AddMessageMention(ctx context.Context, messageId uuid.UUID, userID uuid.UUID) error {
+func (r *messageRepository) AddMessageMention(ctx context.Context, db database.DBRunner, messageId uuid.UUID, userID uuid.UUID) error {
 
 	query := `
   				INSERT INTO message_mentions (message_id,user_id)
@@ -131,12 +129,12 @@ func (r *messageRepository) AddMessageMention(ctx context.Context, messageId uui
 
    			`
 
-	_, err := r.db.Exec(ctx, query, messageId, userID)
+	_, err := db.Exec(ctx, query, messageId, userID)
 
 	return err
 }
 
-func (r *messageRepository) GetMessageByID(ctx context.Context, messageID uuid.UUID) (*models.Message, error) {
+func (r *messageRepository) GetMessageByID(ctx context.Context, tx database.DBRunner, messageID uuid.UUID) (*models.Message, error) {
 
 	query := `
 		SELECT id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
@@ -146,7 +144,7 @@ func (r *messageRepository) GetMessageByID(ctx context.Context, messageID uuid.U
 
 	messageCRES := &models.Message{}
 
-	err := r.db.QueryRow(ctx, query, messageID).Scan(
+	err := tx.QueryRow(ctx, query, messageID).Scan(
 		&messageCRES.ID,
 		&messageCRES.RoomId,
 		&messageCRES.AuthorId,
@@ -166,7 +164,7 @@ func (r *messageRepository) GetMessageByID(ctx context.Context, messageID uuid.U
 	return messageCRES, nil
 }
 
-func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, roomID uuid.UUID, limit int, offset int) ([]*models.Message, error) {
+func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, db database.DBRunner, roomID uuid.UUID, limit int, offset int) ([]*models.Message, error) {
 
 	query := `
 		SELECT id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
@@ -176,7 +174,7 @@ func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, roomID uuid
 		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.db.Query(ctx, query, roomID, limit, offset)
+	rows, err := db.Query(ctx, query, roomID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -215,10 +213,10 @@ func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, roomID uuid
 	return messagesCRES, nil
 }
 
-func (r *messageRepository) GetMessages(ctx context.Context, params *dto.MessageQueryParams) ([]*dto.MessageDetailed, error) {
+func (r *messageRepository) GetMessages(ctx context.Context, db database.DBRunner, params *dto.MessageQueryParams) ([]*dto.MessageDetailed, error) {
 
 	if params.Around != nil {
-		return r.getMessagesAround(ctx, params)
+		return r.getMessagesAround(ctx, db, params)
 	}
 	query := `
 
@@ -320,7 +318,7 @@ func (r *messageRepository) GetMessages(ctx context.Context, params *dto.Message
 	`
 
 	// PROCESSING WITH DB
-	rows, err := r.db.Query(ctx, query, args...)
+	rows, err := db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, utils.ErrorFetchingMessages
 	}
@@ -336,7 +334,7 @@ func (r *messageRepository) GetMessages(ctx context.Context, params *dto.Message
 }
 
 // GET MESSAGES AROUND A MESSAGE
-func (r *messageRepository) getMessagesAround(ctx context.Context, params *dto.MessageQueryParams) ([]*dto.MessageDetailed, error) {
+func (r *messageRepository) getMessagesAround(ctx context.Context, db database.DBRunner, params *dto.MessageQueryParams) ([]*dto.MessageDetailed, error) {
 
 	// before and after equally lina paryo so
 	halfLimit := params.Limit / 2
@@ -399,7 +397,7 @@ func (r *messageRepository) getMessagesAround(ctx context.Context, params *dto.M
 	ORDER BY tm.sent_at ASC, tm.id ASC
 	`
 
-	rows, err := r.db.Query(ctx, query, params.RoomID, params.Around, halfLimit, halfLimit)
+	rows, err := db.Query(ctx, query, params.RoomID, params.Around, halfLimit, halfLimit)
 	if err != nil {
 		return nil, utils.ErrorFetchingMessages
 	}
@@ -611,13 +609,13 @@ func (r *messageRepository) scanMessagesWithDetails(rows interface {
 }
 
 // TODO : Implement message  update and delete
-func (r *messageRepository) UpdateMessage(ctx context.Context, message *models.Message) (*models.Message, error) {
+func (r *messageRepository) UpdateMessage(ctx context.Context, db database.DBRunner, message *models.Message) (*models.Message, error) {
 
 	return &models.Message{}, nil
 
 }
 
-func (r *messageRepository) DeleteMessage(ctx context.Context, message *models.Message) error {
+func (r *messageRepository) DeleteMessage(ctx context.Context, db database.DBRunner, message *models.Message) error {
 
 	return nil
 }

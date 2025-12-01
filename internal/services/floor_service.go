@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/suck-seed/yapp/internal/database"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/utils"
@@ -20,14 +22,17 @@ type IFloorService interface {
 type floorService struct {
 	repositories.IHallRepository
 	repositories.IFloorRepository
+	pool *pgxpool.Pool
+
 	timeout time.Duration
 	mu      sync.RWMutex
 }
 
-func NewFloorService(hallRepo repositories.IHallRepository, floorRepo repositories.IFloorRepository) IFloorService {
+func NewFloorService(hallRepo repositories.IHallRepository, floorRepo repositories.IFloorRepository, pool *pgxpool.Pool) IFloorService {
 	return &floorService{
 		hallRepo,
 		floorRepo,
+		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
 	}
@@ -41,6 +46,17 @@ func (s *floorService) CreateFloor(c context.Context, req *dto.CreateFloorReq) (
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
+	// Create a transaction Unit & Wrapper
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	runner := database.NewTxWrapper(tx)
+
+	// Rollback if anamoly occurs before commiting
+	defer runner.Rollback(ctx)
+
 	//	canon name
 	canonName, err := utils.SanitizeFloorname(req.Name)
 	if err != nil {
@@ -48,7 +64,7 @@ func (s *floorService) CreateFloor(c context.Context, req *dto.CreateFloorReq) (
 	}
 
 	//	valid hallID
-	exists, err := s.IHallRepository.DoesHallExist(ctx, req.HallID)
+	exists, err := s.IHallRepository.DoesHallExist(ctx, runner, req.HallID)
 	if err != nil || !*exists {
 		return nil, utils.ErrorHallDoesntExist
 	}
@@ -68,9 +84,14 @@ func (s *floorService) CreateFloor(c context.Context, req *dto.CreateFloorReq) (
 		UpdatedAt: time.Now(),
 	}
 
-	floorCRES, err := s.IFloorRepository.CreateFloor(ctx, floor)
+	floorCRES, err := s.IFloorRepository.CreateFloor(ctx, runner, floor)
 	if err != nil {
 		return nil, utils.ErrorCreatingFloor
+	}
+
+	// Commit before returning data to handler
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
 	}
 
 	return &dto.CreateFloorRes{
@@ -81,4 +102,5 @@ func (s *floorService) CreateFloor(c context.Context, req *dto.CreateFloorReq) (
 		CreatedAt: floorCRES.CreatedAt,
 		UpdatedAt: floorCRES.UpdatedAt,
 	}, nil
+
 }

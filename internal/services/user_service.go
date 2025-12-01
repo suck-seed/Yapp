@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/suck-seed/yapp/internal/auth"
+	"github.com/suck-seed/yapp/internal/database"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/repositories"
@@ -26,14 +28,16 @@ type IUserService interface {
 // userService : Behaves like a class, and implements IUserService's methods
 type userService struct {
 	repositories.IUserRepository
+	pool    *pgxpool.Pool
 	timeout time.Duration
 	mu      sync.RWMutex
 }
 
 // NewUserService : Constructor to return a new IUserService with all the user service methods
-func NewUserService(repository repositories.IUserRepository) IUserService {
+func NewUserService(repository repositories.IUserRepository, pool *pgxpool.Pool) IUserService {
 	return &userService{
 		repository,
+		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
 	}
@@ -45,6 +49,14 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	// interface that provides a way to control lifecycle, cancellation and prppaagation of requests
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
+
+	// ---------- TRANSACTION INIT
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
 
 	// sanitize the inputs
 	canonUsername, err := utils.SanitizeUsername(req.Username)
@@ -66,8 +78,8 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	}
 
 	// check username, email and number for existing records
-	userByUsername, _ := s.IUserRepository.GetUserByUsername(ctx, &canonUsername)
-	userByEmail, _ := s.IUserRepository.GetUserByEmail(ctx, &canonEmail)
+	userByUsername, _ := s.IUserRepository.GetUserByUsername(ctx, runner, &canonUsername)
+	userByEmail, _ := s.IUserRepository.GetUserByEmail(ctx, runner, &canonEmail)
 
 	// userByNumber, _ := s.IUserRepository.GetUserByNumber(ctx, canonPhone)
 
@@ -101,10 +113,15 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	}
 
 	// calling the repo
-	userCRES, err := s.IUserRepository.CreateUser(ctx, user)
+	userCRES, err := s.IUserRepository.CreateUser(ctx, runner, user)
 	if err != nil {
 		print(err)
 		return nil, utils.ErrorCreatingUser
+	}
+
+	// ----------- TRANSACTION END
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
 	}
 
 	// create a response
@@ -119,11 +136,19 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
+	// ---------- CONNECTION INIT
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
 	user := &models.User{}
 
 	canonEmail, err := utils.SanitizeEmail(req.Email)
 	if err == nil {
-		user, _ = s.IUserRepository.GetUserWithPasswordHashByEmail(ctx, &canonEmail)
+		user, _ = s.IUserRepository.GetUserWithPasswordHashByEmail(ctx, runner, &canonEmail)
 	}
 
 	canonPassword, err := utils.SanitizePasswordPolicy(req.Password)
@@ -161,6 +186,14 @@ func (s *userService) GetUserMe(c context.Context) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
+	// ---------- CONNECTION INIT
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
 	// Extract user info from context (already validated by middleware)
 	userId, _, err := auth.CurrentUserFromContext(c)
 	if err != nil {
@@ -168,7 +201,7 @@ func (s *userService) GetUserMe(c context.Context) (*models.User, error) {
 	}
 
 	// Fetch the user from the repository
-	user, err := s.IUserRepository.GetUserById(ctx, userId)
+	user, err := s.IUserRepository.GetUserById(ctx, runner, userId)
 	if err != nil {
 		return nil, utils.ErrorUserNotFound
 	}
@@ -184,13 +217,21 @@ func (s *userService) UpdateUserMe(c context.Context, req *dto.UpdateUserMeReq) 
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
+	// ---------- CONNECTION INIT
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
 	// Extract user info from context (already validated by middleware)
 	userId, _, err := auth.CurrentUserFromContext(c)
 	if err != nil {
 		return nil, utils.ErrorInvalidUserUUID
 	}
 
-	user, err := s.IUserRepository.UpdateUserById(ctx, userId, req)
+	user, err := s.IUserRepository.UpdateUserById(ctx, runner, userId, req)
 	if err != nil {
 		return nil, utils.ErrorUserNotFound
 	}
@@ -206,8 +247,16 @@ func (s *userService) GetUserById(c context.Context, userId *uuid.UUID) (*models
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
+	// ---------- CONNECTION INIT
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
 	// Fetch the user from the repository
-	user, err := s.IUserRepository.GetUserById(ctx, userId)
+	user, err := s.IUserRepository.GetUserById(ctx, runner, userId)
 	if err != nil {
 		return nil, utils.ErrorUserNotFound
 	}

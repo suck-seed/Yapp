@@ -5,33 +5,31 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/suck-seed/yapp/internal/database"
 	"github.com/suck-seed/yapp/internal/models"
 )
 
 type IHallRepository interface {
-	CreateHall(ctx context.Context, hall *models.Hall) (*models.Hall, error)
-	CreateHallRole(ctx context.Context, hallRole *models.Role) (*models.Role, error)
-	CreateHallMember(ctx context.Context, hallMember *models.HallMember) error
+	CreateHall(ctx context.Context, db database.DBRunner, hall *models.Hall) (*models.Hall, error)
+	CreateHallRole(ctx context.Context, db database.DBRunner, hallRole *models.Role) (*models.Role, error)
+	CreateHallMember(ctx context.Context, db database.DBRunner, hallMember *models.HallMember) error
 
-	GetUserHallIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
-	GetHallByID(ctx context.Context, hallID uuid.UUID) (*models.Hall, error)
+	GetUserHallIDs(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]uuid.UUID, error)
+	GetHallByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error)
 
-	DoesHallExist(ctx context.Context, hallID uuid.UUID) (*bool, error)
-	IsUserHallMember(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*bool, error)
+	DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*bool, error)
+	IsUserHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (*bool, error)
 }
 
 type hallRepository struct {
-	db PGXTX
 }
 
-func NewHallRepository(db PGXTX) IHallRepository {
+func NewHallRepository() IHallRepository {
 
-	return &hallRepository{
-		db: db,
-	}
+	return &hallRepository{}
 }
 
-func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*models.Hall, error) {
+func (r *hallRepository) CreateHall(ctx context.Context, db database.DBRunner, hall *models.Hall) (*models.Hall, error) {
 
 	query := `
 
@@ -40,7 +38,7 @@ func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*mo
     RETURNING id, name, icon_url, icon_thumbnail_url, banner_color, description, owner_id, created_at, updated_at
 	`
 
-	row := r.db.QueryRow(ctx, query,
+	row := db.QueryRow(ctx, query,
 		hall.ID,
 		hall.Name,
 		hall.IconURL,
@@ -71,14 +69,14 @@ func (r *hallRepository) CreateHall(ctx context.Context, hall *models.Hall) (*mo
 	return saved, nil
 }
 
-func (r *hallRepository) CreateHallRole(ctx context.Context, hallRole *models.Role) (*models.Role, error) {
+func (r *hallRepository) CreateHallRole(ctx context.Context, db database.DBRunner, hallRole *models.Role) (*models.Role, error) {
 	query := `
     INSERT INTO roles (id, hall_id, name, color, icon_url, is_default, is_admin)
     VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING id, hall_id, name, color, icon_url, is_default, is_admin, created_at, updated_at
     `
 
-	row := r.db.QueryRow(ctx, query,
+	row := db.QueryRow(ctx, query,
 		hallRole.ID,
 		hallRole.HallID,
 		hallRole.Name,
@@ -108,13 +106,13 @@ func (r *hallRepository) CreateHallRole(ctx context.Context, hallRole *models.Ro
 	return saved, nil
 }
 
-func (r *hallRepository) CreateHallMember(ctx context.Context, hallMember *models.HallMember) error {
+func (r *hallRepository) CreateHallMember(ctx context.Context, db database.DBRunner, hallMember *models.HallMember) error {
 	query := `
     INSERT INTO hall_members (id, hall_id, user_id,role_id)
     VALUES ($1, $2, $3, $4)
     `
 
-	_, err := r.db.Exec(ctx, query,
+	_, err := db.Exec(ctx, query,
 		hallMember.ID,
 		hallMember.HallID,
 		hallMember.UserID,
@@ -128,10 +126,13 @@ func (r *hallRepository) CreateHallMember(ctx context.Context, hallMember *model
 	return nil
 }
 
-func (r *hallRepository) GetUserHallIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-	query := `SELECT hall_id FROM hall_members WHERE user_id = $1`
+func (r *hallRepository) GetUserHallIDs(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]uuid.UUID, error) {
 
-	rows, err := r.db.Query(ctx, query, userID) // Fixed: use userID, not hallID
+	query := `
+	SELECT hall_id FROM hall_members WHERE user_id = $1
+	`
+
+	rows, err := db.Query(ctx, query, userID) // Fixed: use userID, not hallID
 	if err != nil {
 		return nil, fmt.Errorf("failed to query user hall IDs: %w", err)
 	}
@@ -155,13 +156,13 @@ func (r *hallRepository) GetUserHallIDs(ctx context.Context, userID uuid.UUID) (
 	return hallIDs, nil
 }
 
-func (r *hallRepository) GetHallByID(ctx context.Context, hallID uuid.UUID) (*models.Hall, error) {
+func (r *hallRepository) GetHallByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error) {
 	hall := &models.Hall{}
 
 	query := `SELECT id, name, icon_url, icon_thumbnail_url, banner_color, description, created_at, updated_at, owner_id
               FROM halls WHERE id = $1`
 
-	err := r.db.QueryRow(ctx, query, hallID).Scan(
+	err := db.QueryRow(ctx, query, hallID).Scan(
 		&hall.ID,
 		&hall.Name,
 		&hall.IconURL,
@@ -180,7 +181,7 @@ func (r *hallRepository) GetHallByID(ctx context.Context, hallID uuid.UUID) (*mo
 	return hall, nil
 }
 
-func (r *hallRepository) DoesHallExist(ctx context.Context, hallID uuid.UUID) (*bool, error) {
+func (r *hallRepository) DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*bool, error) {
 
 	query := `
 
@@ -190,7 +191,7 @@ func (r *hallRepository) DoesHallExist(ctx context.Context, hallID uuid.UUID) (*
 
 	var exists bool
 
-	err := r.db.QueryRow(ctx, query, hallID).Scan(&exists)
+	err := db.QueryRow(ctx, query, hallID).Scan(&exists)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +199,7 @@ func (r *hallRepository) DoesHallExist(ctx context.Context, hallID uuid.UUID) (*
 	return &exists, nil
 }
 
-func (r *hallRepository) IsUserHallMember(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*bool, error) {
+func (r *hallRepository) IsUserHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (*bool, error) {
 
 	query := `
 
@@ -207,7 +208,7 @@ func (r *hallRepository) IsUserHallMember(ctx context.Context, hallID uuid.UUID,
 
 	var exists bool
 
-	if err := r.db.QueryRow(ctx, query, hallID, userID).Scan(&exists); err != nil {
+	if err := db.QueryRow(ctx, query, hallID, userID).Scan(&exists); err != nil {
 		return nil, err
 	}
 

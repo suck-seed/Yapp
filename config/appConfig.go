@@ -22,9 +22,9 @@ var (
 
 // AppConfig : Stores configurations for server, includes port, db, and middleware
 type AppConfig struct {
-	ServerPort string
-	CORS       gin.HandlerFunc
-	Postgres   *pgxpool.Pool
+	ServerPort   string
+	CORS         gin.HandlerFunc
+	PostgresPool *pgxpool.Pool
 }
 
 // SetupEnvironment : Loads ENV variables, creates instance of middleware and returns the configurations
@@ -43,8 +43,8 @@ func SetupEnvironment() (config AppConfig, err error) {
 	}
 
 	return AppConfig{
-		ServerPort: os.Getenv("HTTP_PORT"),
-		CORS:       buildCORS(),
-		Postgres:   pgPool,
+		ServerPort:   os.Getenv("HTTP_PORT"),
+		CORS:         buildCORS(),
+		PostgresPool: pgPool,
 	}, nil
 }

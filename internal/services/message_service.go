@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/suck-seed/yapp/internal/auth"
+	"github.com/suck-seed/yapp/internal/database"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/repositories"
@@ -23,16 +25,19 @@ type messageService struct {
 	repositories.IRoomRepository
 	repositories.IMessageRepository
 	repositories.IUserRepository
+	pool *pgxpool.Pool
+
 	timeout time.Duration
 	mu      sync.RWMutex
 }
 
-func NewMessageService(hallRepo repositories.IHallRepository, roomRepo repositories.IRoomRepository, messageRepo repositories.IMessageRepository, userRepo repositories.IUserRepository) IMessageService {
+func NewMessageService(hallRepo repositories.IHallRepository, roomRepo repositories.IRoomRepository, messageRepo repositories.IMessageRepository, userRepo repositories.IUserRepository, pool *pgxpool.Pool) IMessageService {
 	return &messageService{
 		hallRepo,
 		roomRepo,
 		messageRepo,
 		userRepo,
+		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
 	}
@@ -43,6 +48,18 @@ func NewMessageService(hallRepo repositories.IHallRepository, roomRepo repositor
 func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessageReq) (*dto.CreateMessageRes, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
+
+	// Begin a Transaction
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	// Runner from aquired transaction
+	runner := database.NewTxWrapper(tx)
+
+	// Rollback if anamoly occurs
+	defer runner.Rollback(ctx)
 
 	// validate content
 	normalizedContent := utils.SanitizeMessageContent(req.Content)
@@ -68,7 +85,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 	}
 
 	// call CreateMessage
-	messageCRES, err := s.IMessageRepository.CreateMessage(ctx, message)
+	messageCRES, err := s.IMessageRepository.CreateMessage(ctx, runner, message)
 	if err != nil {
 		return nil, utils.ErrorWritingMessage
 	}
@@ -80,7 +97,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 		// validate if the userId acc exists or not
 		for _, mentionedUserID := range *req.Mentions {
 
-			exists, err := s.IUserRepository.DoesUserExists(ctx, &mentionedUserID)
+			exists, err := s.IUserRepository.DoesUserExists(ctx, runner, &mentionedUserID)
 			if err != nil {
 				return nil, utils.ErrorInternal
 			}
@@ -88,12 +105,12 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 			if exists {
 
 				// Add to table message_mentions
-				if err := s.IMessageRepository.AddMessageMention(ctx, messageCRES.ID, mentionedUserID); err != nil {
+				if err := s.IMessageRepository.AddMessageMention(ctx, runner, messageCRES.ID, mentionedUserID); err != nil {
 					return nil, utils.ErrorWritingMentions
 				}
 
 				// get userBasic information for generation
-				userCRES, err := s.IUserRepository.GetUserById(ctx, &mentionedUserID)
+				userCRES, err := s.IUserRepository.GetUserById(ctx, runner, &mentionedUserID)
 				if err != nil {
 					return nil, utils.ErrorFetchingUser
 				}
@@ -140,7 +157,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 			}
 
 			//			repo call
-			attachmentCRES, err := s.IMessageRepository.AddAttachment(ctx, &models.Attachment{
+			attachmentCRES, err := s.IMessageRepository.AddAttachment(ctx, runner, &models.Attachment{
 				ID:        attachmentID,
 				MessageID: messageId,
 				FileName:  canonFileName,
@@ -157,6 +174,11 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 			attachments = append(attachments, *attachmentCRES)
 		}
 
+	}
+
+	// Commit before returning data to handler
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
 	}
 
 	return &dto.CreateMessageRes{
@@ -182,6 +204,14 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
 	// validate only single cursor is used
 	cursorCount := 0
 
@@ -205,7 +235,7 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 	}
 
 	// Check if room exists
-	roomExist, err := s.IRoomRepository.DoesRoomExists(ctx, &req.RoomID)
+	roomExist, err := s.IRoomRepository.DoesRoomExists(ctx, runner, &req.RoomID)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
@@ -221,13 +251,13 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 	}
 
 	// get the room
-	room, err := s.IRoomRepository.GetRoomByID(ctx, &req.RoomID)
+	room, err := s.IRoomRepository.GetRoomByID(ctx, runner, &req.RoomID)
 	if err != nil {
 		return nil, utils.ErrorFetchingRoom
 	}
 
 	// does hall exist
-	hallExist, err := s.IHallRepository.DoesHallExist(ctx, room.HallId)
+	hallExist, err := s.IHallRepository.DoesHallExist(ctx, runner, room.HallId)
 	if err != nil {
 		return nil, utils.ErrorFetchingHall
 	}
@@ -237,7 +267,7 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 	}
 
 	// does user belong to hall and room
-	userBelongsToHall, err := s.IHallRepository.IsUserHallMember(ctx, room.HallId, *userId)
+	userBelongsToHall, err := s.IHallRepository.IsUserHallMember(ctx, runner, room.HallId, *userId)
 	if err != nil {
 		return nil, utils.ErrorFetchingHall
 	}
@@ -248,7 +278,7 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 
 	// if room = private , check if user belongs to the room
 	if room.IsPrivate {
-		userBelongsToRoom, err := s.IRoomRepository.IsUserRoomMember(ctx, &room.ID, userId)
+		userBelongsToRoom, err := s.IRoomRepository.IsUserRoomMember(ctx, runner, &room.ID, userId)
 
 		if err != nil {
 			return nil, utils.ErrorFetchingRoom
@@ -260,7 +290,7 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 	}
 
 	// call repository
-	messages, err := s.IMessageRepository.GetMessages(ctx, &dto.MessageQueryParams{
+	messages, err := s.IMessageRepository.GetMessages(ctx, runner, &dto.MessageQueryParams{
 		RoomID: req.RoomID,
 		Before: req.Before,
 		After:  req.After,
