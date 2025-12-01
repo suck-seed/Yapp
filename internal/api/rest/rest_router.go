@@ -139,7 +139,7 @@ func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService
 
 	floorGroup := r.Group("/floors")
 	{
-		floorGroup.POST("/", floorHandler.CreateFloor)
+		floorGroup.POST("", floorHandler.CreateFloor)
 	}
 
 }
@@ -150,7 +150,7 @@ func RegisterRoomRoutes(r *gin.RouterGroup, roomService services.IRoomService) {
 
 	roomGroup := r.Group("/rooms")
 	{
-		roomGroup.POST("/", roomHandler.CreateRoom)
+		roomGroup.POST("", roomHandler.CreateRoom)
 		roomGroup.POST("/add_member")
 	}
 
@@ -162,7 +162,7 @@ func RegisterMessageRoutes(r *gin.RouterGroup, messageService services.IMessageS
 
 	messageGroup := r.Group("/messages")
 	{
-		messageGroup.POST("/", messageHandler.FetchMessage)
+		messageGroup.POST("", messageHandler.FetchMessage)
 	}
 
 }
