@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/suck-seed/yapp/internal/database"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/utils"
 
@@ -24,15 +26,18 @@ type roomService struct {
 	repositories.IHallRepository
 	repositories.IFloorRepository
 	repositories.IRoomRepository
+	pool *pgxpool.Pool
+
 	timeout time.Duration
 	mu      sync.RWMutex
 }
 
-func NewRoomService(hallRepo repositories.IHallRepository, floorRepo repositories.IFloorRepository, roomRepo repositories.IRoomRepository) IRoomService {
+func NewRoomService(hallRepo repositories.IHallRepository, floorRepo repositories.IFloorRepository, roomRepo repositories.IRoomRepository, pool *pgxpool.Pool) IRoomService {
 	return &roomService{
 		hallRepo,
 		floorRepo,
 		roomRepo,
+		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
 	}
@@ -46,12 +51,20 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
+	// ---------- TRANSACTION INIT
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
+
 	canonName, err := utils.SanitizeFloorname(req.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	hallExists, err := s.IHallRepository.DoesHallExist(ctx, req.HallID)
+	hallExists, err := s.IHallRepository.DoesHallExist(ctx, runner, req.HallID)
 	if err != nil {
 		return nil, utils.ErrorHallDoesntExist
 	}
@@ -60,7 +73,7 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 	}
 
 	if req.FloorID != nil {
-		floorExists, err := s.IFloorRepository.DoesFloorExistsInRoom(ctx, req.FloorID, &req.HallID)
+		floorExists, err := s.IFloorRepository.DoesFloorExistsInRoom(ctx, runner, req.FloorID, &req.HallID)
 		if err != nil {
 			return nil, utils.ErrorFloorDoesntExistInHall
 		}
@@ -81,7 +94,7 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 		return nil, utils.ErrorInternal
 	}
 
-	roomCRES, err := s.IRoomRepository.CreateRoom(ctx, &models.Room{
+	roomCRES, err := s.IRoomRepository.CreateRoom(ctx, runner, &models.Room{
 		ID:        roomID,
 		HallId:    req.HallID,
 		FloorId:   req.FloorID,
@@ -93,6 +106,11 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 	})
 	if err != nil {
 		return nil, utils.ErrorCreatingRoom
+	}
+
+	// Commit before returning data to handler
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
 	}
 
 	return &dto.CreateRoomRes{
@@ -112,7 +130,15 @@ func (s *roomService) GetRoomByID(c context.Context, rooomId *uuid.UUID) (*model
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	roomCRES, err := s.IRoomRepository.GetRoomByID(ctx, rooomId)
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
+	roomCRES, err := s.IRoomRepository.GetRoomByID(ctx, runner, rooomId)
 	if err != nil {
 		return nil, utils.ErrorFetchingRoom
 	}
@@ -126,7 +152,15 @@ func (s *roomService) IsUserRoomMember(c context.Context, roomId *uuid.UUID, use
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	isMember, err := s.IRoomRepository.IsUserRoomMember(ctx, roomId, userId)
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
+	isMember, err := s.IRoomRepository.IsUserRoomMember(ctx, runner, roomId, userId)
 	if err != nil {
 		return nil, err
 	}

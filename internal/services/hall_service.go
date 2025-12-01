@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/suck-seed/yapp/internal/auth"
+	"github.com/suck-seed/yapp/internal/database"
 	"github.com/suck-seed/yapp/internal/dto"
 	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/repositories"
@@ -23,13 +25,16 @@ type IHallService interface {
 
 type hallService struct {
 	repositories.IHallRepository
+	pool *pgxpool.Pool
+
 	timeout time.Duration
 	mu      sync.RWMutex
 }
 
-func NewHallService(hallRepo repositories.IHallRepository) IHallService {
+func NewHallService(hallRepo repositories.IHallRepository, pool *pgxpool.Pool) IHallService {
 	return &hallService{
 		hallRepo,
+		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
 	}
@@ -38,6 +43,18 @@ func NewHallService(hallRepo repositories.IHallRepository) IHallService {
 func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dto.CreateHallRes, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
+
+	// Begin a Transaction
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	// Runner from aquired transaction
+	runner := database.NewTxWrapper(tx)
+
+	// Rollback if anamoly occurs
+	defer runner.Rollback(ctx)
 
 	// sanatize req
 	canonHallname, err := utils.SanitizeHallname(req.Name)
@@ -82,14 +99,10 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	}
 
 	// pass to repo
-	hall, err := s.IHallRepository.CreateHall(ctx, newHall)
+	hall, err := s.IHallRepository.CreateHall(ctx, runner, newHall)
 	if err != nil {
 		return nil, utils.ErrorCreatingHall
 	}
-
-	//
-	// Role Creation
-	//
 
 	// generate role id
 	roleId, err := uuid.NewV7()
@@ -106,7 +119,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	}
 
 	// pass to repo
-	role, err := s.IHallRepository.CreateHallRole(ctx, newRole)
+	role, err := s.IHallRepository.CreateHallRole(ctx, runner, newRole)
 	if err != nil {
 		return nil, utils.ErrorCreatingHallRole
 	}
@@ -130,9 +143,14 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	}
 
 	// pass to repo
-	err = s.IHallRepository.CreateHallMember(ctx, newHallMember)
+	err = s.IHallRepository.CreateHallMember(ctx, runner, newHallMember)
 	if err != nil {
 		return nil, utils.ErrorCreatingHallMember
+	}
+
+	// Commit before returning data to handler
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
 	}
 
 	return &dto.CreateHallRes{
@@ -152,20 +170,32 @@ func (s *hallService) GetUserHalls(c context.Context) ([]*models.Hall, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
+	// Acquire a conn from pool
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	// Release after everything is done
+	defer conn.Release()
+
+	// Runner from the acquired conn
+	runner := database.NewConnWrapper(conn)
+
 	// get userId from context.Context()
 	userId, _, err := auth.CurrentUserFromContext(c)
 	if err != nil {
 		return nil, err
 	}
 
-	hallIds, err := s.IHallRepository.GetUserHallIDs(ctx, *userId)
+	hallIds, err := s.IHallRepository.GetUserHallIDs(ctx, runner, *userId)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
 
 	var halls []*models.Hall
 	for _, hallId := range hallIds {
-		hall, err := s.IHallRepository.GetHallByID(ctx, hallId)
+		hall, err := s.IHallRepository.GetHallByID(ctx, runner, hallId)
 		if err != nil {
 			return nil, utils.ErrorInternal
 		}
@@ -179,7 +209,19 @@ func (s *hallService) IsUserHallMember(c context.Context, hallID *uuid.UUID, use
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	isMember, err := s.IHallRepository.IsUserHallMember(ctx, *hallID, *userID)
+	// Acquire a conn from pool
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	// Release after everything is done
+	defer conn.Release()
+
+	// Runner from the acquired conn
+	runner := database.NewConnWrapper(conn)
+
+	isMember, err := s.IHallRepository.IsUserHallMember(ctx, runner, *hallID, *userID)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
@@ -192,7 +234,19 @@ func (s *hallService) DoesHallExist(c context.Context, HallId *uuid.UUID) (*bool
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	exists, err := s.IHallRepository.DoesHallExist(ctx, *HallId)
+	// Acquire a conn from pool
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	// Release after everything is done
+	defer conn.Release()
+
+	// Runner from the acquired conn
+	runner := database.NewConnWrapper(conn)
+
+	exists, err := s.IHallRepository.DoesHallExist(ctx, runner, *HallId)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
