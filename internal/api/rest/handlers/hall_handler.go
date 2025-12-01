@@ -19,6 +19,7 @@ func NewHallHandler(hallService services.IHallService) *HallHandler {
 	}
 }
 
+// TOP LEVEL HALL OPERATIONS
 func (h *HallHandler) CreateHall(c *gin.Context) {
 
 	u := &dto.CreateHallReq{}
@@ -48,3 +49,67 @@ func (h *HallHandler) GetUserHalls(c *gin.Context) {
 
 	c.JSON(http.StatusOK, res)
 }
+
+// SINGLE HALL RUD
+func (h *HallHandler) GetCurrentHall(c *gin.Context) {
+
+}
+
+func (h *HallHandler) UpdateCurrentHall(c *gin.Context) {
+
+}
+
+func (h *HallHandler) DeleteCurrentHall(c *gin.Context) {
+
+}
+
+//----------------SETTING SCOPE
+
+// PROFILE MANAGEMENT
+func (h *HallHandler) GetHallProfile(c *gin.Context) {
+
+}
+
+func (h *HallHandler) UpdateHallProfile(c *gin.Context) {
+
+}
+
+// MEMBERS MANAGEMENT
+func (h *HallHandler) GetHallMembers(c *gin.Context) {
+
+}
+
+func (h *HallHandler) UpdateHallMember(c *gin.Context) {
+
+}
+
+func (h *HallHandler) RemoveHallMember(c *gin.Context) {
+
+}
+
+// ROLE MANAGEMENT
+func (h *HallHandler) GetHallRoles(c *gin.Context) {
+
+}
+
+func (h *HallHandler) CreateHallRoles(c *gin.Context) {
+
+}
+
+func (h *HallHandler) UpdateHallRoles(c *gin.Context) {
+
+}
+
+func (h *HallHandler) DeleteHallRoles(c *gin.Context) {
+
+}
+
+func (h *HallHandler) GetRolesPermissions(c *gin.Context) {
+
+}
+
+func (h *HallHandler) UpdateRolesPermissions(c *gin.Context) {
+
+}
+
+// INVITES MANAGEMENT
