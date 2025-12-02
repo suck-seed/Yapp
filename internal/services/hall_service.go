@@ -44,16 +44,12 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// Begin a Transaction
+	// --------------- TRANSACTION INIT
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
-
-	// Runner from aquired transaction
 	runner := database.NewTxWrapper(tx)
-
-	// Rollback if anamoly occurs
 	defer runner.Rollback(ctx)
 
 	// sanatize req
@@ -148,7 +144,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 		return nil, utils.ErrorCreatingHallMember
 	}
 
-	// Commit before returning data to handler
+	// ---------------------- COMMIT
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
@@ -170,16 +166,12 @@ func (s *hallService) GetUserHalls(c context.Context) ([]*models.Hall, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// Acquire a conn from pool
+	// --------------- CONNECTION INIT
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
-
-	// Release after everything is done
 	defer conn.Release()
-
-	// Runner from the acquired conn
 	runner := database.NewConnWrapper(conn)
 
 	// get userId from context.Context()
@@ -209,16 +201,12 @@ func (s *hallService) IsUserHallMember(c context.Context, hallID *uuid.UUID, use
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// Acquire a conn from pool
+	// --------------- CONNECTION INIT
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
-
-	// Release after everything is done
 	defer conn.Release()
-
-	// Runner from the acquired conn
 	runner := database.NewConnWrapper(conn)
 
 	isMember, err := s.IHallRepository.IsUserHallMember(ctx, runner, *hallID, *userID)
@@ -234,16 +222,12 @@ func (s *hallService) DoesHallExist(c context.Context, HallId *uuid.UUID) (*bool
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// Acquire a conn from pool
+	// --------------- CONNECTION INIT
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
-
-	// Release after everything is done
 	defer conn.Release()
-
-	// Runner from the acquired conn
 	runner := database.NewConnWrapper(conn)
 
 	exists, err := s.IHallRepository.DoesHallExist(ctx, runner, *HallId)

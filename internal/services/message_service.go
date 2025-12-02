@@ -49,16 +49,12 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// Begin a Transaction
+	// --------------- TRANSACTION INIT
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
-
-	// Runner from aquired transaction
 	runner := database.NewTxWrapper(tx)
-
-	// Rollback if anamoly occurs
 	defer runner.Rollback(ctx)
 
 	// validate content
@@ -176,7 +172,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 
 	}
 
-	// Commit before returning data to handler
+	// --------------- COMMIT
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
@@ -204,11 +200,11 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
+	// --------------- CONNECTION INIT
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
-
 	defer conn.Release()
 	runner := database.NewConnWrapper(conn)
 
