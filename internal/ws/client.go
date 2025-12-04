@@ -5,10 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/suck-seed/yapp/internal/dto"
-
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	dto "github.com/suck-seed/yapp/internal/dto/message"
 )
 
 // Represents a Websocket connection
