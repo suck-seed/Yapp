@@ -62,9 +62,9 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 		halls.POST("", hallHandler.CreateHall)
 
 		// SINGLE HALL RUD
-		halls.GET("/:hallID")
-		halls.PATCH("/:hallID")
-		halls.DELETE("/:hallID")
+		halls.GET("/:hallID", hallHandler.GetCurrentHall)
+		halls.PATCH("/:hallID", hallHandler.UpdateCurrentHall)
+		halls.DELETE("/:hallID", hallHandler.DeleteCurrentHall)
 
 		// SETTING SCOPE
 
@@ -72,13 +72,13 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 		{
 
 			// PROFILE MANAGEMENT
-			settings.GET("/profile")
-			settings.PATCH("/profile")
+			settings.GET("/profile", hallHandler.GetHallProfile)
+			settings.PATCH("/profile", hallHandler.UpdateHallProfile)
 
 			// MEMBERS MANAGEMENT
 			members := settings.Group("/members")
 			{
-				members.GET("")
+				members.GET("", hallHandler.GetHallMembers)
 				// members.POST("") // There wont be post handler, since we have seperate endpoints for adding and inviting members
 				members.PATCH("/:memberID", hallHandler.UpdateHallMember) // updates nickname, timeout, kick, ban, roles, transfer ownership
 				members.DELETE("/:memberID", hallHandler.RemoveHallMember)
@@ -87,40 +87,40 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 			// ROLES MANAGEMENT
 			roles := settings.Group("/roles")
 			{
-				roles.GET("")
-				roles.POST("")
-				roles.PATCH("/:roleID")
-				roles.DELETE("/:roleID")
+				roles.GET("", hallHandler.GetHallRoles)
+				roles.POST("", hallHandler.CreateHallRoles)
+				roles.PATCH("/:roleID", hallHandler.UpdateHallRoles)
+				roles.DELETE("/:roleID", hallHandler.DeleteHallRoles)
 
 				// roles ko permission
-				roles.GET("/:roleID/permissions")
-				roles.PATCH("/:roleID/permissions")
+				roles.GET("/:roleID/permissions", hallHandler.GetRolesPermissions)
+				roles.PATCH("/:roleID/permissions", hallHandler.UpdateRolesPermissions)
 
 			}
 
 			// INVITES MANAGEMENT
 			invites := settings.Group("/invites")
 			{
-				invites.GET("")
-				invites.POST("")
-				invites.DELETE("/:inviteID") // revoke invite
+				invites.GET("", hallHandler.GetCurrentInviteLinks)
+				invites.POST("", hallHandler.CreateNewInviteLink)
+				invites.DELETE("/:inviteID", hallHandler.InvokeInviteLink) // revoke invite
 			}
 
 			// JOIN REQUESTS MANAGEMENT
 			requests := settings.Group("/requests")
 			{
-				requests.GET("")
-				requests.POST("")                    // create requests
-				requests.PATCH("/:requestID/accept") // accept request
-				requests.DELETE("/:requestID")       // accept request
+				requests.GET("", hallHandler.GetCurrentRequests)
+				requests.POST("", hallHandler.CreateJoinRequest)                    // create requests
+				requests.PATCH("/:requestID/accept", hallHandler.AcceptJoinRequest) // accept request
+				requests.DELETE("/:requestID", hallHandler.DeclineJoinRequest)      // accept request
 			}
 
 			// BANS
 			bans := settings.Group("/bans")
 			{
-				bans.GET("")
-				bans.POST("")          // ban someone
-				bans.DELETE("/:banID") // unban
+				bans.GET("", hallHandler.GetBannedUsers)
+				bans.POST("", hallHandler.BanAnUser)          // ban someone
+				bans.DELETE("/:banID", hallHandler.UnbanUser) // unban
 			}
 		}
 	}
