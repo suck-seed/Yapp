@@ -59,7 +59,7 @@ var (
 
 	// WEBSOCKET ERRORS
 	ErrorFailedUpgrade = &CustomError{Code: http.StatusBadRequest, Message: "Failed to upgrade connection"}
-	ErrorInvalidRoomId = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Room Id, can not join room"}
+	ErrorInvalidRoomIDFormat = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Room Id, can not join room"}
 
 	// CONTEXT ERRORS
 	ErrorNoUserIdInContext        = &CustomError{Code: http.StatusBadRequest, Message: "No AuthorID in context"}

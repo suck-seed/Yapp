@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/suck-seed/yapp/internal/database"
-	"github.com/suck-seed/yapp/internal/dto"
+	dto "github.com/suck-seed/yapp/internal/dto/floor"
 	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/utils"
 
@@ -38,23 +38,17 @@ func NewFloorService(hallRepo repositories.IHallRepository, floorRepo repositori
 	}
 }
 
-// ctx, cancel := context.WithTimeout(c, s.timeout)
-// 	defer cancel()
-
 func (s *floorService) CreateFloor(c context.Context, req *dto.CreateFloorReq) (*dto.CreateFloorRes, error) {
 
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// Create a transaction Unit & Wrapper
+	// --------------- TRANSACTION INIT
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
-
 	runner := database.NewTxWrapper(tx)
-
-	// Rollback if anamoly occurs before commiting
 	defer runner.Rollback(ctx)
 
 	//	canon name
@@ -89,7 +83,7 @@ func (s *floorService) CreateFloor(c context.Context, req *dto.CreateFloorReq) (
 		return nil, utils.ErrorCreatingFloor
 	}
 
-	// Commit before returning data to handler
+	// ---------------------- COMMIT
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}

@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
-	"github.com/suck-seed/yapp/internal/dto"
+	dto "github.com/suck-seed/yapp/internal/dto/room"
 	"github.com/suck-seed/yapp/internal/services"
 	"github.com/suck-seed/yapp/internal/utils"
-	"net/http"
 )
 
 type RoomHandler struct {

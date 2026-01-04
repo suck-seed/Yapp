@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/suck-seed/yapp/internal/database"
-	"github.com/suck-seed/yapp/internal/dto"
+	dto "github.com/suck-seed/yapp/internal/dto/room"
 	"github.com/suck-seed/yapp/internal/utils"
 
 	"github.com/google/uuid"
@@ -51,7 +51,7 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// ---------- TRANSACTION INIT
+	// --------------- TRANSACTION INIT
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
@@ -108,7 +108,7 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 		return nil, utils.ErrorCreatingRoom
 	}
 
-	// Commit before returning data to handler
+	// --------------- COMMIT
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
@@ -130,11 +130,11 @@ func (s *roomService) GetRoomByID(c context.Context, rooomId *uuid.UUID) (*model
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
+	// --------------- CONNECTION INIT
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
-
 	defer conn.Release()
 	runner := database.NewConnWrapper(conn)
 
@@ -152,11 +152,11 @@ func (s *roomService) IsUserRoomMember(c context.Context, roomId *uuid.UUID, use
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
+	// --------------- CONNECTION INIT
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
-
 	defer conn.Release()
 	runner := database.NewConnWrapper(conn)
 

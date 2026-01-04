@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/database"
-	"github.com/suck-seed/yapp/internal/dto"
+	dto "github.com/suck-seed/yapp/internal/dto/user"
 	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/utils"
@@ -46,7 +46,6 @@ func NewUserService(repository repositories.IUserRepository, pool *pgxpool.Pool)
 // Methods
 func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.SignupUserRes, error) {
 
-	// interface that provides a way to control lifecycle, cancellation and prppaagation of requests
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
@@ -58,7 +57,7 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	runner := database.NewTxWrapper(tx)
 	defer runner.Rollback(ctx)
 
-	// sanitize the inputs
+	// ----------- SANITIZE
 	canonUsername, err := utils.SanitizeUsername(req.Username)
 	if err != nil {
 		return nil, utils.ErrorInvalidUsername
@@ -77,10 +76,9 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 		return nil, utils.ErrorInvalidDisplayName
 	}
 
-	// check username, email and number for existing records
+	// Validate user information
 	userByUsername, _ := s.IUserRepository.GetUserByUsername(ctx, runner, &canonUsername)
 	userByEmail, _ := s.IUserRepository.GetUserByEmail(ctx, runner, &canonEmail)
-
 	// userByNumber, _ := s.IUserRepository.GetUserByNumber(ctx, canonPhone)
 
 	if userByUsername != nil {
@@ -90,15 +88,12 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 		return nil, utils.ErrorEmailExists
 	}
 
-	// generate id
 	id, err := uuid.NewV7()
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
 
-	// hash password
 	password_hash, err := utils.HashPassword(canonPassword)
-
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
@@ -112,19 +107,17 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 		DisplayName:  canonDisplayName,
 	}
 
-	// calling the repo
 	userCRES, err := s.IUserRepository.CreateUser(ctx, runner, user)
 	if err != nil {
 		print(err)
 		return nil, utils.ErrorCreatingUser
 	}
 
-	// ----------- TRANSACTION END
+	// --------------- COMMIT
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
 
-	// create a response
 	return &dto.SignupUserRes{
 		ID:       userCRES.ID,
 		Username: userCRES.Username,
@@ -156,12 +149,12 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 		return nil, utils.ErrorInvalidPassword
 	}
 
-	// Handle user not existing
+	// Handle no user found
 	if user == nil {
 		return nil, utils.ErrorUserNotFound
 	}
 
-	// hash req.Password and check if matches with pass from user
+	// validate password
 	err = utils.VerifyPassword(user.PasswordHash, canonPassword)
 	if err != nil {
 		return nil, utils.ErrorWrongPassword
@@ -186,7 +179,7 @@ func (s *userService) GetUserMe(c context.Context) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// ---------- CONNECTION INIT
+	// --------------- CONNECTION INIT
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
@@ -217,7 +210,7 @@ func (s *userService) UpdateUserMe(c context.Context, req *dto.UpdateUserMeReq) 
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// ---------- CONNECTION INIT
+	// --------------- CONNECTION INIT
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
@@ -247,7 +240,7 @@ func (s *userService) GetUserById(c context.Context, userId *uuid.UUID) (*models
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// ---------- CONNECTION INIT
+	// --------------- CONNECTION INIT
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal

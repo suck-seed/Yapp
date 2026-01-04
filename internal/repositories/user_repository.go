@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/database"
-	"github.com/suck-seed/yapp/internal/dto"
+	dto "github.com/suck-seed/yapp/internal/dto/user"
 	"github.com/suck-seed/yapp/internal/models"
 )
 

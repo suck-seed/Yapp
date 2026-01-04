@@ -3,7 +3,7 @@ package ws
 import (
 	"context"
 
-	"github.com/suck-seed/yapp/internal/dto"
+	dto "github.com/suck-seed/yapp/internal/dto/message"
 	"github.com/suck-seed/yapp/internal/services"
 )
 

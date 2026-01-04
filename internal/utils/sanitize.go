@@ -149,7 +149,7 @@ func keepPlusDigits(s string) string {
 }
 
 // PASSWORD SECTION
-const minEntropyBits = 60.0 // ~good baseline for online attacks; use 70–80 for higher risk
+const minEntropyBits = 60.0
 
 func SanitizePasswordPolicy(raw string) (string, error) {
 	// Do NOT silently modify. Reject confusing whitespace at edges.

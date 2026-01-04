@@ -4,12 +4,11 @@ import (
 	"context"
 	"log"
 
-	"github.com/suck-seed/yapp/internal/dto"
-
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	dto "github.com/suck-seed/yapp/internal/dto/message"
 )
 
 type Hub struct {

@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/suck-seed/yapp/internal/auth"
-	"github.com/suck-seed/yapp/internal/dto"
+	dto "github.com/suck-seed/yapp/internal/dto/message"
 	"github.com/suck-seed/yapp/internal/services"
 	"github.com/suck-seed/yapp/internal/utils"
 )
@@ -67,7 +67,7 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	roomIdStr := c.Param("room_id")
 	roomId, err := uuid.Parse(roomIdStr)
 	if err != nil {
-		utils.WriteError(c, utils.ErrorInvalidRoomId)
+		utils.WriteError(c, utils.ErrorInvalidRoomIDFormat)
 		return
 	}
 
@@ -179,7 +179,7 @@ func (h *WebsocketHandler) GetClients(c *gin.Context) {
 
 	roomId, err := uuid.Parse(roomIdString)
 	if err != nil {
-		utils.WriteError(c, utils.ErrorInvalidRoomId)
+		utils.WriteError(c, utils.ErrorInvalidRoomIDFormat)
 	}
 
 	if _, ok := h.hub.Rooms[roomId]; !ok {
