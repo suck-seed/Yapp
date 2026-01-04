@@ -19,3 +19,6 @@ type Hall struct {
 	// createdby
 	OwnerID uuid.UUID `json:"owner_id" db:"owner_id"`
 }
+
+type Ban struct {
+}

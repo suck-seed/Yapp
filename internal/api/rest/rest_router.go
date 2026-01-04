@@ -63,7 +63,7 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 
 		// SINGLE HALL RUD
 		halls.GET("/:hallID", hallHandler.GetCurrentHall)
-		halls.PATCH("/:hallID", hallHandler.UpdateCurrentHall)
+		// halls.PATCH("/:hallID", hallHandler.UpdateCurrentHall)
 		halls.DELETE("/:hallID", hallHandler.DeleteCurrentHall)
 
 		// SETTING SCOPE
@@ -72,6 +72,7 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 		{
 
 			// PROFILE MANAGEMENT
+			// RENAME, IMAGE CHANGE, DESCRIPTION CHANGE ETC FROM PROFILE PATCH
 			settings.GET("/profile", hallHandler.GetHallProfile)
 			settings.PATCH("/profile", hallHandler.UpdateHallProfile)
 

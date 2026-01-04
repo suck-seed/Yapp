@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	dto "github.com/suck-seed/yapp/internal/dto/hall"
 	"github.com/suck-seed/yapp/internal/services"
 	"github.com/suck-seed/yapp/internal/utils"
@@ -149,14 +148,6 @@ func (h *HallHandler) DeclineJoinRequest(c *gin.Context) {
 
 // BANS
 func (h *HallHandler) GetBannedUsers(c *gin.Context) {
-
-	// Parse room_id
-	hallIdStr := c.Param("hall_id")
-	hallID, err := uuid.Parse(hallIdStr)
-	if err != nil {
-		utils.WriteError(c, utils.ErrorInvalidRoomIDFormat)
-		return
-	}
 
 }
 
