@@ -6,11 +6,11 @@ import "github.com/google/uuid"
 // - NAME, ICON, DESCRIPTION
 // CAN UPDATE USING PROFILE DTO
 
-type HallProfileReq struct {
-	HallID      uuid.UUID `json:"hall_id"`
-	Name        *string   `json:"name"`
-	Description *string   `json:"description"`
+type HallProfileUpdateReq struct {
+	HallID      uuid.UUID `json:"hall_id" binding:"required"`
+	Name        *string   `json:"name" binding:"omitempty"`
+	Description *string   `json:"description" binding:"omitempty,max=500"`
 }
 
-type HallProfileRes struct {
+type HallProfileUpdateRes struct {
 }

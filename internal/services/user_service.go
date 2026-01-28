@@ -79,7 +79,6 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	// Validate user information
 	userByUsername, _ := s.IUserRepository.GetUserByUsername(ctx, runner, &canonUsername)
 	userByEmail, _ := s.IUserRepository.GetUserByEmail(ctx, runner, &canonEmail)
-	// userByNumber, _ := s.IUserRepository.GetUserByNumber(ctx, canonPhone)
 
 	if userByUsername != nil {
 		return nil, utils.ErrorUsernameExists
@@ -121,6 +120,7 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	return &dto.SignupUserRes{
 		ID:       userCRES.ID,
 		Username: userCRES.Username,
+		Email:    userCRES.Email,
 	}, nil
 }
 

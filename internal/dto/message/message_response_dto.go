@@ -29,7 +29,7 @@ type AttachmentResponseMinimal struct {
 	MessageID uuid.UUID `json:"message_id"`
 	URL       string    `json:"url"`
 	FileName  string    `json:"file_name"`
-	FileType  *string   `json:"file_type,omitempty"`
+	FileType  *string   `json:"file_type"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
