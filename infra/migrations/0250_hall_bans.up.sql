@@ -7,7 +7,7 @@ CREATE TABLE hall_bans (
     hall_id uuid NOT NULL REFERENCES halls (id) on DELETE CASCADE,
 
     created_at timestamptz NOT NULL DEFAULT now (),
-    updated_at timestamptz NOT NULL DEFAULT now ()
+    updated_at timestamptz NOT NULL DEFAULT now (),
 
     PRIMARY KEY (user_id, hall_id)
 );

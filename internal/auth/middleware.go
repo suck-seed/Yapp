@@ -43,7 +43,6 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
-
 	}
 
 }

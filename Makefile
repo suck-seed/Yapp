@@ -22,4 +22,4 @@ startApp:
 
 
 
-.PHONY: buildBackend startBackend startNoLogsBackend removeContainer removeContainerData startApp
+.PHONY: buildBackend startBackend startNoLogsBackend removeContainerData startApp
