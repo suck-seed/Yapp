@@ -21,7 +21,7 @@ func NewUserHandler(userService services.IUserService) *UserHandler {
 	}
 }
 
-func (userHandler *UserHandler) Ping(c *gin.Context) {
+func (h *UserHandler) Ping(c *gin.Context) {
 
 	c.JSON(200, gin.H{
 		"message": "ping",

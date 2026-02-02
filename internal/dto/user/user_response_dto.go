@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
 	"github.com/suck-seed/yapp/internal/models"
 )
 
@@ -12,13 +11,14 @@ import (
 
 type SignupUserRes struct {
 	ID       uuid.UUID `json:"id"`
-	Username string    `json:"username" binding:"required,min=3,max=32"`
+	Username string    `json:"username"`
+	Email    string    `json:"email"`
 }
 
 type SigninUserRes struct {
 	AccessToken string `json:"-"`
 	UserMe
-	Success bool `json:"success" default:"false"`
+	Success bool `json:"success"`
 }
 
 type UserPublic struct {

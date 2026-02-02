@@ -1,14 +1,15 @@
 package dto
 
 import (
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type CreateFloorReq struct {
-	HallID    uuid.UUID `json:"hall_id"`
-	Name      string    `json:"name"`
-	IsPrivate bool      `json:"is_private"`
+	HallID    uuid.UUID `json:"hall_id" binding:"required"`
+	Name      string    `json:"name" binding:"required"`
+	IsPrivate bool      `json:"is_private" binding:"required"`
 }
 
 type CreateFloorRes struct {

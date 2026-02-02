@@ -1,8 +1,9 @@
 package dto
 
 import (
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type CreateRoomReq struct {
@@ -11,12 +12,10 @@ type CreateRoomReq struct {
 	HallID uuid.UUID `json:"hall_id" binding:"required"`
 
 	// FloorID can be empty , as room can be in surface level and not in a floor
-	FloorID  *uuid.UUID `json:"floor_id,omitempty"`
-	Name     string     `json:"name" binding:"required,min=1,max=64"`
-	RoomType string     `json:"room_type" binding:"required,oneof=text audio"`
-
-	//  False by default
-	IsPrivate bool `json:"is_private"`
+	FloorID   *uuid.UUID `json:"floor_id" binding:"omitempty"`
+	Name      string     `json:"name" binding:"required,min=1,max=64"`
+	RoomType  string     `json:"room_type" binding:"required,oneof=text audio"`
+	IsPrivate bool       `json:"is_private" binding:"required"` // default value = false
 }
 
 type CreateRoomRes struct {

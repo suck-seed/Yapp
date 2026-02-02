@@ -19,16 +19,18 @@ const (
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		tokenString := GetTokenFromRequest(c)
-		if tokenString == "" {
+		token, ok := GetTokenFromRequest(c)
+		if !ok {
 			utils.WriteError(c, utils.ErrorMissingToken)
+			c.Abort()
 			return
 		}
 
 		// Parse claims from token
-		claims, err := ParseAndVerify(tokenString)
+		claims, err := ParseAndVerify(token)
 		if err != nil {
 			utils.WriteError(c, utils.ErrorInvalidToken)
+			c.Abort()
 			return
 		}
 
@@ -41,23 +43,25 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
-
 	}
 
 }
 
-func GetTokenFromRequest(c *gin.Context) string {
-	// Try cookie
+func GetTokenFromRequest(c *gin.Context) (string, bool) {
+	// Trying cookie
 	if cookie, err := c.Cookie("jwt"); err == nil && cookie != "" {
-		return cookie
+		return cookie, true
 	}
 
-	// Try Authorization header
+	// Trying Authorization header
 	if token, ok := strings.CutPrefix(c.GetHeader("Authorization"), "Bearer "); ok {
-		return strings.TrimSpace(token)
+		token := strings.TrimSpace(token)
+		if token != "" {
+			return token, true
+		}
 	}
 
-	return ""
+	return "", false
 }
 
 func CurrentUserFromGinContext(c *gin.Context) (string, string, error) {
