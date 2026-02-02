@@ -26,29 +26,32 @@ func StartServer(cfg config.AppConfig) {
 	// new app handler
 	router := gin.Default()
 
-	// use CORS setting
+	// cors middleware injection
 	router.Use(cfg.CORS)
 
-	// repositories
+	// repositories init
 	userRepository := repositories.NewUserRepository()
 	hallRepository := repositories.NewHallRepository()
 	floorRepository := repositories.NewFloorRepository()
 	roomRepository := repositories.NewRoomRepository()
 	messageRepository := repositories.NewMessageRepository()
 
-	// Service & Dependency Injection for services
+	// service init and corresponsing repo's passed
 	userService := services.NewUserService(userRepository, cfg.PostgresPool)
 	hallService := services.NewHallService(hallRepository, cfg.PostgresPool)
 	floorService := services.NewFloorService(hallRepository, floorRepository, cfg.PostgresPool)
 	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository, cfg.PostgresPool)
 	messageService := services.NewMessageService(hallRepository, roomRepository, messageRepository, userRepository, cfg.PostgresPool)
 
-	//	presist function
+	//	presist function for message
 	presistFunction := ws.MakePresistFunction(messageService, userService)
+
+	// new websocket hub init and running
 	hub := ws.NewHub(presistFunction)
 	go hub.Run()
 
 	// Public Router ( Do not pass AuthMiddleware here pls )
+	// Only used for singup, signin and signout
 	rest.RegisterAuthRoutes(router, userService)
 
 	// Protected API routed (JWT required, AuthMiddleware Passed)
