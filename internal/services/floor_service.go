@@ -59,7 +59,7 @@ func (s *floorService) CreateFloor(c context.Context, req *dto.CreateFloorReq) (
 
 	//	valid hallID
 	exists, err := s.IHallRepository.DoesHallExist(ctx, runner, req.HallID)
-	if err != nil || !*exists {
+	if err != nil || !exists {
 		return nil, utils.ErrorHallDoesntExist
 	}
 
@@ -73,7 +73,7 @@ func (s *floorService) CreateFloor(c context.Context, req *dto.CreateFloorReq) (
 		ID:        floorID,
 		HallID:    req.HallID,
 		Name:      canonName,
-		IsPrivate: req.IsPrivate,
+		IsPrivate: *req.IsPrivate,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}

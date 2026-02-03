@@ -80,7 +80,7 @@ func StartServer(cfg config.AppConfig) {
 func startGracefully(router *gin.Engine, cfg config.AppConfig, hub *ws.Hub) {
 
 	server := http.Server{
-		Addr:    ":" + cfg.ServerPort,
+		Addr:    "0.0.0.0:" + cfg.ServerPort,
 		Handler: router,
 
 		// Should be longer than Nginx proxy_read_timeout (30s)

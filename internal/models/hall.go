@@ -42,10 +42,9 @@ type Role struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
-type HallBans struct {
-	ID       uuid.UUID `db:"id"`
-	Reason   string    `db:"reason"`
-	BannedBy uuid.UUID `db:"banned_by"`
+type HallBan struct {
+	ID     uuid.UUID `db:"id"`
+	Reason string    `db:"reason"`
 
 	UserID uuid.UUID `db:"user_id"`
 	HallID uuid.UUID `db:"hall_id"`

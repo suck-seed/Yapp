@@ -20,7 +20,7 @@ type IUserService interface {
 	Signin(c context.Context, req *dto.SigninUserReq) (*dto.SigninUserRes, error)
 
 	GetUserMe(c context.Context) (*models.User, error)
-	GetUserById(c context.Context, userId *uuid.UUID) (*models.User, error)
+	GetUserById(c context.Context, userID uuid.UUID) (*models.User, error)
 
 	UpdateUserMe(c context.Context, req *dto.UpdateUserMeReq) (*models.User, error)
 }
@@ -60,7 +60,7 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	// ----------- SANITIZE
 	canonUsername, err := utils.SanitizeUsername(req.Username)
 	if err != nil {
-		return nil, utils.ErrorInvalidUsername
+		return nil, utils.ErrorInvalidUserName
 	}
 	canonPassword, err := utils.SanitizePasswordPolicy(req.Password)
 	if err != nil {
@@ -77,8 +77,8 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 	}
 
 	// Validate user information
-	userByUsername, _ := s.IUserRepository.GetUserByUsername(ctx, runner, &canonUsername)
-	userByEmail, _ := s.IUserRepository.GetUserByEmail(ctx, runner, &canonEmail)
+	userByUsername, _ := s.IUserRepository.GetUserByUsername(ctx, runner, canonUsername)
+	userByEmail, _ := s.IUserRepository.GetUserByEmail(ctx, runner, canonEmail)
 
 	if userByUsername != nil {
 		return nil, utils.ErrorUsernameExists
@@ -92,7 +92,7 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 		return nil, utils.ErrorInternal
 	}
 
-	password_hash, err := utils.HashPassword(canonPassword)
+	passwordHash, err := utils.HashPassword(canonPassword)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
@@ -102,7 +102,7 @@ func (s *userService) Signup(c context.Context, req *dto.SignupUserReq) (*dto.Si
 		Username: canonUsername,
 		Email:    canonEmail,
 		// PhoneNumber:  canonPhone,
-		PasswordHash: password_hash,
+		PasswordHash: passwordHash,
 		DisplayName:  canonDisplayName,
 	}
 
@@ -141,7 +141,7 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 
 	canonEmail, err := utils.SanitizeEmail(req.Email)
 	if err == nil {
-		user, _ = s.IUserRepository.GetUserWithPasswordHashByEmail(ctx, runner, &canonEmail)
+		user, _ = s.IUserRepository.GetUserWithPasswordHashByEmail(ctx, runner, canonEmail)
 	}
 
 	canonPassword, err := utils.SanitizePasswordPolicy(req.Password)
@@ -194,7 +194,7 @@ func (s *userService) GetUserMe(c context.Context) (*models.User, error) {
 	}
 
 	// Fetch the user from the repository
-	user, err := s.IUserRepository.GetUserById(ctx, runner, userId)
+	user, err := s.IUserRepository.GetUserById(ctx, runner, *userId)
 	if err != nil {
 		return nil, utils.ErrorUserNotFound
 	}
@@ -224,7 +224,7 @@ func (s *userService) UpdateUserMe(c context.Context, req *dto.UpdateUserMeReq) 
 		return nil, utils.ErrorInvalidUserUUID
 	}
 
-	user, err := s.IUserRepository.UpdateUserById(ctx, runner, userId, req)
+	user, err := s.IUserRepository.UpdateUserById(ctx, runner, *userId, req)
 	if err != nil {
 		return nil, utils.ErrorUserNotFound
 	}
@@ -236,7 +236,7 @@ func (s *userService) UpdateUserMe(c context.Context, req *dto.UpdateUserMeReq) 
 	return user, nil
 }
 
-func (s *userService) GetUserById(c context.Context, userId *uuid.UUID) (*models.User, error) {
+func (s *userService) GetUserById(c context.Context, userID uuid.UUID) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
@@ -249,7 +249,7 @@ func (s *userService) GetUserById(c context.Context, userId *uuid.UUID) (*models
 	runner := database.NewConnWrapper(conn)
 
 	// Fetch the user from the repository
-	user, err := s.IUserRepository.GetUserById(ctx, runner, userId)
+	user, err := s.IUserRepository.GetUserById(ctx, runner, userID)
 	if err != nil {
 		return nil, utils.ErrorUserNotFound
 	}

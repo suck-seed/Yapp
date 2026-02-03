@@ -17,9 +17,9 @@ import (
 
 type IRoomService interface {
 	CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dto.CreateRoomRes, error)
-	GetRoomByID(c context.Context, roomId *uuid.UUID) (*models.Room, error)
+	GetRoomByID(c context.Context, roomID uuid.UUID) (*models.Room, error)
 
-	IsUserRoomMember(c context.Context, roomId *uuid.UUID, userId *uuid.UUID) (*bool, error)
+	IsUserRoomMember(c context.Context, roomID uuid.UUID, userID uuid.UUID) (bool, error)
 }
 
 type roomService struct {
@@ -68,12 +68,12 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 	if err != nil {
 		return nil, utils.ErrorHallDoesntExist
 	}
-	if !*hallExists {
+	if !hallExists {
 		return nil, utils.ErrorHallDoesntExist
 	}
 
 	if req.FloorID != nil {
-		floorExists, err := s.IFloorRepository.DoesFloorExistsInRoom(ctx, runner, req.FloorID, &req.HallID)
+		floorExists, err := s.IFloorRepository.DoesFloorExistsInRoom(ctx, runner, *req.FloorID, req.HallID)
 		if err != nil {
 			return nil, utils.ErrorFloorDoesntExistInHall
 		}
@@ -96,11 +96,11 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 
 	roomCRES, err := s.IRoomRepository.CreateRoom(ctx, runner, &models.Room{
 		ID:        roomID,
-		HallId:    req.HallID,
-		FloorId:   req.FloorID,
+		HallID:    req.HallID,
+		FloorID:   req.FloorID,
 		Name:      canonName,
 		RoomType:  string(canonRoomType),
-		IsPrivate: req.IsPrivate,
+		IsPrivate: *req.IsPrivate,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	})
@@ -115,8 +115,8 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 
 	return &dto.CreateRoomRes{
 		ID:        roomCRES.ID,
-		HallID:    roomCRES.HallId,
-		FloorID:   roomCRES.FloorId,
+		HallID:    roomCRES.HallID,
+		FloorID:   roomCRES.FloorID,
 		Name:      roomCRES.Name,
 		RoomType:  roomCRES.RoomType,
 		IsPrivate: roomCRES.IsPrivate,
@@ -125,7 +125,7 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 	}, nil
 }
 
-func (s *roomService) GetRoomByID(c context.Context, rooomId *uuid.UUID) (*models.Room, error) {
+func (s *roomService) GetRoomByID(c context.Context, roomID uuid.UUID) (*models.Room, error) {
 
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
@@ -138,7 +138,7 @@ func (s *roomService) GetRoomByID(c context.Context, rooomId *uuid.UUID) (*model
 	defer conn.Release()
 	runner := database.NewConnWrapper(conn)
 
-	roomCRES, err := s.IRoomRepository.GetRoomByID(ctx, runner, rooomId)
+	roomCRES, err := s.IRoomRepository.GetRoomByID(ctx, runner, roomID)
 	if err != nil {
 		return nil, utils.ErrorFetchingRoom
 	}
@@ -147,7 +147,7 @@ func (s *roomService) GetRoomByID(c context.Context, rooomId *uuid.UUID) (*model
 
 }
 
-func (s *roomService) IsUserRoomMember(c context.Context, roomId *uuid.UUID, userId *uuid.UUID) (*bool, error) {
+func (s *roomService) IsUserRoomMember(c context.Context, roomID uuid.UUID, userID uuid.UUID) (bool, error) {
 
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
@@ -155,14 +155,14 @@ func (s *roomService) IsUserRoomMember(c context.Context, roomId *uuid.UUID, use
 	// --------------- CONNECTION INIT
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
-		return nil, utils.ErrorInternal
+		return false, utils.ErrorInternal
 	}
 	defer conn.Release()
 	runner := database.NewConnWrapper(conn)
 
-	isMember, err := s.IRoomRepository.IsUserRoomMember(ctx, runner, roomId, userId)
+	isMember, err := s.IRoomRepository.IsUserRoomMember(ctx, runner, roomID, userID)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
 	return isMember, nil

@@ -50,51 +50,51 @@ var upgrader = websocket.Upgrader{
 func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	// cant trust user with sending their userID, so we fetch it from context
 
-	userId, _, err := auth.CurrentUserFromContext(c)
+	userID, _, err := auth.CurrentUserFromContext(c)
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidToken)
 		return
 	}
 
 	// User Exists?
-	user, err := h.IUserService.GetUserById(c, userId)
+	user, err := h.IUserService.GetUserById(c, *userID)
 	if err != nil {
 		utils.WriteError(c, utils.ErrorUserNotFound)
 		return
 	}
 
 	// Parse room_id
-	roomIdStr := c.Param("room_id")
-	roomId, err := uuid.Parse(roomIdStr)
+	roomIDStr := c.Param("room_id")
+	roomID, err := uuid.Parse(roomIDStr)
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidRoomIDFormat)
 		return
 	}
 
 	// Room exists? && Fetch Room
-	room, err := h.IRoomService.GetRoomByID(c, &roomId)
+	room, err := h.IRoomService.GetRoomByID(c, roomID)
 	if err != nil {
 		utils.WriteError(c, utils.ErrorRoomDoesntExist)
 		return
 	}
 
 	// Hall exists?
-	hallExists, err := h.IHallService.DoesHallExist(c, &room.HallId)
+	hallExists, err := h.IHallService.DoesHallExist(c, room.HallID)
 	if err != nil {
 		utils.WriteError(c, err)
 	}
-	if !*hallExists {
+	if !hallExists {
 		utils.WriteError(c, utils.ErrorHallDoesntExist)
 		return
 	}
 
 	// Hall Member ?
-	belongs, err := h.IHallService.IsUserHallMember(c, &room.HallId, &user.ID)
+	belongs, err := h.IHallService.IsUserHallMember(c, room.HallID, user.ID)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
 	}
-	if !*belongs {
+	if !belongs {
 		utils.WriteError(c, utils.ErrorUserDoesntBelongHall)
 		return
 	}
@@ -103,12 +103,12 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	if room.IsPrivate {
 
 		// check on room_member table
-		belongs, err := h.IRoomService.IsUserRoomMember(c, &room.ID, &user.ID)
+		belongs, err := h.IRoomService.IsUserRoomMember(c, room.ID, user.ID)
 		if err != nil {
 			utils.WriteError(c, err)
 			return
 		}
-		if !*belongs {
+		if !belongs {
 			utils.WriteError(c, utils.ErrorUserDoesntBelongRoom)
 			return
 		}

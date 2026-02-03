@@ -1,7 +1,6 @@
 CREATE TABLE hall_bans (
     id uuid,
     reason text,
-    banned_by uuid NOT NULL,
 
     user_id uuid NOT NULL REFERENCES users (id) on DELETE CASCADE,
     hall_id uuid NOT NULL REFERENCES halls (id) on DELETE CASCADE,

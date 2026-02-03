@@ -69,8 +69,8 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 	// create a message object
 	message := &models.Message{
 		ID:       messageId,
-		RoomId:   req.RoomID,
-		AuthorId: req.AuthorID,
+		RoomID:   req.RoomID,
+		AuthorID: req.AuthorID,
 		Content:  normalizedContent,
 		SentAt:   req.SentAt,
 	}
@@ -93,7 +93,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 		// validate if the userId acc exists or not
 		for _, mentionedUserID := range *req.Mentions {
 
-			exists, err := s.IUserRepository.DoesUserExists(ctx, runner, &mentionedUserID)
+			exists, err := s.IUserRepository.DoesUserExists(ctx, runner, mentionedUserID)
 			if err != nil {
 				return nil, utils.ErrorInternal
 			}
@@ -106,7 +106,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 				}
 
 				// get userBasic information for generation
-				userCRES, err := s.IUserRepository.GetUserById(ctx, runner, &mentionedUserID)
+				userCRES, err := s.IUserRepository.GetUserById(ctx, runner, mentionedUserID)
 				if err != nil {
 					return nil, utils.ErrorFetchingUser
 				}
@@ -179,8 +179,8 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 
 	return &dto.CreateMessageRes{
 		ID:               messageCRES.ID,
-		RoomID:           messageCRES.RoomId,
-		AuthorID:         messageCRES.AuthorId,
+		RoomID:           messageCRES.RoomID,
+		AuthorID:         messageCRES.AuthorID,
 		Content:          messageCRES.Content,
 		SentAt:           messageCRES.SentAt,
 		MentionsEveryone: messageCRES.MentionEveryone,
@@ -231,12 +231,12 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 	}
 
 	// Check if room exists
-	roomExist, err := s.IRoomRepository.DoesRoomExists(ctx, runner, &req.RoomID)
+	roomExist, err := s.IRoomRepository.DoesRoomExists(ctx, runner, req.RoomID)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
 
-	if !*roomExist {
+	if !roomExist {
 		return nil, utils.ErrorRoomDoesntExist
 	}
 
@@ -247,40 +247,40 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 	}
 
 	// get the room
-	room, err := s.IRoomRepository.GetRoomByID(ctx, runner, &req.RoomID)
+	room, err := s.IRoomRepository.GetRoomByID(ctx, runner, req.RoomID)
 	if err != nil {
 		return nil, utils.ErrorFetchingRoom
 	}
 
 	// does hall exist
-	hallExist, err := s.IHallRepository.DoesHallExist(ctx, runner, room.HallId)
+	hallExist, err := s.IHallRepository.DoesHallExist(ctx, runner, room.HallID)
 	if err != nil {
 		return nil, utils.ErrorFetchingHall
 	}
 
-	if !*hallExist {
+	if !hallExist {
 		return nil, utils.ErrorHallDoesntExist
 	}
 
 	// does user belong to hall and room
-	userBelongsToHall, err := s.IHallRepository.IsUserHallMember(ctx, runner, room.HallId, *userId)
+	userBelongsToHall, err := s.IHallRepository.IsUserHallMember(ctx, runner, room.HallID, *userId)
 	if err != nil {
 		return nil, utils.ErrorFetchingHall
 	}
 
-	if !*userBelongsToHall {
+	if !userBelongsToHall {
 		return nil, utils.ErrorUserDoesntBelongHall
 	}
 
 	// if room = private , check if user belongs to the room
 	if room.IsPrivate {
-		userBelongsToRoom, err := s.IRoomRepository.IsUserRoomMember(ctx, runner, &room.ID, userId)
+		userBelongsToRoom, err := s.IRoomRepository.IsUserRoomMember(ctx, runner, room.ID, *userId)
 
 		if err != nil {
 			return nil, utils.ErrorFetchingRoom
 		}
 
-		if !*userBelongsToRoom {
+		if !userBelongsToRoom {
 			return nil, utils.ErrorUserDoesntBelongRoom
 		}
 	}

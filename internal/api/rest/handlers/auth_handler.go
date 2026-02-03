@@ -59,7 +59,7 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("jwt", SignInRes.AccessToken, cookieSecond, "/", "", false, true)
 
-	// filtered response
+	// filtered response (not sending accesstoken over https, so removed it)
 	res := &dto.SigninUserRes{
 		UserMe:  SignInRes.UserMe,
 		Success: SignInRes.Success,

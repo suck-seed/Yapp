@@ -17,8 +17,14 @@ type IHallRepository interface {
 	GetUserHallIDs(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]uuid.UUID, error)
 	GetHallByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error)
 
-	DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*bool, error)
-	IsUserHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (*bool, error)
+	DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (bool, error)
+	IsUserHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (bool, error)
+
+	// Bans
+	BanUser(ctx context.Context, db database.DBRunner, ban *models.HallBan) (*models.HallBan, error)
+	UnBanUser(ctx context.Context, db database.DBRunner, banID uuid.UUID) (*models.HallBan, error)
+	GetBanByID(ctx context.Context, db database.DBRunner, banID uuid.UUID) (*models.HallBan, error)
+	GetAllHallBans(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.HallBan, error)
 }
 
 type hallRepository struct {
@@ -181,7 +187,7 @@ func (r *hallRepository) GetHallByID(ctx context.Context, db database.DBRunner, 
 	return hall, nil
 }
 
-func (r *hallRepository) DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*bool, error) {
+func (r *hallRepository) DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (bool, error) {
 
 	query := `
 
@@ -193,13 +199,13 @@ func (r *hallRepository) DoesHallExist(ctx context.Context, db database.DBRunner
 
 	err := db.QueryRow(ctx, query, hallID).Scan(&exists)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	return &exists, nil
+	return exists, nil
 }
 
-func (r *hallRepository) IsUserHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (*bool, error) {
+func (r *hallRepository) IsUserHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (bool, error) {
 
 	query := `
 
@@ -209,9 +215,71 @@ func (r *hallRepository) IsUserHallMember(ctx context.Context, db database.DBRun
 	var exists bool
 
 	if err := db.QueryRow(ctx, query, hallID, userID).Scan(&exists); err != nil {
+		return false, err
+	}
+
+	return exists, nil
+
+}
+
+// HALL BANS
+func (r *hallRepository) BanUser(ctx context.Context, db database.DBRunner, ban *models.HallBan) (*models.HallBan, error) {
+
+	query := `
+
+	INSERT INTO hall_bans (id, reason, user_id, hall_id)
+    VALUES ($1, $2, $3, $4)
+    RETURNING id, reason, user_id, hall_id, created_at, updated_at
+	`
+
+	row := db.QueryRow(ctx, query, ban.ID, ban.Reason, ban.UserID, ban.HallID)
+
+	saved := &models.HallBan{}
+	err := row.Scan(
+		&saved.ID,
+		&saved.Reason,
+		&saved.UserID,
+		&saved.HallID,
+		&saved.CreatedAt,
+		&saved.UpdatedAt,
+	)
+
+	if err != nil {
 		return nil, err
 	}
 
-	return &exists, nil
+	return saved, nil
+}
+func (r *hallRepository) UnBanUser(ctx context.Context, db database.DBRunner, banID uuid.UUID) (*models.HallBan, error) {
+	return nil, nil
+}
+func (r *hallRepository) GetBanByID(ctx context.Context, db database.DBRunner, banID uuid.UUID) (*models.HallBan, error) {
 
+	query := `
+	SELECT id, reason, user_id, hall_id, created_at, updated_at
+	FROM hall_bans
+	WHERE id = $
+	`
+
+	row := db.QueryRow(ctx, query, banID)
+
+	saved := &models.HallBan{}
+	err := row.Scan(
+		&saved.ID,
+		&saved.Reason,
+		&saved.UserID,
+		&saved.HallID,
+		&saved.CreatedAt,
+		&saved.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return saved, nil
+
+}
+func (r *hallRepository) GetAllHallBans(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.HallBan, error) {
+	return nil, nil
 }
