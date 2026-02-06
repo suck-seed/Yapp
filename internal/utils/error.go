@@ -51,6 +51,7 @@ var (
 	ErrorFetchingUser     = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching User"}
 	ErrorFetchingMessages = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Messages"}
 	ErrorFetchingHall     = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Hall"}
+	ErrorFetchingBan      = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Ban"}
 
 	ErrorCreatingHallRole   = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Role"}
 	ErrorCreatingHallMember = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Member"}
@@ -81,6 +82,7 @@ var (
 	// DOESNT EXIST
 	ErrorRoomDoesntExist        = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}
 	ErrorHallDoesntExist        = &CustomError{Code: http.StatusBadRequest, Message: "Hall not found"}
+	ErrorBanDoesntExist         = &CustomError{Code: http.StatusBadRequest, Message: "Ban not found"}
 	ErrorFloorDoesntExistInHall = &CustomError{Code: http.StatusBadRequest, Message: "Floor not found in this hall"}
 
 	// DOES NOT BELONG
