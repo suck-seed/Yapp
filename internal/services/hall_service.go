@@ -16,10 +16,11 @@ import (
 )
 
 type IHallService interface {
+
+	// -------------------- HALLS
 	CreateHall(c context.Context, req *dto.CreateHallReq) (*dto.CreateHallRes, error)
 	IsUserHallMember(c context.Context, hallID uuid.UUID, userID uuid.UUID) (bool, error)
 	DoesHallExist(c context.Context, hallID uuid.UUID) (bool, error)
-
 	GetUserHalls(c context.Context) ([]*models.Hall, error)
 }
 

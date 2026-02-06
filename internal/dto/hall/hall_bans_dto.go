@@ -44,3 +44,10 @@ type BanSummaryResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+// UnbanResponse - response after unbanning
+type UnbanResponse struct {
+	UserID   uuid.UUID `json:"user_id"`
+	Username string    `json:"username"`
+	Message  string    `json:"message"`
+}
