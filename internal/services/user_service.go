@@ -19,10 +19,10 @@ type IUserService interface {
 	Signup(c context.Context, req *dto.SignupUserReq) (*dto.SignupUserRes, error)
 	Signin(c context.Context, req *dto.SigninUserReq) (*dto.SigninUserRes, error)
 
-	GetUserMe(c context.Context) (*models.User, error)
+	GetUserMe(c context.Context, userInfo *auth.UserInfo) (*models.User, error)
 	GetUserById(c context.Context, userID uuid.UUID) (*models.User, error)
 
-	UpdateUserMe(c context.Context, req *dto.UpdateUserMeReq) (*models.User, error)
+	UpdateUserMe(c context.Context, userInfo *auth.UserInfo, req *dto.UpdateUserMeReq) (*models.User, error)
 }
 
 // userService : Behaves like a class, and implements IUserService's methods
@@ -175,7 +175,7 @@ func (s *userService) Signin(c context.Context, req *dto.SigninUserReq) (*dto.Si
 	}, nil
 }
 
-func (s *userService) GetUserMe(c context.Context) (*models.User, error) {
+func (s *userService) GetUserMe(c context.Context, userInfo *auth.UserInfo) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
@@ -187,14 +187,8 @@ func (s *userService) GetUserMe(c context.Context) (*models.User, error) {
 	defer conn.Release()
 	runner := database.NewConnWrapper(conn)
 
-	// Extract user info from context (already validated by middleware)
-	userId, _, err := auth.CurrentUserFromContext(c)
-	if err != nil {
-		return nil, utils.ErrorInvalidUserUUID
-	}
-
 	// Fetch the user from the repository
-	user, err := s.IUserRepository.GetUserById(ctx, runner, *userId)
+	user, err := s.IUserRepository.GetUserById(ctx, runner, userInfo.ID)
 	if err != nil {
 		return nil, utils.ErrorUserNotFound
 	}
@@ -206,7 +200,7 @@ func (s *userService) GetUserMe(c context.Context) (*models.User, error) {
 	return user, nil
 }
 
-func (s *userService) UpdateUserMe(c context.Context, req *dto.UpdateUserMeReq) (*models.User, error) {
+func (s *userService) UpdateUserMe(c context.Context, userInfo *auth.UserInfo, req *dto.UpdateUserMeReq) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
@@ -218,13 +212,7 @@ func (s *userService) UpdateUserMe(c context.Context, req *dto.UpdateUserMeReq) 
 	defer conn.Release()
 	runner := database.NewConnWrapper(conn)
 
-	// Extract user info from context (already validated by middleware)
-	userId, _, err := auth.CurrentUserFromContext(c)
-	if err != nil {
-		return nil, utils.ErrorInvalidUserUUID
-	}
-
-	user, err := s.IUserRepository.UpdateUserById(ctx, runner, *userId, req)
+	user, err := s.IUserRepository.UpdateUserById(ctx, runner, userInfo.ID, req)
 	if err != nil {
 		return nil, utils.ErrorUserNotFound
 	}

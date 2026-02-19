@@ -33,6 +33,7 @@ var (
 	ErrorInvalidDisplayName = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Display Name"}
 	ErrorInvalidPassword    = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Password Format"}
 	ErrorPasswordWhiteSpace = &CustomError{Code: http.StatusBadRequest, Message: "Password has whitespace"}
+	ErrorUserDoesntExist    = &CustomError{Code: http.StatusBadRequest, Message: "User Does Not Exist"}
 
 	// ROOM TYPE
 	ErrorInvalidRoomType = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Room Type"}
@@ -47,14 +48,19 @@ var (
 	ErrorCreatingRoom  = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Room"}
 
 	// FETCHING ERROR
-	ErrorFetchingRoom     = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Room"}
-	ErrorFetchingUser     = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching User"}
-	ErrorFetchingMessages = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Messages"}
-	ErrorFetchingHall     = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Hall"}
-	ErrorFetchingBan      = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Ban"}
+	ErrorFetchingRoom       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Room"}
+	ErrorFetchingUser       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching User"}
+	ErrorFetchingMessages   = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Messages"}
+	ErrorFetchingHall       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Hall"}
+	ErrorFetchingBan        = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Ban"}
+	ErrorFetchingRole       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Role"}
+	ErrorFetchingPermission = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Permissions"}
 
 	ErrorCreatingHallRole   = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Role"}
 	ErrorCreatingHallMember = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Member"}
+
+	// PERMISSIONS DISGARDED ERROR
+	ErrorUserCannotManageRoles = &CustomError{Code: http.StatusUnauthorized, Message: "User does not have privlage to manage roles"}
 
 	// ITERATING
 	ErrorMessageRowsIteration = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while iterating message rows"}
@@ -82,13 +88,16 @@ var (
 	// DOESNT EXIST
 	ErrorRoomDoesntExist        = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}
 	ErrorHallDoesntExist        = &CustomError{Code: http.StatusBadRequest, Message: "Hall not found"}
+	ErrorRoleDoesntExist        = &CustomError{Code: http.StatusBadRequest, Message: "Role not found"}
+	ErrorPermissionsDoesntExist = &CustomError{Code: http.StatusBadRequest, Message: "Permissions not found"}
 	ErrorBanDoesntExist         = &CustomError{Code: http.StatusBadRequest, Message: "Ban not found"}
 	ErrorFloorDoesntExistInHall = &CustomError{Code: http.StatusBadRequest, Message: "Floor not found in this hall"}
 
 	// DOES NOT BELONG
-	ErrorUserDoesntBelongRoom = &CustomError{Code: http.StatusBadRequest, Message: "User is not allowded in this room"}
-	ErrorUserDoesntBelongHall = &CustomError{Code: http.StatusBadRequest, Message: "User is not allowded in this hall"}
-	ErrorInvalidBannerColor   = &CustomError{Code: http.StatusBadRequest, Message: "Invalid banner color"}
+	ErrorUserDoesntBelongRoom       = &CustomError{Code: http.StatusBadRequest, Message: "User is not allowded in this room"}
+	ErrorUserDoesntBelongHall       = &CustomError{Code: http.StatusBadRequest, Message: "User is not allowded in this hall"}
+	ErrorRoleDoesntBelongInThisHall = &CustomError{Code: http.StatusBadRequest, Message: "Role does not belong to this hall"}
+	ErrorInvalidBannerColor         = &CustomError{Code: http.StatusBadRequest, Message: "Invalid banner color"}
 
 	// ALREADY EXIST
 	ErrorHallAlreadyExist = &CustomError{Code: http.StatusBadRequest, Message: "Hall under the name already exists"}

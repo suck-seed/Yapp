@@ -17,7 +17,7 @@ import (
 
 type IMessageService interface {
 	CreateMessage(c context.Context, req *dto.CreateMessageReq) (*dto.CreateMessageRes, error)
-	FetchMessages(c context.Context, req *dto.MessageQueryParams) (*dto.MessageListResponse, error)
+	FetchMessages(c context.Context, userInfo *auth.UserInfo, req *dto.MessageQueryParams) (*dto.MessageListResponse, error)
 }
 
 type messageService struct {
@@ -195,7 +195,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 
 }
 
-func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryParams) (*dto.MessageListResponse, error) {
+func (s *messageService) FetchMessages(c context.Context, userInfo *auth.UserInfo, req *dto.MessageQueryParams) (*dto.MessageListResponse, error) {
 
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
@@ -240,12 +240,6 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 		return nil, utils.ErrorRoomDoesntExist
 	}
 
-	// Get userId from context
-	userId, _, err := auth.CurrentUserFromContext(ctx)
-	if err != nil {
-		return nil, utils.ErrorInvalidUserUUID
-	}
-
 	// get the room
 	room, err := s.IRoomRepository.GetRoomByID(ctx, runner, req.RoomID)
 	if err != nil {
@@ -263,7 +257,7 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 	}
 
 	// does user belong to hall and room
-	userBelongsToHall, err := s.IHallRepository.IsUserHallMember(ctx, runner, room.HallID, *userId)
+	userBelongsToHall, err := s.IHallRepository.IsUserHallMember(ctx, runner, room.HallID, userInfo.ID)
 	if err != nil {
 		return nil, utils.ErrorFetchingHall
 	}
@@ -274,7 +268,7 @@ func (s *messageService) FetchMessages(c context.Context, req *dto.MessageQueryP
 
 	// if room = private , check if user belongs to the room
 	if room.IsPrivate {
-		userBelongsToRoom, err := s.IRoomRepository.IsUserRoomMember(ctx, runner, room.ID, *userId)
+		userBelongsToRoom, err := s.IRoomRepository.IsUserRoomMember(ctx, runner, room.ID, userInfo.ID)
 
 		if err != nil {
 			return nil, utils.ErrorFetchingRoom

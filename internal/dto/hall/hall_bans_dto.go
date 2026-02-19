@@ -6,14 +6,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// BanUserRequest - POST  request mapping struct for banning a user
-type BanUserRequest struct {
+// BanUserReq - POST  request mapping struct for banning a user
+type BanUserReq struct {
 	UserID uuid.UUID `json:"user_id" binding:"required"`
 	Reason string    `json:"reason" binding:"required,min=1, max-500"`
 }
 
-// BanUserResponse - POST response to a ban user request
-type BanUserResponse struct {
+// BanUserRes - POST response to a ban user request
+type BanUserRes struct {
 	ID        uuid.UUID      `json:"id"`
 	Reason    string         `json:"reason"`
 	UserID    uuid.UUID      `json:"user_id"`
@@ -31,11 +31,11 @@ type BannedUserInfo struct {
 
 // AllBannedUserRes - Gets All banned user in a specific hall
 type AllBannedUserRes struct {
-	Bans []BanSummaryResponse `json:"bans"`
+	Bans []BanSummaryRes `json:"bans"`
 }
 
-// BanSummaryResponse - Gets Response summary for individual ban get query
-type BanSummaryResponse struct {
+// BanSummaryRes - Gets Response summary for individual ban get query
+type BanSummaryRes struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"user_id"`
 	Username  string    `json:"username"`
@@ -45,8 +45,8 @@ type BanSummaryResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// UnbanResponse - response after unbanning
-type UnbanResponse struct {
+// UnbanRes - response after unbanning
+type UnbanRes struct {
 	UserID   uuid.UUID `json:"user_id"`
 	Username string    `json:"username"`
 	Message  string    `json:"message"`

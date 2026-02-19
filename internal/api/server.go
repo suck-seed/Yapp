@@ -31,16 +31,24 @@ func StartServer(cfg config.AppConfig) {
 
 	// repositories init
 	userRepository := repositories.NewUserRepository()
+
 	hallRepository := repositories.NewHallRepository()
+	roleRepository := repositories.NewRoleRepository()
+	banRepository := repositories.NewBanRepository()
+
 	floorRepository := repositories.NewFloorRepository()
 	roomRepository := repositories.NewRoomRepository()
 	messageRepository := repositories.NewMessageRepository()
 
 	// service init and corresponsing repo's passed
 	userService := services.NewUserService(userRepository, cfg.PostgresPool)
-	hallService := services.NewHallService(hallRepository, cfg.PostgresPool)
+	hallService := services.NewHallService(hallRepository, roleRepository, banRepository, cfg.PostgresPool)
 	floorService := services.NewFloorService(hallRepository, floorRepository, cfg.PostgresPool)
 	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository, cfg.PostgresPool)
+	roleService := services.NewRoleService(roleRepository, userRepository, hallRepository, banRepository, cfg.PostgresPool)
+	banService := services.NewBanService(banRepository, userRepository, hallRepository, roleRepository, cfg.PostgresPool)
+
+	// message
 	messageService := services.NewMessageService(hallRepository, roomRepository, messageRepository, userRepository, cfg.PostgresPool)
 
 	//	presist function for message
@@ -59,7 +67,7 @@ func StartServer(cfg config.AppConfig) {
 	api.Use(auth.AuthMiddleware())
 	{
 		rest.RegisterUserRoutes(api, userService)
-		rest.RegisterHallRoutes(api, hallService)
+		rest.RegisterHallRoutes(api, hallService, roleService, banService)
 		rest.RegisterFloorRoutes(api, floorService)
 		rest.RegisterRoomRoutes(api, roomService)
 		rest.RegisterMessageRoutes(api, messageService)

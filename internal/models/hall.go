@@ -21,34 +21,11 @@ type Hall struct {
 }
 
 type HallMember struct {
-	ID        uuid.UUID `db:"id"`
-	HallID    uuid.UUID `db:"hall_id"`
-	UserID    uuid.UUID `db:"user_id"`
-	RoleID    uuid.UUID `db:"role_id"`
-	JoinedAt  time.Time `db:"joined_at"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
-}
-
-type Role struct {
-	ID        uuid.UUID `db:"id"`
-	HallID    uuid.UUID `db:"hall_id"`
-	Name      string    `db:"name"`
-	Color     *string   `db:"color"`
-	IconURL   *string   `db:"icon_url"`
-	IsDefault bool      `db:"is_default"`
-	IsAdmin   bool      `db:"is_admin"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
-}
-
-type HallBan struct {
-	ID     uuid.UUID `db:"id"`
-	Reason string    `db:"reason"`
-
-	UserID uuid.UUID `db:"user_id"`
-	HallID uuid.UUID `db:"hall_id"`
-
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+	ID        uuid.UUID `db:"id" json:"id"`
+	HallID    uuid.UUID `db:"hall_id" json:"hall_id"`
+	UserID    uuid.UUID `db:"user_id" json:"user_id"`
+	RoleID    uuid.UUID `db:"role_id" json:"role_id"`
+	JoinedAt  time.Time `db:"joined_at" json:"joined_at"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 }

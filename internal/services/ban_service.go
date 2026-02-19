@@ -13,46 +13,48 @@ import (
 )
 
 type IBanService interface {
-	BanUser(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*dto.BanUserResponse, error)
-	UnbanUser(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*dto.UnbanResponse, error)
-	GetBanByID(ctx context.Context, hallID uuid.UUID, userID uuid.UUID, banID uuid.UUID) (*dto.BanSummaryResponse, error)
-	GetAllHallBans(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*dto.AllBannedUserResponse, error)
+	BanUser(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*dto.BanUserRes, error)
+	UnbanUser(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*dto.UnbanRes, error)
+	GetBanByID(ctx context.Context, hallID uuid.UUID, userID uuid.UUID, banID uuid.UUID) (*dto.BanSummaryRes, error)
+	GetAllHallBans(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*dto.AllBannedUserRes, error)
 }
 
 type banService struct {
 	repositories.IBanRepsitory
-	repositories.IHallRepository
 	repositories.IUserRepository
+	repositories.IHallRepository
+	repositories.IRoleRepository
 
 	pool    *pgxpool.Pool
 	timeout time.Duration
 	mu      sync.RWMutex
 }
 
-func NewBanService(banRepo repositories.IBanRepsitory, hallRepo repositories.IHallRepository, userRepo repositories.IUserRepository, pool *pgxpool.Pool) IBanService {
+func NewBanService(banRepo repositories.IBanRepsitory, userRepo repositories.IUserRepository, hallRepo repositories.IHallRepository, roleRepo repositories.IRoleRepository, pool *pgxpool.Pool) IBanService {
 	return &banService{
 		banRepo,
-		hallRepo,
 		userRepo,
+		hallRepo,
+		roleRepo,
 		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
 	}
 }
 
-func (s *banService) BanUser(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*dto.BanUserResponse, error) {
+func (s *banService) BanUser(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*dto.BanUserRes, error) {
 
 	return nil, nil
 }
-func (s *banService) UnbanUser(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*dto.UnbanResponse, error) {
+func (s *banService) UnbanUser(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*dto.UnbanRes, error) {
 
 	return nil, nil
 }
-func (s *banService) GetBanByID(ctx context.Context, hallID uuid.UUID, userID uuid.UUID, banID uuid.UUID) (*dto.BanSummaryResponse, error) {
+func (s *banService) GetBanByID(ctx context.Context, hallID uuid.UUID, userID uuid.UUID, banID uuid.UUID) (*dto.BanSummaryRes, error) {
 
 	return nil, nil
 }
-func (s *banService) GetAllHallBans(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*dto.AllBannedUserResponse, error) {
+func (s *banService) GetAllHallBans(ctx context.Context, hallID uuid.UUID, userID uuid.UUID) (*dto.AllBannedUserRes, error) {
 
 	return nil, nil
 }

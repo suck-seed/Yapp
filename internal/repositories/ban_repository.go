@@ -31,7 +31,7 @@ type IBanRepsitory interface {
 
 type banRepository struct{}
 
-func NeqBanRepository() IBanRepsitory {
+func NewBanRepository() IBanRepsitory {
 	return &banRepository{}
 }
 
@@ -63,6 +63,7 @@ func (r *banRepository) BanUser(ctx context.Context, db database.DBRunner, ban *
 
 	return saved, nil
 }
+
 func (r *banRepository) UnBanUser(ctx context.Context, db database.DBRunner, banID uuid.UUID) (*models.HallBan, error) {
 
 	// Fetching ban before deleting it
@@ -88,6 +89,7 @@ func (r *banRepository) UnBanUser(ctx context.Context, db database.DBRunner, ban
 
 	return ban, nil
 }
+
 func (r *banRepository) GetBanByID(ctx context.Context, db database.DBRunner, banID uuid.UUID) (*models.HallBan, error) {
 
 	query := `
@@ -113,8 +115,8 @@ func (r *banRepository) GetBanByID(ctx context.Context, db database.DBRunner, ba
 	}
 
 	return saved, nil
-
 }
+
 func (r *banRepository) GetAllHallBans(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.HallBan, error) {
 
 	query := `	SELECT id, reason, user_id, hall_id, created_at, updated_at
@@ -174,7 +176,6 @@ func (r *banRepository) IsUserBanned(ctx context.Context, db database.DBRunner, 
 		return false, err
 	}
 	return exists, nil
-
 }
 
 func (r *banRepository) GetBanByUserAndHall(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (*models.HallBan, error) {

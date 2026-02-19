@@ -15,33 +15,40 @@ import (
 	"github.com/suck-seed/yapp/internal/utils"
 )
 
+// consts
+const HALLCREATORROLENAME string = "creator"
+
 type IHallService interface {
 
 	// -------------------- HALLS
-	CreateHall(c context.Context, req *dto.CreateHallReq) (*dto.CreateHallRes, error)
+	CreateHall(c context.Context, userInfo *auth.UserInfo, req *dto.CreateHallReq) (*dto.CreateHallRes, error)
+	GetUserHalls(c context.Context, userInfo *auth.UserInfo) ([]*models.Hall, error)
 	IsUserHallMember(c context.Context, hallID uuid.UUID, userID uuid.UUID) (bool, error)
 	DoesHallExist(c context.Context, hallID uuid.UUID) (bool, error)
-	GetUserHalls(c context.Context) ([]*models.Hall, error)
 }
 
 type hallService struct {
 	repositories.IHallRepository
+	repositories.IRoleRepository
+	repositories.IBanRepsitory
 	pool *pgxpool.Pool
 
 	timeout time.Duration
 	mu      sync.RWMutex
 }
 
-func NewHallService(hallRepo repositories.IHallRepository, pool *pgxpool.Pool) IHallService {
+func NewHallService(hallRepo repositories.IHallRepository, roleRepo repositories.IRoleRepository, banRepo repositories.IBanRepsitory, pool *pgxpool.Pool) IHallService {
 	return &hallService{
 		hallRepo,
+		roleRepo,
+		banRepo,
 		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
 	}
 }
 
-func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dto.CreateHallRes, error) {
+func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req *dto.CreateHallReq) (*dto.CreateHallRes, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
@@ -67,12 +74,6 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 		return nil, err
 	}
 
-	// get userId from context.Context()
-	userId, _, err := auth.CurrentUserFromContext(c)
-	if err != nil {
-		return nil, err
-	}
-
 	//
 	// Hall Creation
 	//
@@ -92,7 +93,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 		IconThumbnailURL: req.IconThumbnailURL,
 		BannerColor:      canonBannerColor,
 		Description:      canonDescription,
-		OwnerID:          *userId,
+		OwnerID:          userInfo.ID,
 	}
 
 	// pass to repo
@@ -111,15 +112,17 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	newRole := &models.Role{
 		ID:      roleId,
 		HallID:  hall.ID,
-		Name:    "creator",
+		Name:    HALLCREATORROLENAME,
 		IsAdmin: true,
 	}
 
 	// pass to repo
-	role, err := s.IHallRepository.CreateHallRole(ctx, runner, newRole)
+	role, err := s.IRoleRepository.CreateRole(ctx, runner, newRole)
 	if err != nil {
 		return nil, utils.ErrorCreatingHallRole
 	}
+
+	// TODO : implement permission setting for
 
 	//
 	// Hall Member Creation
@@ -135,7 +138,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	newHallMember := &models.HallMember{
 		ID:     hallMemberID,
 		HallID: hall.ID,
-		UserID: *userId,
+		UserID: userInfo.ID,
 		RoleID: role.ID,
 	}
 
@@ -163,7 +166,7 @@ func (s *hallService) CreateHall(c context.Context, req *dto.CreateHallReq) (*dt
 	}, nil
 }
 
-func (s *hallService) GetUserHalls(c context.Context) ([]*models.Hall, error) {
+func (s *hallService) GetUserHalls(c context.Context, userInfo *auth.UserInfo) ([]*models.Hall, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
@@ -175,13 +178,7 @@ func (s *hallService) GetUserHalls(c context.Context) ([]*models.Hall, error) {
 	defer conn.Release()
 	runner := database.NewConnWrapper(conn)
 
-	// get userId from context.Context()
-	userId, _, err := auth.CurrentUserFromContext(c)
-	if err != nil {
-		return nil, err
-	}
-
-	hallIds, err := s.IHallRepository.GetUserHallIDs(ctx, runner, *userId)
+	hallIds, err := s.IHallRepository.GetUserHallIDs(ctx, runner, userInfo.ID)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}

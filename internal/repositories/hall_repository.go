@@ -13,7 +13,6 @@ type IHallRepository interface {
 	// -------------------------- HALL
 	// core cud
 	CreateHall(ctx context.Context, db database.DBRunner, hall *models.Hall) (*models.Hall, error)
-	CreateHallRole(ctx context.Context, db database.DBRunner, hallRole *models.Role) (*models.Role, error)
 	CreateHallMember(ctx context.Context, db database.DBRunner, hallMember *models.HallMember) error
 
 	// list operation
@@ -62,43 +61,6 @@ func (r *hallRepository) CreateHall(ctx context.Context, db database.DBRunner, h
 		&saved.BannerColor,
 		&saved.Description,
 		&saved.OwnerID,
-		&saved.CreatedAt,
-		&saved.UpdatedAt,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return saved, nil
-}
-
-func (r *hallRepository) CreateHallRole(ctx context.Context, db database.DBRunner, hallRole *models.Role) (*models.Role, error) {
-	query := `
-    INSERT INTO roles (id, hall_id, name, color, icon_url, is_default, is_admin)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING id, hall_id, name, color, icon_url, is_default, is_admin, created_at, updated_at
-    `
-
-	row := db.QueryRow(ctx, query,
-		hallRole.ID,
-		hallRole.HallID,
-		hallRole.Name,
-		hallRole.Color,
-		hallRole.IconURL,
-		hallRole.IsDefault,
-		hallRole.IsAdmin,
-	)
-
-	saved := &models.Role{}
-	err := row.Scan(
-		&saved.ID,
-		&saved.HallID,
-		&saved.Name,
-		&saved.Color,
-		&saved.IconURL,
-		&saved.IsDefault,
-		&saved.IsAdmin,
 		&saved.CreatedAt,
 		&saved.UpdatedAt,
 	)
