@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/constants"
@@ -82,7 +83,7 @@ func (s *roleService) GetRolePermissions(ctx context.Context, userInfo *auth.Use
 	role, err := s.IRoleRepository.GetRole(ctx, runner, roleID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, utils.ErrorRoleDoesntExist
+			return nil, utils.ErrorRoleNotFound
 		}
 		return nil, utils.ErrorFetchingRole
 	}
@@ -96,7 +97,7 @@ func (s *roleService) GetRolePermissions(ctx context.Context, userInfo *auth.Use
 	permissions, err := s.IRoleRepository.GetRolePermissions(ctx, runner, roleID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, utils.ErrorPermissionsDoesntExist
+			return nil, utils.ErrorPermissionsNotFound
 		}
 		return nil, utils.ErrorFetchingPermission
 	}
@@ -125,7 +126,7 @@ func (s *roleService) GetUserPermissions(ctx context.Context, userInfo *auth.Use
 	hall, err := s.IHallRepository.GetHallByID(ctx, runner, hallID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, utils.ErrorHallDoesntExist
+			return nil, utils.ErrorHallNotFound
 		}
 		return nil, utils.ErrorFetchingHall
 	}
@@ -177,9 +178,53 @@ func (s *roleService) UpdateRolePermissions(ctx context.Context, userInfo *auth.
 	role, err := s.IRoleRepository.GetRole(ctx, runner, roleID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, utils.ErrorRoleDoesntExist
+			return nil, utils.ErrorRoleNotFound
 		}
 		return nil, utils.ErrorFetchingRole
+	}
+
+	// Verifying if the role belong to this hall
+	if role.HallID != hallID {
+		return nil, utils.ErrorRoleDoesntBelongInThisHall
+	}
+
+	// check if role if default role ( i.e the admin role or as per the user has changed it to )
+	// default role has all access, and cannot have its permission updated
+	if role.IsDefault {
+		return nil, utils.ErrorCannotUpdateDefaultRolePermission
+	}
+
+	if role.IsAdmin {
+		return nil, utils.ErrorCannotUpdateAdminRolePermission
+	}
+
+	currentPermission, err := s.IRoleRepository.GetRolePermissions(ctx, runner, roleID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorPermissionsNotFound
+		}
+		return nil, utils.ErrorFetchingPermission
+	}
+
+	// apply permission update
+	updatedPermissions := s.applyPermissionUpdates(currentPermission, req)
+	permissions, err := s.IRoleRepository.UpdateRolePermissions(ctx, runner, updatedPermissions)
+	if err != nil {
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorPermissionsNotFound
+		}
+
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return nil, utils.ErrorRequestTimeout
+		}
+
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			return nil, utils.ErrorUpdatingPermissions
+		}
+
+		return nil, utils.ErrorUpdatingPermissions
 	}
 
 	// ---------------------- COMMIT
@@ -187,7 +232,17 @@ func (s *roleService) UpdateRolePermissions(ctx context.Context, userInfo *auth.
 		return nil, utils.ErrorInternal
 	}
 
-	return nil, nil
+	// building response
+	permissionRes := s.buildPermissionResponse(role, permissions)
+
+	res := &dto.UpdateRolePermissionsRes{
+		Success:    true,
+		Message:    "Permission Updated",
+		RoleID:     roleID,
+		Categories: permissionRes.Categories,
+	}
+
+	return res, nil
 
 }
 
@@ -203,7 +258,7 @@ func (s *roleService) canManageRolesInternal(ctx context.Context, runner databas
 	hall, err := s.IHallRepository.GetHallByID(ctx, runner, hallID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorHallDoesntExist
+			return false, utils.ErrorHallNotFound
 		}
 		return false, utils.ErrorFetchingHall
 	}
@@ -217,7 +272,7 @@ func (s *roleService) canManageRolesInternal(ctx context.Context, runner databas
 	permissions, err := s.IRoleRepository.GetUserPermissionsInHall(ctx, runner, hallID, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorPermissionsDoesntExist
+			return false, utils.ErrorPermissionsNotFound
 		}
 		return false, utils.ErrorFetchingPermission
 	}
@@ -232,7 +287,7 @@ func (s *roleService) CanBanMembers(ctx context.Context, runner database.DBRunne
 	hall, err := s.IHallRepository.GetHallByID(ctx, runner, hallID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorHallDoesntExist
+			return false, utils.ErrorHallNotFound
 		}
 		return false, utils.ErrorFetchingHall
 	}
@@ -246,7 +301,7 @@ func (s *roleService) CanBanMembers(ctx context.Context, runner database.DBRunne
 	permissions, err := s.IRoleRepository.GetUserPermissionsInHall(ctx, runner, hallID, userInfo.ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorPermissionsDoesntExist
+			return false, utils.ErrorPermissionsNotFound
 		}
 		return false, utils.ErrorFetchingPermission
 	}
@@ -260,7 +315,7 @@ func (s *roleService) CanKickMembers(ctx context.Context, runner database.DBRunn
 	hall, err := s.IHallRepository.GetHallByID(ctx, runner, hallID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorHallDoesntExist
+			return false, utils.ErrorHallNotFound
 		}
 		return false, utils.ErrorFetchingHall
 	}
@@ -274,7 +329,7 @@ func (s *roleService) CanKickMembers(ctx context.Context, runner database.DBRunn
 	permissions, err := s.IRoleRepository.GetUserPermissionsInHall(ctx, runner, hallID, userInfo.ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorPermissionsDoesntExist
+			return false, utils.ErrorPermissionsNotFound
 		}
 		return false, utils.ErrorFetchingPermission
 	}

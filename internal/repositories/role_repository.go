@@ -13,6 +13,7 @@ type IRoleRepository interface {
 	// Role CUD
 	CreateRole(ctx context.Context, db database.DBRunner, hallRole *models.Role) (*models.Role, error)
 	GetRole(ctx context.Context, db database.DBRunner, roleID uuid.UUID) (*models.Role, error)
+	GetAllRole(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.Role, error)
 	UpdateRole(ctx context.Context, db database.DBRunner, role *models.Role) (*models.Role, error)
 	DeleteRole(ctx context.Context, db database.DBRunner, roleID uuid.UUID) (*models.Role, error)
 
@@ -76,15 +77,138 @@ func (r *roleRepository) CreateRole(ctx context.Context, db database.DBRunner, h
 }
 func (r *roleRepository) GetRole(ctx context.Context, db database.DBRunner, roleID uuid.UUID) (*models.Role, error) {
 
-	return nil, nil
+	query := `
+    SELECT
+    	id, hall_id, name, color, icon_url, is_default, is_admin, created_at, updated_at
+    FROM roles
+    WHERE id = $1
+    `
+
+	saved := &models.Role{}
+
+	err := db.QueryRow(ctx, query, roleID).Scan(
+		&saved.ID,
+		&saved.HallID,
+		&saved.Name,
+		&saved.Color,
+		&saved.IconURL,
+		&saved.IsDefault,
+		&saved.IsAdmin,
+		&saved.CreatedAt,
+		&saved.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return saved, nil
+
 }
+
+func (r *roleRepository) GetAllRole(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.Role, error) {
+
+	query := `
+    SELECT
+    	id, hall_id, name, color, icon_url, is_default, is_admin, created_at, updated_at
+    FROM roles
+    WHERE hall_id = $1
+    `
+
+	rows, err := db.Query(ctx, query, hallID)
+	if err != nil {
+		return nil, nil
+	}
+	defer rows.Close()
+
+	roles := []*models.Role{}
+	for rows.Next() {
+		currentRole := &models.Role{}
+		err := rows.Scan(
+			&currentRole.ID,
+			&currentRole.HallID,
+			&currentRole.Name,
+			&currentRole.Color,
+			&currentRole.IconURL,
+			&currentRole.IsDefault,
+			&currentRole.IsAdmin,
+			&currentRole.CreatedAt,
+			&currentRole.UpdatedAt,
+		)
+
+		// Scan error
+		if err != nil {
+			return nil, err
+		}
+
+		roles = append(roles, currentRole)
+	}
+
+	// Error iterating rows
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return roles, nil
+
+}
+
 func (r *roleRepository) UpdateRole(ctx context.Context, db database.DBRunner, role *models.Role) (*models.Role, error) {
 
-	return nil, nil
+	updatedRole := &models.Role{}
+
+	query := `
+        UPDATE users
+        SET name = $1, color = $2, icon_url = $3, is_default = $4, is_admin = $5
+        WHERE id = $6
+        RETURNING id, hall_id, name, color, icon_url, is_default, is_admin, created_at, updated_at
+    `
+	err := db.QueryRow(ctx, query, role.Name, role.Color, role.IconURL, role.IsDefault, role.IsAdmin).Scan(
+		&updatedRole.ID,
+		&updatedRole.HallID,
+		&updatedRole.Name,
+		&updatedRole.Color,
+		&updatedRole.IconURL,
+		&updatedRole.IsDefault,
+		&updatedRole.IsAdmin,
+		&updatedRole.CreatedAt,
+		&updatedRole.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	return updatedRole, nil
+
 }
+
 func (r *roleRepository) DeleteRole(ctx context.Context, db database.DBRunner, roleID uuid.UUID) (*models.Role, error) {
 
-	return nil, nil
+	query := `
+			DELETE FROM roles WHERE id = $1
+			RETURNING id, hall_id, name, color, icon_url, is_default, is_admin, created_at, updated_at
+		`
+
+	deleted := &models.Role{}
+
+	row := db.QueryRow(ctx, query, roleID)
+
+	err := row.Scan(
+		&deleted.ID,
+		&deleted.HallID,
+		&deleted.Name,
+		&deleted.Color,
+		&deleted.IconURL,
+		&deleted.IsDefault,
+		&deleted.IsAdmin,
+		&deleted.CreatedAt,
+		&deleted.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return deleted, nil
 }
 
 // --------------------------------------- PERMISSION
@@ -187,6 +311,13 @@ func (r *roleRepository) UpdateRolePermissions(ctx context.Context, db database.
         text_manage_messages = $13, text_read_history = $14, text_send_voice = $15,
         voice_connect = $16, voice_speak = $17, voice_video = $18, voice_mute_members = $19
     WHERE role_id = $1
+
+    RETURNING 	role_id,
+    			view_channels, manage_channels, manage_roles, manage_servers,
+       			change_nickname, manage_nicknames, kick_members, ban_members,
+          		text_send_messages, text_attach_files, text_mention_roles,
+            	text_manage_messages, text_read_history, text_send_voice,
+             	voice_connect, voice_speak, voice_video, voice_mute_members
     `
 
 	saved := &models.RolePermission{}
@@ -225,7 +356,15 @@ func (r *roleRepository) UpdateRolePermissions(ctx context.Context, db database.
 	return saved, nil
 }
 func (r *roleRepository) DeleteRolePermissions(ctx context.Context, db database.DBRunner, roleID uuid.UUID) (*models.RolePermission, error) {
-	query := `DELETE FROM role_permissions WHERE role_id = $1`
+	query := `
+		DELETE FROM role_permissions WHERE role_id = $1
+	 	RETURNING 	role_id,
+    			view_channels, manage_channels, manage_roles, manage_servers,
+       			change_nickname, manage_nicknames, kick_members, ban_members,
+          		text_send_messages, text_attach_files, text_mention_roles,
+            	text_manage_messages, text_read_history, text_send_voice,
+             	voice_connect, voice_speak, voice_video, voice_mute_members
+	`
 
 	saved := &models.RolePermission{}
 

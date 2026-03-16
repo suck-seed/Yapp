@@ -74,7 +74,7 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	// Room exists? && Fetch Room
 	room, err := h.IRoomService.GetRoomByID(c, roomID)
 	if err != nil {
-		utils.WriteError(c, utils.ErrorRoomDoesntExist)
+		utils.WriteError(c, utils.ErrorRoomNotFound)
 		return
 	}
 
@@ -84,7 +84,7 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 		utils.WriteError(c, err)
 	}
 	if !hallExists {
-		utils.WriteError(c, utils.ErrorHallDoesntExist)
+		utils.WriteError(c, utils.ErrorHallNotFound)
 		return
 	}
 

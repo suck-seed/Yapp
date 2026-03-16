@@ -98,7 +98,6 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 				// roles ko permission
 				roles.GET("/:roleID/permissions", hallHandler.GetRolesPermissions)
 				roles.PATCH("/:roleID/permissions", hallHandler.UpdateRolesPermissions)
-
 			}
 
 			// INVITES MANAGEMENT

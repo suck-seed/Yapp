@@ -237,7 +237,7 @@ func (s *messageService) FetchMessages(c context.Context, userInfo *auth.UserInf
 	}
 
 	if !roomExist {
-		return nil, utils.ErrorRoomDoesntExist
+		return nil, utils.ErrorRoomNotFound
 	}
 
 	// get the room
@@ -253,7 +253,7 @@ func (s *messageService) FetchMessages(c context.Context, userInfo *auth.UserInf
 	}
 
 	if !hallExist {
-		return nil, utils.ErrorHallDoesntExist
+		return nil, utils.ErrorHallNotFound
 	}
 
 	// does user belong to hall and room

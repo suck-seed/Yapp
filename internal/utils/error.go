@@ -56,11 +56,17 @@ var (
 	ErrorFetchingRole       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Role"}
 	ErrorFetchingPermission = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Permissions"}
 
+	// CREATING ERROR
 	ErrorCreatingHallRole   = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Role"}
 	ErrorCreatingHallMember = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Member"}
 
+	// UPDATING ERROR
+	ErrorUpdatingPermissions = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while updating role permissions"}
+
 	// PERMISSIONS DISGARDED ERROR
-	ErrorUserCannotManageRoles = &CustomError{Code: http.StatusUnauthorized, Message: "User does not have privlage to manage roles"}
+	ErrorUserCannotManageRoles             = &CustomError{Code: http.StatusUnauthorized, Message: "User does not have privlage to manage roles"}
+	ErrorCannotUpdateDefaultRolePermission = &CustomError{Code: http.StatusUnauthorized, Message: "Default Role's Permissions cannot be updated"}
+	ErrorCannotUpdateAdminRolePermission   = &CustomError{Code: http.StatusUnauthorized, Message: "Admin Role's Permissions cannot be updated"}
 
 	// ITERATING
 	ErrorMessageRowsIteration = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while iterating message rows"}
@@ -86,12 +92,14 @@ var (
 	ErrorInvalidCursorLimit       = &CustomError{Code: http.StatusBadRequest, Message: "Invalid cursor Limit, Has to be > 0 !"}
 
 	// DOESNT EXIST
-	ErrorRoomDoesntExist        = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}
-	ErrorHallDoesntExist        = &CustomError{Code: http.StatusBadRequest, Message: "Hall not found"}
-	ErrorRoleDoesntExist        = &CustomError{Code: http.StatusBadRequest, Message: "Role not found"}
-	ErrorPermissionsDoesntExist = &CustomError{Code: http.StatusBadRequest, Message: "Permissions not found"}
-	ErrorBanDoesntExist         = &CustomError{Code: http.StatusBadRequest, Message: "Ban not found"}
-	ErrorFloorDoesntExistInHall = &CustomError{Code: http.StatusBadRequest, Message: "Floor not found in this hall"}
+	ErrorRoomNotFound        = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}
+	ErrorHallNotFound        = &CustomError{Code: http.StatusBadRequest, Message: "Hall not found"}
+	ErrorRoleNotFound        = &CustomError{Code: http.StatusBadRequest, Message: "Role not found"}
+	ErrorPermissionsNotFound = &CustomError{Code: http.StatusBadRequest, Message: "Permissions not found"}
+	ErrorBanNotFound         = &CustomError{Code: http.StatusBadRequest, Message: "Ban not found"}
+	ErrorFloorNotFound       = &CustomError{Code: http.StatusBadRequest, Message: "Floor not found in this hall"}
+
+	ErrorRequestTimeout = &CustomError{Code: http.StatusRequestTimeout, Message: "Request Timeout"}
 
 	// DOES NOT BELONG
 	ErrorUserDoesntBelongRoom       = &CustomError{Code: http.StatusBadRequest, Message: "User is not allowded in this room"}

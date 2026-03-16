@@ -84,7 +84,7 @@ func (r *banRepository) UnBanUser(ctx context.Context, db database.DBRunner, ban
 
 	rowsAffected := result.RowsAffected()
 	if rowsAffected == 0 {
-		return nil, utils.ErrorBanDoesntExist
+		return nil, utils.ErrorBanNotFound
 	}
 
 	return ban, nil
@@ -127,7 +127,7 @@ func (r *banRepository) GetAllHallBans(ctx context.Context, db database.DBRunner
 
 	rows, err := db.Query(ctx, query, hallID)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	defer rows.Close()

@@ -66,20 +66,20 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 
 	hallExists, err := s.IHallRepository.DoesHallExist(ctx, runner, req.HallID)
 	if err != nil {
-		return nil, utils.ErrorHallDoesntExist
+		return nil, utils.ErrorHallNotFound
 	}
 	if !hallExists {
-		return nil, utils.ErrorHallDoesntExist
+		return nil, utils.ErrorHallNotFound
 	}
 
 	if req.FloorID != nil {
 		floorExists, err := s.IFloorRepository.DoesFloorExistsInRoom(ctx, runner, *req.FloorID, req.HallID)
 		if err != nil {
-			return nil, utils.ErrorFloorDoesntExistInHall
+			return nil, utils.ErrorFloorNotFound
 		}
 
 		if !floorExists {
-			return nil, utils.ErrorFloorDoesntExistInHall
+			return nil, utils.ErrorFloorNotFound
 		}
 	}
 
