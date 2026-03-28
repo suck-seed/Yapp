@@ -26,8 +26,21 @@ func StartServer(cfg config.AppConfig) {
 	// new app handler
 	router := gin.Default()
 
+	// Tell gin to trust ngrok/proxy forwarded IPs
+	// Add this right after
+	// router.SetTrustedProxies([]string{
+	// 	"172.16.0.0/12", // Docker networks
+	// 	"127.0.0.1",
+	// })
+	// Add this immediately after
+	err := router.SetTrustedProxies(nil) // trust all proxies - dev only
+	if err != nil {
+		log.Fatal(err)
+	}
+	router.TrustedPlatform = ""
+
 	// cors middleware injection
-	router.Use(cfg.CORS)
+	// router.Use(cfg.CORS)
 
 	// repositories init
 	userRepository := repositories.NewUserRepository()

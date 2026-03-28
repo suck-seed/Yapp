@@ -56,8 +56,8 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 
 	// set cookie
 	const cookieSecond = 24 * 60 * 60
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("jwt", SignInRes.AccessToken, cookieSecond, "/", "", false, true)
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("jwt", SignInRes.AccessToken, cookieSecond, "/", "", true, true)
 
 	// filtered response (not sending accesstoken over https, so removed it)
 	res := &dto.SigninUserRes{
@@ -70,9 +70,9 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 
 func (h *AuthHandler) Signout(c *gin.Context) {
 
-	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetSameSite(http.SameSiteNoneMode)
 	// Clear the same cookie attributes used when setting it (host-only cookie)
-	c.SetCookie("jwt", "", -1, "/", "", false, true)
+	c.SetCookie("jwt", "", -1, "/", "", true, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Signed out successfully",

@@ -21,10 +21,13 @@ func buildCORS() gin.HandlerFunc {
 	}
 
 	cfg := cors.Config{
-		AllowOrigins:     []string{origin},
+		AllowOriginFunc: func(origin string) bool {
+			return true // reflect any origin
+		},
+		// AllowOrigins:     []string{origin, "http://192.168.1.5.3000", "https://inocencia-null-patchouly.ngrok-free.dev"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Authorization", "Content-Type", "X-CSRF-Token", "Origin"},
-		ExposeHeaders:    []string{"Set-Cookie"},
+		AllowHeaders:     []string{"Authorization", "Content-Type", "X-CSRF-Token", "ngrok-skip-browser-warning"},
+		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true, // <- required for cookies
 		MaxAge:           12 * time.Hour,
 	}

@@ -36,6 +36,10 @@ var (
 	ErrorInvalidPassword    = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Password Format"}
 	ErrorPasswordWhiteSpace = &CustomError{Code: http.StatusBadRequest, Message: "Password has whitespace"}
 	ErrorUserDoesntExist    = &CustomError{Code: http.StatusBadRequest, Message: "User Does Not Exist"}
+	ErrorAlreadyHallMember  = &CustomError{Code: http.StatusBadRequest, Message: "User is already this hall's member"}
+
+	// Invalid ID for parsing
+	ErrorInvalidIDFormart = &CustomError{Code: http.StatusBadRequest, Message: "Error, Invalid ID format"}
 
 	// ROOM TYPE
 	ErrorInvalidRoomType = &CustomError{Code: http.StatusBadRequest, Message: "Invalid Room Type"}
@@ -72,6 +76,7 @@ var (
 	ErrorUserCannotManageRoles             = &CustomError{Code: http.StatusUnauthorized, Message: "User does not have privlage to manage roles"}
 	ErrorCannotUpdateDefaultRolePermission = &CustomError{Code: http.StatusUnauthorized, Message: "Default Role's Permissions cannot be updated"}
 	ErrorCannotUpdateAdminRolePermission   = &CustomError{Code: http.StatusUnauthorized, Message: "Admin Role's Permissions cannot be updated"}
+	ErrorUnauthorizedToUpdateHall          = &CustomError{Code: http.StatusUnauthorized, Message: "Not Authorized to update hall"}
 
 	// ITERATING
 	ErrorMessageRowsIteration = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while iterating message rows"}
@@ -97,12 +102,13 @@ var (
 	ErrorInvalidCursorLimit       = &CustomError{Code: http.StatusBadRequest, Message: "Invalid cursor Limit, Has to be > 0 !"}
 
 	// DOESNT EXIST
-	ErrorRoomNotFound        = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}
-	ErrorHallNotFound        = &CustomError{Code: http.StatusBadRequest, Message: "Hall not found"}
-	ErrorRoleNotFound        = &CustomError{Code: http.StatusBadRequest, Message: "Role not found"}
-	ErrorPermissionsNotFound = &CustomError{Code: http.StatusBadRequest, Message: "Permissions not found"}
-	ErrorBanNotFound         = &CustomError{Code: http.StatusBadRequest, Message: "Ban not found"}
-	ErrorFloorNotFound       = &CustomError{Code: http.StatusBadRequest, Message: "Floor not found in this hall"}
+	ErrorRoomNotFound            = &CustomError{Code: http.StatusBadRequest, Message: "Room not found"}
+	ErrorHallNotFound            = &CustomError{Code: http.StatusBadRequest, Message: "Hall not found"}
+	ErrorRoleNotFound            = &CustomError{Code: http.StatusBadRequest, Message: "Role not found"}
+	ErrorPermissionsNotFound     = &CustomError{Code: http.StatusBadRequest, Message: "Permissions not found"}
+	ErrorBanNotFound             = &CustomError{Code: http.StatusBadRequest, Message: "Ban not found"}
+	ErrorFloorNotFound           = &CustomError{Code: http.StatusBadRequest, Message: "Floor not found in this hall"}
+	ErrorHallDefaultRoleNotFound = &CustomError{Code: http.StatusInternalServerError, Message: "Default role not found for hall"}
 
 	ErrorRequestTimeout = &CustomError{Code: http.StatusRequestTimeout, Message: "Request Timeout"}
 
@@ -124,6 +130,9 @@ var (
 	ErrorFileUnmatch            = &CustomError{Code: http.StatusBadRequest, Message: "File extension does not match in file_type and URL"}
 	ErrorLargeFileSize          = &CustomError{Code: http.StatusBadRequest, Message: "File size exceedes allowded size"}
 	ErrorCreatingAttachment     = &CustomError{Code: http.StatusInternalServerError, Message: "Error writting attachment to db"}
+
+	// UPDATING ERROR
+	ErrorNoFieldsToUpdate = &CustomError{Code: http.StatusBadRequest, Message: "No field to update"}
 )
 
 // Writting Errors from handlers to client

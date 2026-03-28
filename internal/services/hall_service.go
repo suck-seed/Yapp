@@ -19,11 +19,14 @@ import (
 
 // consts
 const HALLCREATORROLENAME string = "creator"
+const HALLDEFAULTROLENAME string = "everyone"
 
 type IHallService interface {
 
 	// -------------------- HALLS
 	CreateHall(c context.Context, userInfo *auth.UserInfo, req *dto.CreateHallReq) (*dto.CreateHallRes, error)
+
+	JoinHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*dto.JoinHallRes, error)
 
 	GetUserHalls(c context.Context, userInfo *auth.UserInfo) ([]*models.Hall, error)
 
@@ -34,6 +37,11 @@ type IHallService interface {
 	IsUserHallMember(c context.Context, hallID uuid.UUID, userID uuid.UUID) (bool, error)
 
 	DoesHallExist(c context.Context, hallID uuid.UUID) (bool, error)
+
+	// Add to IHallService interface
+	GetHallProfile(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*dto.GetHallProfileRes, error)
+
+	UpdateHallProfile(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, req *dto.HallProfileUpdateReq) (*dto.HallProfileUpdateRes, error)
 }
 
 type hallService struct {
@@ -111,7 +119,7 @@ func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req
 		return nil, utils.ErrorCreatingHall
 	}
 
-	// generate role id
+	// CREATOR ROLE
 	roleId, err := uuid.NewV7()
 	if err != nil {
 		return nil, utils.ErrorInternal
@@ -127,6 +135,25 @@ func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req
 
 	// pass to repo
 	role, err := s.IRoleRepository.CreateRole(ctx, runner, newRole)
+	if err != nil {
+		return nil, utils.ErrorCreatingHallRole
+	}
+
+	// DEFAULT ROLE
+	defaultRoleID, err := uuid.NewV7()
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	defaultRole := &models.Role{
+		ID:        defaultRoleID,
+		HallID:    hall.ID,
+		Name:      HALLDEFAULTROLENAME,
+		IsDefault: true,
+		IsAdmin:   false,
+	}
+
+	_, err = s.IRoleRepository.CreateRole(ctx, runner, defaultRole)
 	if err != nil {
 		return nil, utils.ErrorCreatingHallRole
 	}
@@ -152,7 +179,7 @@ func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req
 	}
 
 	// pass to repo
-	err = s.IHallRepository.CreateHallMember(ctx, runner, newHallMember)
+	_, err = s.IHallRepository.CreateHallMember(ctx, runner, newHallMember)
 	if err != nil {
 		return nil, utils.ErrorCreatingHallMember
 	}
@@ -173,6 +200,82 @@ func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req
 		UpdatedAt:        hall.UpdatedAt,
 		OwnerID:          hall.OwnerID,
 	}, nil
+}
+
+func (s *hallService) JoinHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*dto.JoinHallRes, error) {
+
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
+
+	// does hall exist
+	exists, err := s.IHallRepository.DoesHallExist(ctx, runner, hallID)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	if !exists {
+		return nil, utils.ErrorHallNotFound
+	}
+
+	// check if already a member
+	// already a member?
+	isMember, err := s.IHallRepository.IsUserHallMember(ctx, runner, hallID, userInfo.ID)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	if isMember {
+		return nil, utils.ErrorAlreadyHallMember
+	}
+
+	// fetching the default role for this
+	// fetch the default role for this hall
+	defaultRole, err := s.IRoleRepository.GetHallDefaultRole(ctx, runner, hallID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorHallDefaultRoleNotFound
+		}
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorInternal
+	}
+
+	// generate hall member id
+	memberID, err := uuid.NewV7()
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	newMember := &models.HallMember{
+		ID:     memberID,
+		HallID: hallID,
+		UserID: userInfo.ID,
+		RoleID: defaultRole.ID,
+	}
+
+	if _, err := s.IHallRepository.CreateHallMember(ctx, runner, newMember); err != nil {
+		return nil, utils.ErrorCreatingHallMember
+	}
+
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	return &dto.JoinHallRes{
+		MemberID: memberID,
+		HallID:   hallID,
+		UserID:   userInfo.ID,
+		RoleID:   defaultRole.ID,
+		Nickname: nil,
+		JoinedAt: newMember.JoinedAt,
+	}, nil
+
 }
 
 func (s *hallService) GetUserHalls(c context.Context, userInfo *auth.UserInfo) ([]*models.Hall, error) {
@@ -316,4 +419,121 @@ func (s *hallService) DoesHallExist(c context.Context, hallID uuid.UUID) (bool, 
 
 	return exists, nil
 
+}
+
+func (s *hallService) GetHallProfile(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*dto.GetHallProfileRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
+	hall, err := s.IHallRepository.GetHallByID(ctx, runner, hallID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorHallNotFound
+		}
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHall
+	}
+
+	return &dto.GetHallProfileRes{
+		ID:               hall.ID,
+		Name:             hall.Name,
+		IconURL:          hall.IconURL,
+		IconThumbnailURL: hall.IconThumbnailURL,
+		BannerColor:      *hall.BannerColor,
+		Description:      hall.Description,
+		OwnerID:          hall.OwnerID,
+		CreatedAt:        hall.CreatedAt,
+		UpdatedAt:        hall.UpdatedAt,
+	}, nil
+}
+
+func (s *hallService) UpdateHallProfile(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, req *dto.HallProfileUpdateReq) (*dto.HallProfileUpdateRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
+
+	// Only the owner can edit profile
+	ownerID, err := s.IHallRepository.GetHallOwnerID(ctx, runner, hallID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorHallNotFound
+		}
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHall
+	}
+
+	if userInfo.ID != ownerID {
+		return nil, utils.ErrorUnauthorizedToUpdateHall
+	}
+
+	// Build the fields map — only include what was actually sent
+	fields := make(map[string]any)
+
+	if req.Name != nil {
+		canon, err := utils.SanitizeHallname(*req.Name)
+		if err != nil {
+			return nil, err
+		}
+		fields["name"] = canon
+	}
+
+	if req.Description != nil {
+		canon, err := utils.SanitizeText(req.Description)
+		if err != nil {
+			return nil, err
+		}
+		fields["description"] = canon
+	}
+
+	if req.BannerColor != nil {
+		canon, err := utils.SanitizeColorFormat(req.BannerColor)
+		if err != nil {
+			return nil, err
+		}
+		fields["banner_color"] = canon
+	}
+
+	if len(fields) == 0 {
+		return nil, utils.ErrorNoFieldsToUpdate // add this sentinel if not present
+	}
+
+	hall, err := s.IHallRepository.UpdateHallProfile(ctx, runner, hallID, fields)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorInternal
+	}
+
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	return &dto.HallProfileUpdateRes{
+		ID:               hall.ID,
+		Name:             hall.Name,
+		IconURL:          hall.IconURL,
+		IconThumbnailURL: hall.IconThumbnailURL,
+		BannerColor:      *hall.BannerColor,
+		Description:      hall.Description,
+		OwnerID:          hall.OwnerID,
+		UpdatedAt:        hall.UpdatedAt,
+	}, nil
 }

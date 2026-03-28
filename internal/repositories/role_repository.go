@@ -29,6 +29,9 @@ type IRoleRepository interface {
 
 	// Bulk operations
 	GetMultipleRolePermissions(ctx context.Context, db database.DBRunner, roleIDs []uuid.UUID) (map[uuid.UUID]*models.RolePermission, error)
+
+	// Add to IHallRepository interface
+	GetHallDefaultRole(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Role, error)
 }
 
 type roleRepository struct {
@@ -488,4 +491,31 @@ func (r *roleRepository) GetMultipleRolePermissions(ctx context.Context, db data
 	}
 
 	return permissionMap, nil
+}
+
+func (r *roleRepository) GetHallDefaultRole(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Role, error) {
+	query := `
+		SELECT id, hall_id, name, color, icon_url, is_default, is_admin, created_at, updated_at
+		FROM roles
+		WHERE hall_id = $1 AND is_default = true
+		LIMIT 1
+	`
+
+	role := &models.Role{}
+	err := db.QueryRow(ctx, query, hallID).Scan(
+		&role.ID,
+		&role.HallID,
+		&role.Name,
+		&role.Color,
+		&role.IconURL,
+		&role.IsDefault,
+		&role.IsAdmin,
+		&role.CreatedAt,
+		&role.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return role, nil
 }
