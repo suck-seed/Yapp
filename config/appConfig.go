@@ -3,11 +3,10 @@ package config
 import (
 	"os"
 
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/suck-seed/yapp/internal/database"
-
-	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -21,7 +20,8 @@ var (
 	secretKey        string
 )
 
-// AppConfig : Stores configurations for server, includes port, db, and middleware
+// AppConfig : Stores configurations for server, includes port and db.
+// CORS is handled by Nginx (see infra/nginx/nginx.conf), not by Gin.
 type AppConfig struct {
 	ServerPort   string
 	CORS         gin.HandlerFunc
@@ -29,7 +29,7 @@ type AppConfig struct {
 	RedisDb      *redis.Client
 }
 
-// SetupEnvironment : Loads ENV variables, creates instance of middleware and returns the configurations
+// SetupEnvironment : Loads ENV variables and returns the configurations
 func SetupEnvironment() (config AppConfig, err error) {
 
 	// Load Env Variables
@@ -45,8 +45,8 @@ func SetupEnvironment() (config AppConfig, err error) {
 	}
 
 	return AppConfig{
-		ServerPort: os.Getenv("HTTP_PORT"),
-		// CORS:         buildCORS(),
+		ServerPort:   os.Getenv("HTTP_PORT"),
+		CORS:         buildCORS(),
 		PostgresPool: pgPool,
 	}, nil
 }
