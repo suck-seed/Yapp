@@ -26,21 +26,42 @@ func StartServer(cfg config.AppConfig) {
 	// new app handler
 	router := gin.Default()
 
+	// Tell gin to trust ngrok/proxy forwarded IPs
+	// Add this right after
+	// router.SetTrustedProxies([]string{
+	// 	"172.16.0.0/12", // Docker networks
+	// 	"127.0.0.1",
+	// })
+	// Add this immediately after
+	err := router.SetTrustedProxies(nil) // trust all proxies - dev only
+	if err != nil {
+		log.Fatal(err)
+	}
+	router.TrustedPlatform = ""
+
 	// cors middleware injection
-	router.Use(cfg.CORS)
+	// router.Use(cfg.CORS)
 
 	// repositories init
 	userRepository := repositories.NewUserRepository()
+
 	hallRepository := repositories.NewHallRepository()
+	roleRepository := repositories.NewRoleRepository()
+	banRepository := repositories.NewBanRepository()
+
 	floorRepository := repositories.NewFloorRepository()
 	roomRepository := repositories.NewRoomRepository()
 	messageRepository := repositories.NewMessageRepository()
 
 	// service init and corresponsing repo's passed
 	userService := services.NewUserService(userRepository, cfg.PostgresPool)
-	hallService := services.NewHallService(hallRepository, cfg.PostgresPool)
+	hallService := services.NewHallService(hallRepository, roleRepository, banRepository, cfg.PostgresPool)
 	floorService := services.NewFloorService(hallRepository, floorRepository, cfg.PostgresPool)
 	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository, cfg.PostgresPool)
+	roleService := services.NewRoleService(roleRepository, userRepository, hallRepository, banRepository, cfg.PostgresPool)
+	banService := services.NewBanService(banRepository, userRepository, hallRepository, roleRepository, cfg.PostgresPool)
+
+	// message
 	messageService := services.NewMessageService(hallRepository, roomRepository, messageRepository, userRepository, cfg.PostgresPool)
 
 	//	presist function for message
@@ -59,7 +80,7 @@ func StartServer(cfg config.AppConfig) {
 	api.Use(auth.AuthMiddleware())
 	{
 		rest.RegisterUserRoutes(api, userService)
-		rest.RegisterHallRoutes(api, hallService)
+		rest.RegisterHallRoutes(api, hallService, roleService, banService)
 		rest.RegisterFloorRoutes(api, floorService)
 		rest.RegisterRoomRoutes(api, roomService)
 		rest.RegisterMessageRoutes(api, messageService)
@@ -80,7 +101,7 @@ func StartServer(cfg config.AppConfig) {
 func startGracefully(router *gin.Engine, cfg config.AppConfig, hub *ws.Hub) {
 
 	server := http.Server{
-		Addr:    ":" + cfg.ServerPort,
+		Addr:    "0.0.0.0:" + cfg.ServerPort,
 		Handler: router,
 
 		// Should be longer than Nginx proxy_read_timeout (30s)

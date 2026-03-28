@@ -10,10 +10,10 @@ import (
 
 type IRoomRepository interface {
 	CreateRoom(ctx context.Context, db database.DBRunner, room *models.Room) (*models.Room, error)
-	GetRoomByID(ctx context.Context, db database.DBRunner, roomID *uuid.UUID) (*models.Room, error)
-	IsUserRoomMember(c context.Context, db database.DBRunner, roomId *uuid.UUID, userId *uuid.UUID) (*bool, error)
+	GetRoomByID(ctx context.Context, db database.DBRunner, roomID uuid.UUID) (*models.Room, error)
 
-	DoesRoomExists(ctx context.Context, db database.DBRunner, roomID *uuid.UUID) (*bool, error)
+	IsUserRoomMember(c context.Context, db database.DBRunner, roomID uuid.UUID, userId uuid.UUID) (bool, error)
+	DoesRoomExists(ctx context.Context, db database.DBRunner, roomID uuid.UUID) (bool, error)
 }
 
 type roomRepository struct {
@@ -40,8 +40,8 @@ func (r *roomRepository) CreateRoom(ctx context.Context, db database.DBRunner, r
 		ctx,
 		query,
 		room.ID,
-		room.HallId,
-		room.FloorId,
+		room.HallID,
+		room.FloorID,
 		room.Name,
 		room.RoomType,
 		room.IsPrivate,
@@ -53,8 +53,8 @@ func (r *roomRepository) CreateRoom(ctx context.Context, db database.DBRunner, r
 
 	err := row.Scan(
 		&roomCRES.ID,
-		&roomCRES.HallId,
-		&roomCRES.FloorId,
+		&roomCRES.HallID,
+		&roomCRES.FloorID,
 		&roomCRES.Name,
 		&roomCRES.RoomType,
 		&roomCRES.IsPrivate,
@@ -69,7 +69,7 @@ func (r *roomRepository) CreateRoom(ctx context.Context, db database.DBRunner, r
 	return roomCRES, nil
 }
 
-func (r *roomRepository) GetRoomByID(c context.Context, db database.DBRunner, roomID *uuid.UUID) (*models.Room, error) {
+func (r *roomRepository) GetRoomByID(c context.Context, db database.DBRunner, roomID uuid.UUID) (*models.Room, error) {
 
 	room := &models.Room{}
 
@@ -83,8 +83,8 @@ func (r *roomRepository) GetRoomByID(c context.Context, db database.DBRunner, ro
 
 	err := row.Scan(
 		&room.ID,
-		&room.HallId,
-		&room.FloorId,
+		&room.HallID,
+		&room.FloorID,
 		&room.Name,
 		&room.RoomType,
 		&room.IsPrivate,
@@ -99,7 +99,7 @@ func (r *roomRepository) GetRoomByID(c context.Context, db database.DBRunner, ro
 
 }
 
-func (r *roomRepository) IsUserRoomMember(c context.Context, db database.DBRunner, roomID *uuid.UUID, userID *uuid.UUID) (*bool, error) {
+func (r *roomRepository) IsUserRoomMember(c context.Context, db database.DBRunner, roomID uuid.UUID, userID uuid.UUID) (bool, error) {
 
 	query := `
 		SELECT EXISTS (SELECT 1 FROM room_members WHERE room_id = $1 AND user_id = $2)
@@ -108,14 +108,14 @@ func (r *roomRepository) IsUserRoomMember(c context.Context, db database.DBRunne
 
 	err := db.QueryRow(c, query, roomID, userID).Scan(&exists)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	return &exists, err
+	return exists, err
 
 }
 
-func (r *roomRepository) DoesRoomExists(ctx context.Context, db database.DBRunner, roomID *uuid.UUID) (*bool, error) {
+func (r *roomRepository) DoesRoomExists(ctx context.Context, db database.DBRunner, roomID uuid.UUID) (bool, error) {
 
 	query := `
 
@@ -127,9 +127,9 @@ func (r *roomRepository) DoesRoomExists(ctx context.Context, db database.DBRunne
 
 	err := db.QueryRow(ctx, query, roomID).Scan(&exists)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	return &exists, nil
+	return exists, nil
 
 }

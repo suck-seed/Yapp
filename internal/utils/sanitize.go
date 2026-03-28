@@ -38,7 +38,7 @@ func SanitizeUsername(s string) (string, error) {
 	s = strings.TrimSpace(s)
 	s = strings.ToLower(s)
 	if !usernameRegex.MatchString(s) {
-		return "", ErrorInvalidUsername
+		return "", ErrorInvalidUserName
 	}
 	return s, nil
 }

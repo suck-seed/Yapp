@@ -3,6 +3,8 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/database"
@@ -10,15 +12,23 @@ import (
 )
 
 type IHallRepository interface {
-	CreateHall(ctx context.Context, db database.DBRunner, hall *models.Hall) (*models.Hall, error)
-	CreateHallRole(ctx context.Context, db database.DBRunner, hallRole *models.Role) (*models.Role, error)
-	CreateHallMember(ctx context.Context, db database.DBRunner, hallMember *models.HallMember) error
+	// -------------------------- HALL
+	// core cud
+	CreateHall(ctx context.Context, db database.DBRunner, hall *models.Hall) (*models.Hall, error)                         // C
+	CreateHallMember(ctx context.Context, db database.DBRunner, hallMember *models.HallMember) (*models.HallMember, error) // C
 
-	GetUserHallIDs(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]uuid.UUID, error)
-	GetHallByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error)
+	// list operation
+	GetUserHallIDs(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]uuid.UUID, error) // R
+	GetHallByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error)   // R
+	GetHallOwnerID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (uuid.UUID, error)   // R
 
-	DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*bool, error)
-	IsUserHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (*bool, error)
+	// Updation
+	// Add to IHallRepository interface
+	UpdateHallProfile(ctx context.Context, db database.DBRunner, hallID uuid.UUID, fields map[string]any) (*models.Hall, error)
+
+	// check operation
+	DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (bool, error)
+	IsUserHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (bool, error)
 }
 
 type hallRepository struct {
@@ -69,61 +79,36 @@ func (r *hallRepository) CreateHall(ctx context.Context, db database.DBRunner, h
 	return saved, nil
 }
 
-func (r *hallRepository) CreateHallRole(ctx context.Context, db database.DBRunner, hallRole *models.Role) (*models.Role, error) {
+// Updated implementation
+func (r *hallRepository) CreateHallMember(ctx context.Context, db database.DBRunner, hallMember *models.HallMember) (*models.HallMember, error) {
 	query := `
-    INSERT INTO roles (id, hall_id, name, color, icon_url, is_default, is_admin)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING id, hall_id, name, color, icon_url, is_default, is_admin, created_at, updated_at
-    `
+		INSERT INTO hall_members (id, hall_id, user_id, role_id, nickname)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, hall_id, user_id, role_id, nickname, joined_at, created_at, updated_at
+	`
 
-	row := db.QueryRow(ctx, query,
-		hallRole.ID,
-		hallRole.HallID,
-		hallRole.Name,
-		hallRole.Color,
-		hallRole.IconURL,
-		hallRole.IsDefault,
-		hallRole.IsAdmin,
-	)
-
-	saved := &models.Role{}
-	err := row.Scan(
+	saved := &models.HallMember{}
+	err := db.QueryRow(ctx, query,
+		hallMember.ID,
+		hallMember.HallID,
+		hallMember.UserID,
+		hallMember.RoleID,
+		hallMember.Nickname,
+	).Scan(
 		&saved.ID,
 		&saved.HallID,
-		&saved.Name,
-		&saved.Color,
-		&saved.IconURL,
-		&saved.IsDefault,
-		&saved.IsAdmin,
+		&saved.UserID,
+		&saved.RoleID,
+		&saved.Nickname,
+		&saved.JoinedAt,
 		&saved.CreatedAt,
 		&saved.UpdatedAt,
 	)
-
 	if err != nil {
 		return nil, err
 	}
 
 	return saved, nil
-}
-
-func (r *hallRepository) CreateHallMember(ctx context.Context, db database.DBRunner, hallMember *models.HallMember) error {
-	query := `
-    INSERT INTO hall_members (id, hall_id, user_id,role_id)
-    VALUES ($1, $2, $3, $4)
-    `
-
-	_, err := db.Exec(ctx, query,
-		hallMember.ID,
-		hallMember.HallID,
-		hallMember.UserID,
-		hallMember.RoleID,
-	)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (r *hallRepository) GetUserHallIDs(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]uuid.UUID, error) {
@@ -181,7 +166,71 @@ func (r *hallRepository) GetHallByID(ctx context.Context, db database.DBRunner, 
 	return hall, nil
 }
 
-func (r *hallRepository) DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*bool, error) {
+func (r *hallRepository) GetHallOwnerID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (uuid.UUID, error) {
+
+	var ownerID uuid.UUID
+
+	query := `SELECT owner_id
+              FROM halls WHERE id = $1`
+
+	err := db.QueryRow(ctx, query, hallID).Scan(
+		&ownerID,
+	)
+
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return ownerID, nil
+}
+
+func (r *hallRepository) UpdateHallProfile(ctx context.Context, db database.DBRunner, hallID uuid.UUID, fields map[string]any) (*models.Hall, error) {
+
+	// Allowed columns and their sanitized values are built by the service.
+	// We build a dynamic SET clause: SET name = $1, description = $2 ... WHERE id = $N
+	setClauses := make([]string, 0, len(fields))
+	args := make([]any, 0, len(fields)+1)
+
+	i := 1
+	for col, val := range fields {
+		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", col, i))
+		args = append(args, val)
+		i++
+	}
+	// always bump updated_at
+	setClauses = append(setClauses, fmt.Sprintf("updated_at = $%d", i))
+	args = append(args, time.Now())
+	i++
+
+	args = append(args, hallID) // WHERE id = $N
+
+	query := fmt.Sprintf(`
+			UPDATE halls
+			SET %s
+			WHERE id = $%d
+			RETURNING id, name, icon_url, icon_thumbnail_url, banner_color, description, owner_id, created_at, updated_at
+		`, strings.Join(setClauses, ", "), i)
+
+	hall := &models.Hall{}
+	err := db.QueryRow(ctx, query, args...).Scan(
+		&hall.ID,
+		&hall.Name,
+		&hall.IconURL,
+		&hall.IconThumbnailURL,
+		&hall.BannerColor,
+		&hall.Description,
+		&hall.OwnerID,
+		&hall.CreatedAt,
+		&hall.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return hall, nil
+}
+
+func (r *hallRepository) DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (bool, error) {
 
 	query := `
 
@@ -193,13 +242,13 @@ func (r *hallRepository) DoesHallExist(ctx context.Context, db database.DBRunner
 
 	err := db.QueryRow(ctx, query, hallID).Scan(&exists)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	return &exists, nil
+	return exists, nil
 }
 
-func (r *hallRepository) IsUserHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (*bool, error) {
+func (r *hallRepository) IsUserHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (bool, error) {
 
 	query := `
 
@@ -209,9 +258,9 @@ func (r *hallRepository) IsUserHallMember(ctx context.Context, db database.DBRun
 	var exists bool
 
 	if err := db.QueryRow(ctx, query, hallID, userID).Scan(&exists); err != nil {
-		return nil, err
+		return false, err
 	}
 
-	return &exists, nil
+	return exists, nil
 
 }

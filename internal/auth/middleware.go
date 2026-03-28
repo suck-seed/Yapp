@@ -14,6 +14,12 @@ const (
 	CtxUsernameKey = "username"
 )
 
+// UserInfo hold authenticated user information
+type UserInfo struct {
+	ID       uuid.UUID
+	Username string
+}
+
 // Verifies JWT from cookie "jwt" or "Authorization : Bearer <token>"
 // and injects userId/username into gin.Context
 func AuthMiddleware() gin.HandlerFunc {
@@ -34,12 +40,28 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Everything's alright, place the context for ws_handler and other handler
-		c.Set(CtxUserIDKey, claims.ID)
-		c.Set(CtxUsernameKey, claims.Username)
+		// Parsing UUID for the userID
+		userID, err := uuid.Parse(claims.ID)
+		if err != nil {
+			utils.WriteError(c, utils.ErrorInvalidUserUUID)
+			c.Abort()
+			return
+		}
 
-		ctx := context.WithValue(c.Request.Context(), CtxUserIDKey, claims.ID)
-		ctx = context.WithValue(ctx, CtxUsernameKey, claims.Username)
+		userInfo := &UserInfo{
+			ID:       userID,
+			Username: claims.Username,
+		}
+
+		// Everything's alright, place the context for ws_handler and other handler
+
+		// store in gin.Context
+		c.Set(CtxUserIDKey, userInfo.ID)
+		c.Set(CtxUsernameKey, userInfo.Username)
+
+		// context.context
+		ctx := context.WithValue(c.Request.Context(), CtxUserIDKey, userInfo.ID)
+		ctx = context.WithValue(ctx, CtxUsernameKey, userInfo.Username)
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
@@ -64,44 +86,23 @@ func GetTokenFromRequest(c *gin.Context) (string, bool) {
 	return "", false
 }
 
-func CurrentUserFromGinContext(c *gin.Context) (string, string, error) {
+func CurrentUserFromGinContext(c *gin.Context) (*UserInfo, error) {
 	rawId, ok := c.Get(CtxUserIDKey)
 	if !ok {
-		return "", "", utils.ErrorNoUserIdInContext
+		return nil, utils.ErrorNoUserIdInContext
 	}
 
-	idString, _ := rawId.(string)
-	if idString == "" {
-		return "", "", utils.ErrorEmptyUserIdInContext
+	userID, ok := rawId.(uuid.UUID)
+	if !ok {
+		return nil, utils.ErrorInvalidUserUUID
 	}
 
 	rawUsername, _ := c.Get(CtxUsernameKey)
-	usernameString, _ := rawUsername.(string)
+	username, _ := rawUsername.(string)
 
-	return idString, usernameString, nil
-
-}
-
-// ---- UserID and Username from context ----
-func CurrentUserFromContext(c context.Context) (id *uuid.UUID, username *string, err error) {
-
-	rawId := c.Value(CtxUserIDKey)
-	if rawId == nil {
-		return nil, nil, utils.ErrorNoUserIdInContext
-	}
-
-	idString, _ := rawId.(string)
-	if idString == "" {
-		return nil, nil, utils.ErrorEmptyUserIdInContext
-	}
-
-	userId, err := utils.ParseUUID(idString)
-	if err != nil {
-		return nil, nil, utils.ErrorInvalidUserUUID
-	}
-
-	usernameString, _ := c.Value(CtxUsernameKey).(string)
-
-	return userId, &usernameString, nil
+	return &UserInfo{
+		ID:       userID,
+		Username: username,
+	}, nil
 
 }

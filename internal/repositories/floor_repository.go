@@ -10,7 +10,7 @@ import (
 
 type IFloorRepository interface {
 	CreateFloor(ctx context.Context, db database.DBRunner, floor *models.Floor) (*models.Floor, error)
-	DoesFloorExistsInRoom(ctx context.Context, db database.DBRunner, floorID *uuid.UUID, hallID *uuid.UUID) (bool, error)
+	DoesFloorExistsInRoom(ctx context.Context, db database.DBRunner, floorID uuid.UUID, hallID uuid.UUID) (bool, error)
 }
 
 type floorRepository struct {
@@ -60,7 +60,7 @@ func (r *floorRepository) CreateFloor(ctx context.Context, db database.DBRunner,
 	return floorCRES, nil
 }
 
-func (r *floorRepository) DoesFloorExistsInRoom(ctx context.Context, db database.DBRunner, floorID *uuid.UUID, hallID *uuid.UUID) (bool, error) {
+func (r *floorRepository) DoesFloorExistsInRoom(ctx context.Context, db database.DBRunner, floorID uuid.UUID, hallID uuid.UUID) (bool, error) {
 
 	query := `
 

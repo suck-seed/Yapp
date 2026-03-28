@@ -51,8 +51,8 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 
 }
 
-func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
-	hallHandler := handlers.NewHallHandler(hallService)
+func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, roleServices services.IRoleService, banServices services.IBanService) {
+	hallHandler := handlers.NewHallHandler(hallService, roleServices, banServices)
 
 	halls := r.Group("/halls")
 	{
@@ -60,6 +60,9 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 		// TOP LEVEL HALL OPERATIONS
 		halls.GET("", hallHandler.GetUserHalls)
 		halls.POST("", hallHandler.CreateHall)
+
+		// JOIN HALL
+		halls.POST("/:hallID/join", hallHandler.JoinHall)
 
 		// SINGLE HALL RUD
 		halls.GET("/:hallID", hallHandler.GetCurrentHall)
@@ -80,6 +83,7 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 			members := settings.Group("/members")
 			{
 				members.GET("", hallHandler.GetHallMembers)
+				members.GET("/:memberID", hallHandler.GetHallMember)
 				// members.POST("") // There wont be post handler, since we have seperate endpoints for adding and inviting members
 				members.PATCH("/:memberID", hallHandler.UpdateHallMember) // updates nickname, timeout, kick, ban, roles, transfer ownership
 				members.DELETE("/:memberID", hallHandler.RemoveHallMember)
@@ -89,6 +93,7 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 			roles := settings.Group("/roles")
 			{
 				roles.GET("", hallHandler.GetHallRoles)
+				roles.GET("/:roleID", hallHandler.GetHallRole)
 				roles.POST("", hallHandler.CreateHallRoles)
 				roles.PATCH("/:roleID", hallHandler.UpdateHallRoles)
 				roles.DELETE("/:roleID", hallHandler.DeleteHallRoles)
@@ -96,7 +101,6 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService) {
 				// roles ko permission
 				roles.GET("/:roleID/permissions", hallHandler.GetRolesPermissions)
 				roles.PATCH("/:roleID/permissions", hallHandler.UpdateRolesPermissions)
-
 			}
 
 			// INVITES MANAGEMENT

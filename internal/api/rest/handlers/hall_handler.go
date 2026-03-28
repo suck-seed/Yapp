@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/suck-seed/yapp/internal/auth"
 	dto "github.com/suck-seed/yapp/internal/dto/hall"
 	"github.com/suck-seed/yapp/internal/services"
 	"github.com/suck-seed/yapp/internal/utils"
@@ -11,11 +13,15 @@ import (
 
 type HallHandler struct {
 	services.IHallService
+	services.IRoleService
+	services.IBanService
 }
 
-func NewHallHandler(hallService services.IHallService) *HallHandler {
+func NewHallHandler(hallService services.IHallService, roleServices services.IRoleService, banServices services.IBanService) *HallHandler {
 	return &HallHandler{
 		hallService,
+		roleServices,
+		banServices,
 	}
 }
 
@@ -29,7 +35,13 @@ func (h *HallHandler) CreateHall(c *gin.Context) {
 		return
 	}
 
-	res, err := h.IHallService.CreateHall(c.Request.Context(), u)
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.CreateHall(c.Request.Context(), userInfo, u)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
@@ -39,9 +51,37 @@ func (h *HallHandler) CreateHall(c *gin.Context) {
 
 }
 
+func (h *HallHandler) JoinHall(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IHallService.JoinHall(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, res)
+}
+
 func (h *HallHandler) GetUserHalls(c *gin.Context) {
 
-	res, err := h.IHallService.GetUserHalls(c.Request.Context())
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.GetUserHalls(c.Request.Context(), userInfo)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
@@ -53,13 +93,54 @@ func (h *HallHandler) GetUserHalls(c *gin.Context) {
 // SINGLE HALL RUD
 func (h *HallHandler) GetCurrentHall(c *gin.Context) {
 
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.GetCurrentHall(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+
 }
 
-func (h *HallHandler) UpdateCurrentHall(c *gin.Context) {
+// Depriciated not needed
+// func (h *HallHandler) UpdateCurrentHall(c *gin.Context) {
 
-}
+// }
 
 func (h *HallHandler) DeleteCurrentHall(c *gin.Context) {
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.GetCurrentHall(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
 
 }
 
@@ -68,14 +149,64 @@ func (h *HallHandler) DeleteCurrentHall(c *gin.Context) {
 // PROFILE MANAGEMENT
 func (h *HallHandler) GetHallProfile(c *gin.Context) {
 
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IHallService.GetHallProfile(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+
 }
 
 func (h *HallHandler) UpdateHallProfile(c *gin.Context) {
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	var req dto.HallProfileUpdateReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.UpdateHallProfile(c.Request.Context(), userInfo, hallID, &req)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
 
 }
 
 // MEMBERS MANAGEMENT
 func (h *HallHandler) GetHallMembers(c *gin.Context) {
+
+}
+
+func (h *HallHandler) GetHallMember(c *gin.Context) {
 
 }
 
@@ -89,6 +220,10 @@ func (h *HallHandler) RemoveHallMember(c *gin.Context) {
 
 // ROLE MANAGEMENT
 func (h *HallHandler) GetHallRoles(c *gin.Context) {
+
+}
+
+func (h *HallHandler) GetHallRole(c *gin.Context) {
 
 }
 
@@ -108,10 +243,73 @@ func (h *HallHandler) DeleteHallRoles(c *gin.Context) {
 
 func (h *HallHandler) GetRolesPermissions(c *gin.Context) {
 
+	// fetch hallID and roleID from the params
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInternal)
+		return
+	}
+
+	roleID, err := uuid.Parse(c.Param("roleID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInternal)
+		return
+	}
+
+	// fetch userinformation from the current instance of gin context
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IRoleService.GetRolePermissions(c.Request.Context(), userInfo, hallID, roleID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+
 }
 
 func (h *HallHandler) UpdateRolesPermissions(c *gin.Context) {
 
+	// fetch hallID and roleID from the params
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInternal)
+		return
+	}
+
+	roleID, err := uuid.Parse(c.Param("roleID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInternal)
+		return
+	}
+
+	// RolePermissionUpdate struct binding to the requesting json payload
+	u := &dto.UpdateRolePermissionReq{}
+
+	if err := c.ShouldBindJSON(u); err != nil {
+		utils.WriteError(c, utils.ErrorInvalidInput)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	// call the service layer implementation responsible for updating the role's permissions
+	res, err := h.IRoleService.UpdateRolePermissions(c.Request.Context(), userInfo, hallID, roleID, u)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
 }
 
 // INVITES MANAGEMENT

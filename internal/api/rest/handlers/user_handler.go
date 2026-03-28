@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/suck-seed/yapp/internal/auth"
 	dto "github.com/suck-seed/yapp/internal/dto/user"
 	"github.com/suck-seed/yapp/internal/services"
 	"github.com/suck-seed/yapp/internal/utils"
@@ -30,7 +31,13 @@ func (h *UserHandler) Ping(c *gin.Context) {
 
 func (h *UserHandler) GetUserMe(c *gin.Context) {
 
-	user, err := h.IUserService.GetUserMe(c.Request.Context())
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	user, err := h.IUserService.GetUserMe(c.Request.Context(), userInfo)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
@@ -43,16 +50,22 @@ func (h *UserHandler) GetUserMe(c *gin.Context) {
 }
 
 func (h *UserHandler) UpdateUserMe(c *gin.Context) {
-	var u dto.UpdateUserMeReq
+	u := &dto.UpdateUserMeReq{}
 
 	// Bind JSON payload: expects { "display_name": "...", "avatar_url": "..." }
-	if err := c.ShouldBindJSON(&u); err != nil {
+	if err := c.ShouldBindJSON(u); err != nil {
 		utils.WriteError(c, utils.ErrorInvalidInput)
 		return
 	}
 
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
 	// Call service with values from payload
-	user, err := h.IUserService.UpdateUserMe(c.Request.Context(), &u)
+	user, err := h.IUserService.UpdateUserMe(c.Request.Context(), userInfo, u)
 	if err != nil {
 		utils.WriteError(c, err)
 		return

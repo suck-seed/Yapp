@@ -1,16 +1,42 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // Contains basic information about hall
 // - NAME, ICON, DESCRIPTION
 // CAN UPDATE USING PROFILE DTO
 
+// GET
+type GetHallProfileRes struct {
+	ID               uuid.UUID `json:"id"`
+	Name             string    `json:"name"`
+	IconURL          *string   `json:"icon_url"`
+	IconThumbnailURL *string   `json:"icon_thumbnail_url"`
+	BannerColor      string    `json:"banner_color"`
+	Description      *string   `json:"description"`
+	OwnerID          uuid.UUID `json:"owner_id"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+// PATCH
 type HallProfileUpdateReq struct {
-	HallID      uuid.UUID `json:"hall_id" binding:"required"`
-	Name        *string   `json:"name" binding:"omitempty"`
-	Description *string   `json:"description" binding:"omitempty,max=500"`
+	Name        *string `json:"name"         binding:"omitempty,min=1,max=100"`
+	Description *string `json:"description"  binding:"omitempty,max=500"`
+	BannerColor *string `json:"banner_color" binding:"omitempty"`
 }
 
 type HallProfileUpdateRes struct {
+	ID               uuid.UUID `json:"id"`
+	Name             string    `json:"name"`
+	IconURL          *string   `json:"icon_url"`
+	IconThumbnailURL *string   `json:"icon_thumbnail_url"`
+	BannerColor      string    `json:"banner_color"`
+	Description      *string   `json:"description"`
+	OwnerID          uuid.UUID `json:"owner_id"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
