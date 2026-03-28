@@ -16,6 +16,8 @@ func (e *CustomError) Error() string {
 }
 
 var (
+	ErrorBadContext = &CustomError{Code: http.StatusUnauthorized, Message: "Invalid Context"}
+
 	// AUTH ERRORS
 	ErrorUserNotFound   = &CustomError{Code: http.StatusNotFound, Message: "User not found"}
 	ErrorEmailExists    = &CustomError{Code: http.StatusConflict, Message: "Email already registered"}
@@ -48,13 +50,13 @@ var (
 	ErrorCreatingRoom  = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Room"}
 
 	// FETCHING ERROR
-	ErrorFetchingRoom       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Room"}
-	ErrorFetchingUser       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching User"}
-	ErrorFetchingMessages   = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Messages"}
-	ErrorFetchingHall       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Hall"}
-	ErrorFetchingBan        = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Ban"}
-	ErrorFetchingRole       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Role"}
-	ErrorFetchingPermission = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Permissions"}
+	ErrorFetchingRoom       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Room Information"}
+	ErrorFetchingUser       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching User Information"}
+	ErrorFetchingMessages   = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Messages Information"}
+	ErrorFetchingHall       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Hall Information"}
+	ErrorFetchingBan        = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Ban Information"}
+	ErrorFetchingRole       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Role Information"}
+	ErrorFetchingPermission = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Permissions Information"}
 
 	// CREATING ERROR
 	ErrorCreatingHallRole   = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Role"}
@@ -62,6 +64,9 @@ var (
 
 	// UPDATING ERROR
 	ErrorUpdatingPermissions = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while updating role permissions"}
+
+	// DELETING ERROR
+	ErrorCannotDeleteHall = &CustomError{Code: http.StatusUnauthorized, Message: "Only Hall owner can delete hall"}
 
 	// PERMISSIONS DISGARDED ERROR
 	ErrorUserCannotManageRoles             = &CustomError{Code: http.StatusUnauthorized, Message: "User does not have privlage to manage roles"}

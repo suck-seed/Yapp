@@ -71,13 +71,54 @@ func (h *HallHandler) GetUserHalls(c *gin.Context) {
 // SINGLE HALL RUD
 func (h *HallHandler) GetCurrentHall(c *gin.Context) {
 
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInternal)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.GetCurrentHall(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+
 }
 
-func (h *HallHandler) UpdateCurrentHall(c *gin.Context) {
+// Depriciated not needed
+// func (h *HallHandler) UpdateCurrentHall(c *gin.Context) {
 
-}
+// }
 
 func (h *HallHandler) DeleteCurrentHall(c *gin.Context) {
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInternal)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.GetCurrentHall(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
 
 }
 

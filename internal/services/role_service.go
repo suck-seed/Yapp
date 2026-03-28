@@ -85,6 +85,11 @@ func (s *roleService) GetRolePermissions(ctx context.Context, userInfo *auth.Use
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorRoleNotFound
 		}
+
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+
 		return nil, utils.ErrorFetchingRole
 	}
 
@@ -99,6 +104,11 @@ func (s *roleService) GetRolePermissions(ctx context.Context, userInfo *auth.Use
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorPermissionsNotFound
 		}
+
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+
 		return nil, utils.ErrorFetchingPermission
 	}
 
@@ -128,6 +138,11 @@ func (s *roleService) GetUserPermissions(ctx context.Context, userInfo *auth.Use
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorHallNotFound
 		}
+
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+
 		return nil, utils.ErrorFetchingHall
 	}
 
@@ -145,6 +160,11 @@ func (s *roleService) GetUserPermissions(ctx context.Context, userInfo *auth.Use
 			// Highly condition that the userID doesnt belong in the hall or prolly doesnt exist
 			return nil, utils.ErrorUserDoesntBelongHall
 		}
+
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+
 		return nil, utils.ErrorFetchingPermission
 	}
 
@@ -180,6 +200,10 @@ func (s *roleService) UpdateRolePermissions(ctx context.Context, userInfo *auth.
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorRoleNotFound
 		}
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+
 		return nil, utils.ErrorFetchingRole
 	}
 
@@ -202,6 +226,9 @@ func (s *roleService) UpdateRolePermissions(ctx context.Context, userInfo *auth.
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorPermissionsNotFound
+		}
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingPermission
 	}
@@ -260,6 +287,11 @@ func (s *roleService) canManageRolesInternal(ctx context.Context, runner databas
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, utils.ErrorHallNotFound
 		}
+
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return false, utils.ErrorRequestTimeout
+		}
+
 		return false, utils.ErrorFetchingHall
 	}
 
@@ -274,6 +306,11 @@ func (s *roleService) canManageRolesInternal(ctx context.Context, runner databas
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, utils.ErrorPermissionsNotFound
 		}
+
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return false, utils.ErrorRequestTimeout
+		}
+
 		return false, utils.ErrorFetchingPermission
 	}
 
@@ -289,6 +326,9 @@ func (s *roleService) CanBanMembers(ctx context.Context, runner database.DBRunne
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, utils.ErrorHallNotFound
 		}
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return false, utils.ErrorRequestTimeout
+		}
 		return false, utils.ErrorFetchingHall
 	}
 
@@ -303,6 +343,11 @@ func (s *roleService) CanBanMembers(ctx context.Context, runner database.DBRunne
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, utils.ErrorPermissionsNotFound
 		}
+
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return false, utils.ErrorRequestTimeout
+		}
+
 		return false, utils.ErrorFetchingPermission
 	}
 
@@ -317,6 +362,11 @@ func (s *roleService) CanKickMembers(ctx context.Context, runner database.DBRunn
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, utils.ErrorHallNotFound
 		}
+
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return false, utils.ErrorRequestTimeout
+		}
+
 		return false, utils.ErrorFetchingHall
 	}
 
@@ -331,6 +381,11 @@ func (s *roleService) CanKickMembers(ctx context.Context, runner database.DBRunn
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, utils.ErrorPermissionsNotFound
 		}
+
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return false, utils.ErrorRequestTimeout
+		}
+
 		return false, utils.ErrorFetchingPermission
 	}
 

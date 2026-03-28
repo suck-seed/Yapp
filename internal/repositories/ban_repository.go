@@ -13,9 +13,9 @@ type IBanRepsitory interface {
 
 	// ------------------------------- BANS
 	// core cud
-	BanUser(ctx context.Context, db database.DBRunner, ban *models.HallBan) (*models.HallBan, error)
-	UnBanUser(ctx context.Context, db database.DBRunner, banID uuid.UUID) (*models.HallBan, error)
-	GetBanByID(ctx context.Context, db database.DBRunner, banID uuid.UUID) (*models.HallBan, error)
+	BanUser(ctx context.Context, db database.DBRunner, ban *models.HallBan) (*models.HallBan, error) // C
+	UnBanUser(ctx context.Context, db database.DBRunner, banID uuid.UUID) (*models.HallBan, error)   // D/U
+	GetBanByID(ctx context.Context, db database.DBRunner, banID uuid.UUID) (*models.HallBan, error)  // R
 
 	// list operation
 	GetAllHallBans(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.HallBan, error)

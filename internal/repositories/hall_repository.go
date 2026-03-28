@@ -12,12 +12,15 @@ import (
 type IHallRepository interface {
 	// -------------------------- HALL
 	// core cud
-	CreateHall(ctx context.Context, db database.DBRunner, hall *models.Hall) (*models.Hall, error)
-	CreateHallMember(ctx context.Context, db database.DBRunner, hallMember *models.HallMember) error
+	CreateHall(ctx context.Context, db database.DBRunner, hall *models.Hall) (*models.Hall, error)   // C
+	CreateHallMember(ctx context.Context, db database.DBRunner, hallMember *models.HallMember) error // C
 
 	// list operation
-	GetUserHallIDs(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]uuid.UUID, error)
-	GetHallByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error)
+	GetUserHallIDs(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]uuid.UUID, error) // R
+	GetHallByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error)   // R
+	GetHallOwnerID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (uuid.UUID, error)   // R
+
+	// Updation
 
 	// check operation
 	DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (bool, error)
@@ -145,6 +148,24 @@ func (r *hallRepository) GetHallByID(ctx context.Context, db database.DBRunner, 
 	}
 
 	return hall, nil
+}
+
+func (r *hallRepository) GetHallOwnerID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (uuid.UUID, error) {
+
+	var ownerID uuid.UUID
+
+	query := `SELECT owner_id
+              FROM halls WHERE id = $1`
+
+	err := db.QueryRow(ctx, query, hallID).Scan(
+		&ownerID,
+	)
+
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return ownerID, nil
 }
 
 func (r *hallRepository) DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (bool, error) {

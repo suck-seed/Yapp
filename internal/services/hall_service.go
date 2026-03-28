@@ -2,10 +2,12 @@ package services
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/database"
@@ -22,8 +24,15 @@ type IHallService interface {
 
 	// -------------------- HALLS
 	CreateHall(c context.Context, userInfo *auth.UserInfo, req *dto.CreateHallReq) (*dto.CreateHallRes, error)
+
 	GetUserHalls(c context.Context, userInfo *auth.UserInfo) ([]*models.Hall, error)
+
+	GetCurrentHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*models.Hall, error)
+
+	DeleteHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*models.Hall, error)
+
 	IsUserHallMember(c context.Context, hallID uuid.UUID, userID uuid.UUID) (bool, error)
+
 	DoesHallExist(c context.Context, hallID uuid.UUID) (bool, error)
 }
 
@@ -193,6 +202,78 @@ func (s *hallService) GetUserHalls(c context.Context, userInfo *auth.UserInfo) (
 	}
 
 	return halls, nil
+}
+
+func (s *hallService) GetCurrentHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*models.Hall, error) {
+
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	// --------------- CONNECTION INIT
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
+	// fetch the hallInformation
+	hall, err := s.IHallRepository.GetHallByID(ctx, runner, hallID)
+	if err != nil {
+		// check the pgx error type for further validation of error
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorHallNotFound
+		}
+
+		// timeout or cancelled error
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+
+		return nil, utils.ErrorFetchingHall
+	}
+
+	return hall, nil
+}
+
+func (s *hallService) DeleteHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*models.Hall, error) {
+
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	// --------------- TRANSACTION INIT
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
+
+	// Check if userInfo.ID is equal to hall.ownerID
+	// - only owner can delete hall (admin cannot)
+	ownerID, err := s.IHallRepository.GetHallOwnerID(ctx, runner, hallID)
+
+	// checking for error and condition where uuid.Nil is sent for no ownerID is found
+	if err != nil && ownerID == uuid.Nil {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorHallNotFound
+		}
+
+		return nil, utils.ErrorFetchingHall
+	}
+
+	// checking if ownerID is equivalent to userInfo.ID
+	if userInfo.ID != ownerID {
+		return nil, utils.ErrorCannotDeleteHall
+	}
+
+	// everything is valid, go on to DeleteHall
+
+	return nil, nil
 }
 
 func (s *hallService) IsUserHallMember(c context.Context, hallID uuid.UUID, userID uuid.UUID) (bool, error) {
