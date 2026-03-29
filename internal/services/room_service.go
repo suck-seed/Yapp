@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/database"
 	dto "github.com/suck-seed/yapp/internal/dto/room"
 	"github.com/suck-seed/yapp/internal/utils"
@@ -16,9 +17,10 @@ import (
 )
 
 type IRoomService interface {
-	CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dto.CreateRoomRes, error)
-	GetRoomByID(c context.Context, roomID uuid.UUID) (*models.Room, error)
+	CreateRoom(c context.Context, userInfo *auth.UserInfo, req *dto.CreateRoomReq) (*dto.CreateRoomRes, error)
 
+	// Internal
+	GetRoomByID(c context.Context, roomID uuid.UUID) (*models.Room, error)
 	IsUserRoomMember(c context.Context, roomID uuid.UUID, userID uuid.UUID) (bool, error)
 }
 
@@ -46,7 +48,7 @@ func NewRoomService(hallRepo repositories.IHallRepository, floorRepo repositorie
 // ctx, cancel := context.WithTimeout(c, s.timeout)
 // 	defer cancel()
 
-func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dto.CreateRoomRes, error) {
+func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, req *dto.CreateRoomReq) (*dto.CreateRoomRes, error) {
 
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
@@ -75,7 +77,7 @@ func (s *roomService) CreateRoom(c context.Context, req *dto.CreateRoomReq) (*dt
 	if req.FloorID != nil {
 		floorExists, err := s.IFloorRepository.DoesFloorExistsInRoom(ctx, runner, *req.FloorID, req.HallID)
 		if err != nil {
-			return nil, utils.ErrorFloorNotFound
+			return nil, utils.ErrorFetchingFloor
 		}
 
 		if !floorExists {

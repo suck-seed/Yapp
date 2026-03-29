@@ -26,7 +26,7 @@ func StartServer(cfg config.AppConfig) {
 	// new app handler
 	router := gin.Default()
 
-	// cors middleware injection
+	router.Use(auth.CSRFCookieMiddleware())
 	router.Use(cfg.CORS)
 
 	// repositories init
@@ -64,6 +64,11 @@ func StartServer(cfg config.AppConfig) {
 
 	// Protected API routed (JWT required, AuthMiddleware Passed)
 	api := router.Group("/api/v1")
+	api.Use(func(c *gin.Context) {
+		log.Printf(">>> MIDDLEWARE HIT: %s %s", c.Request.Method, c.Request.URL.Path)
+		c.Next()
+		log.Printf(">>> RESPONSE STATUS: %d", c.Writer.Status())
+	})
 	api.Use(auth.AuthMiddleware())
 	{
 		rest.RegisterUserRoutes(api, userService)
@@ -77,7 +82,6 @@ func StartServer(cfg config.AppConfig) {
 	wsRouter := router.Group("/ws")
 	wsRouter.Use(auth.AuthMiddleware())
 	{
-
 		rest.RegisterWebSocketRoutes(wsRouter, &hub, messageService, hallService, roomService, userService)
 	}
 

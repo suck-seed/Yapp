@@ -21,11 +21,14 @@ func buildCORS() gin.HandlerFunc {
 	}
 
 	cfg := cors.Config{
-		AllowOrigins:     []string{origin},
+		AllowOrigins: []string{
+			"http://localhost:3000",
+			"http://127.0.0.1:3000",
+			// add production frontend later
+		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Authorization", "Content-Type", "X-CSRF-Token", "Origin"},
-		ExposeHeaders:    []string{"Set-Cookie"},
-		AllowCredentials: true, // <- required for cookies
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "token", "X-CSRF-Token"},
+		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}
 

@@ -25,6 +25,7 @@ type HallMember struct {
 	HallID    uuid.UUID `db:"hall_id" json:"hall_id"`
 	UserID    uuid.UUID `db:"user_id" json:"user_id"`
 	RoleID    uuid.UUID `db:"role_id" json:"role_id"`
+	Nickname  *string   `db:"nickname" json:"nickname"`
 	JoinedAt  time.Time `db:"joined_at" json:"joined_at"`
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`

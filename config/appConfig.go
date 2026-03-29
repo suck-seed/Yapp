@@ -3,11 +3,10 @@ package config
 import (
 	"os"
 
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/suck-seed/yapp/internal/database"
-
-	"github.com/gin-gonic/gin"
 )
 
 var (

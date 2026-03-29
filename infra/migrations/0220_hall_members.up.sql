@@ -3,6 +3,7 @@ CREATE TABLE hall_members (
     hall_id uuid NOT NULL REFERENCES halls (id) ON DELETE CASCADE,
     user_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     role_id uuid REFERENCES roles (id) ON DELETE RESTRICT,
+    nickname text,
 
     joined_at timestamptz NOT NULL DEFAULT now (),
     created_at timestamptz NOT NULL DEFAULT now (),

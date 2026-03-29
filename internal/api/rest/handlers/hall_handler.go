@@ -51,6 +51,28 @@ func (h *HallHandler) CreateHall(c *gin.Context) {
 
 }
 
+func (h *HallHandler) JoinHall(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IHallService.JoinHall(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, res)
+}
+
 func (h *HallHandler) GetUserHalls(c *gin.Context) {
 
 	userInfo, err := auth.CurrentUserFromGinContext(c)
@@ -73,7 +95,7 @@ func (h *HallHandler) GetCurrentHall(c *gin.Context) {
 
 	hallID, err := uuid.Parse(c.Param("hallID"))
 	if err != nil {
-		utils.WriteError(c, utils.ErrorInternal)
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
 		return
 	}
 
@@ -102,7 +124,7 @@ func (h *HallHandler) DeleteCurrentHall(c *gin.Context) {
 
 	hallID, err := uuid.Parse(c.Param("hallID"))
 	if err != nil {
-		utils.WriteError(c, utils.ErrorInternal)
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
 		return
 	}
 
@@ -127,9 +149,55 @@ func (h *HallHandler) DeleteCurrentHall(c *gin.Context) {
 // PROFILE MANAGEMENT
 func (h *HallHandler) GetHallProfile(c *gin.Context) {
 
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IHallService.GetHallProfile(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+
 }
 
 func (h *HallHandler) UpdateHallProfile(c *gin.Context) {
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	var req dto.HallProfileUpdateReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.UpdateHallProfile(c.Request.Context(), userInfo, hallID, &req)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
 
 }
 

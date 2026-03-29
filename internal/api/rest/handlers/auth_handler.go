@@ -48,21 +48,29 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 		return
 	}
 
-	SignInRes, err := h.IUserService.Signin(c.Request.Context(), userSignIn)
+	signInRes, err := h.IUserService.Signin(c.Request.Context(), userSignIn)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
 	}
 
 	// set cookie
-	const cookieSecond = 24 * 60 * 60
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("jwt", SignInRes.AccessToken, cookieSecond, "/", "", false, true)
+	const cookieSeconds = 24 * 60 * 60
+
+	isHTTPS := c.GetHeader("X-Forwarded-Proto") == "https"
+	if isHTTPS {
+		c.SetSameSite(http.SameSiteNoneMode)
+		c.SetCookie("jwt", signInRes.AccessToken, cookieSeconds, "/", "", true, true)
+	} else {
+		// local dev over plain http
+		c.SetSameSite(http.SameSiteLaxMode)
+		c.SetCookie("jwt", signInRes.AccessToken, cookieSeconds, "/", "", false, true)
+	}
 
 	// filtered response (not sending accesstoken over https, so removed it)
 	res := &dto.SigninUserRes{
-		UserMe:  SignInRes.UserMe,
-		Success: SignInRes.Success,
+		UserMe:  signInRes.UserMe,
+		Success: signInRes.Success,
 	}
 
 	c.JSON(http.StatusOK, res)
@@ -70,10 +78,15 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 
 func (h *AuthHandler) Signout(c *gin.Context) {
 
-	c.SetSameSite(http.SameSiteLaxMode)
-	// Clear the same cookie attributes used when setting it (host-only cookie)
-	c.SetCookie("jwt", "", -1, "/", "", false, true)
+	isHTTPS := c.GetHeader("X-Forwarded-Proto") == "https"
 
+	if isHTTPS {
+		c.SetSameSite(http.SameSiteNoneMode)
+		c.SetCookie("jwt", "", -1, "/", "", true, true)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode)
+		c.SetCookie("jwt", "", -1, "/", "", false, true)
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Signed out successfully",
 	})

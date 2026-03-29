@@ -61,6 +61,9 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 		halls.GET("", hallHandler.GetUserHalls)
 		halls.POST("", hallHandler.CreateHall)
 
+		// JOIN HALL
+		halls.POST("/:hallID/join", hallHandler.JoinHall)
+
 		// SINGLE HALL RUD
 		halls.GET("/:hallID", hallHandler.GetCurrentHall)
 		// halls.PATCH("/:hallID", hallHandler.UpdateCurrentHall)

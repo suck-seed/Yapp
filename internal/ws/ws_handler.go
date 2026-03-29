@@ -3,7 +3,7 @@ package ws
 import (
 	"net/http"
 	"time"
-	"log"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -52,7 +52,6 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
-        log.Printf("❌ [JoinRoom] auth failed: %v", err)  // <-- add this
 		utils.WriteError(c, err)
 		return
 	}
@@ -60,7 +59,6 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	// User Exists?
 	user, err := h.IUserService.GetUserById(c, userInfo.ID)
 	if err != nil {
-        log.Printf("❌ [JoinRoom] user not found: %v", err)  // <-- add this
 		utils.WriteError(c, utils.ErrorUserNotFound)
 		return
 	}
