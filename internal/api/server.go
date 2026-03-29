@@ -22,12 +22,8 @@ import (
 func StartServer(cfg config.AppConfig) {
 	router := gin.Default()
 
-	// CRITICAL: Trust proxy headers from Nginx/Ngrok
-	router.ForwardedByClientIP = true
-	err := router.SetTrustedProxies(nil) // Trust all proxies for development
-	if err != nil {
-		log.Fatal(err)
-	}
+	router.Use(auth.CSRFCookieMiddleware())
+	router.Use(cfg.CORS)
 
 	// Dependency Injection
 	userRepository := repositories.NewUserRepository()
@@ -54,6 +50,11 @@ func StartServer(cfg config.AppConfig) {
 	rest.RegisterAuthRoutes(router, userService)
 
 	api := router.Group("/api/v1")
+	api.Use(func(c *gin.Context) {
+		log.Printf(">>> MIDDLEWARE HIT: %s %s", c.Request.Method, c.Request.URL.Path)
+		c.Next()
+		log.Printf(">>> RESPONSE STATUS: %d", c.Writer.Status())
+	})
 	api.Use(auth.AuthMiddleware())
 	{
 		rest.RegisterUserRoutes(api, userService)

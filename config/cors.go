@@ -27,7 +27,7 @@ func buildCORS() gin.HandlerFunc {
 			// add production frontend later
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-CSRF-Token"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "token", "X-CSRF-Token"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}

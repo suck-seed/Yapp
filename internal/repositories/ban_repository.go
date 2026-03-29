@@ -159,7 +159,10 @@ func (r *banRepository) GetAllHallBans(ctx context.Context, db database.DBRunner
 	return bans, nil
 }
 
-func (r *banRepository) GetAllHallBansPaginated(ctx context.Context, db database.DBRunner, hallID uuid.UUID, offset int, limit int) ([]*models.HallBan, error)
+func (r *banRepository) GetAllHallBansPaginated(ctx context.Context, db database.DBRunner, hallID uuid.UUID, offset int, limit int) ([]*models.HallBan, error) {
+
+	return nil, nil
+}
 
 // check operation
 func (r *banRepository) IsUserBanned(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (bool, error) {

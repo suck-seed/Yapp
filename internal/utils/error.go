@@ -58,6 +58,7 @@ var (
 	ErrorFetchingUser       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching User Information"}
 	ErrorFetchingMessages   = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Messages Information"}
 	ErrorFetchingHall       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Hall Information"}
+	ErrorFetchingFloor      = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Floor Information"}
 	ErrorFetchingBan        = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Ban Information"}
 	ErrorFetchingRole       = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Role Information"}
 	ErrorFetchingPermission = &CustomError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Permissions Information"}
