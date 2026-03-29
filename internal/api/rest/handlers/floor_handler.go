@@ -36,5 +36,9 @@ func (h *FloorHandler) CreateFloor(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Floor created successfully",
+		"data":    res,
+	})
 }

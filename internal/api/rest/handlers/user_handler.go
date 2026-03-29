@@ -24,8 +24,10 @@ func NewUserHandler(userService services.IUserService) *UserHandler {
 
 func (h *UserHandler) Ping(c *gin.Context) {
 
-	c.JSON(200, gin.H{
-		"message": "ping",
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Ping successful",
+		"data":    nil,
 	})
 }
 
@@ -46,7 +48,11 @@ func (h *UserHandler) GetUserMe(c *gin.Context) {
 	res := dto.ToUserMe(*user)
 
 	// Return user information
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Profile retrieved successfully",
+		"data":    res,
+	})
 }
 
 func (h *UserHandler) UpdateUserMe(c *gin.Context) {
@@ -65,18 +71,15 @@ func (h *UserHandler) UpdateUserMe(c *gin.Context) {
 	}
 
 	// Call service with values from payload
-	user, err := h.IUserService.UpdateUserMe(c.Request.Context(), userInfo, u)
+	res, err := h.IUserService.UpdateUserMe(c.Request.Context(), userInfo, u)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
 	}
 
-	// Return updated user info
 	c.JSON(http.StatusOK, gin.H{
-		"username":     user.Username,
-		"display_name": user.DisplayName,
-		"email":        user.Email,
-		"avatar_url":   user.AvatarURL,
-		"active":       user.Active,
+		"success": true,
+		"message": "Profile updated successfully",
+		"data":    res,
 	})
 }

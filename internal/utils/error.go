@@ -145,8 +145,9 @@ func WriteError(c *gin.Context, err error) {
 
 		c.JSON(customError.Code, gin.H{
 			"code":    customError.Code,
-			"error":   customError.Message,
+			"message": customError.Message,
 			"success": false,
+			"data":    nil,
 		})
 
 		return

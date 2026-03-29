@@ -47,7 +47,11 @@ func (h *HallHandler) CreateHall(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, res)
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Hall created successfully",
+		"data":    res,
+	})
 
 }
 
@@ -70,7 +74,11 @@ func (h *HallHandler) JoinHall(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, res)
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Joined hall successfully",
+		"data":    res,
+	})
 }
 
 func (h *HallHandler) GetUserHalls(c *gin.Context) {
@@ -87,7 +95,11 @@ func (h *HallHandler) GetUserHalls(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Halls retrieved successfully",
+		"data":    res,
+	})
 }
 
 // SINGLE HALL RUD
@@ -111,7 +123,11 @@ func (h *HallHandler) GetCurrentHall(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Hall retrieved successfully",
+		"data":    res,
+	})
 
 }
 
@@ -140,7 +156,11 @@ func (h *HallHandler) DeleteCurrentHall(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Hall deleted successfully",
+		"data":    res,
+	})
 
 }
 
@@ -167,7 +187,11 @@ func (h *HallHandler) GetHallProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Hall profile retrieved successfully",
+		"data":    res,
+	})
 
 }
 
@@ -197,7 +221,11 @@ func (h *HallHandler) UpdateHallProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Hall profile updated successfully",
+		"data":    res,
+	})
 
 }
 
@@ -269,7 +297,11 @@ func (h *HallHandler) GetRolesPermissions(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Role permissions retrieved successfully",
+		"data":    res,
+	})
 
 }
 
@@ -309,7 +341,11 @@ func (h *HallHandler) UpdateRolesPermissions(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Role permissions updated successfully",
+		"data":    res,
+	})
 }
 
 // INVITES MANAGEMENT

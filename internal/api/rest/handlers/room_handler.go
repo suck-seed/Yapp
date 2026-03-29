@@ -45,6 +45,9 @@ func (h *RoomHandler) CreateRoom(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
-
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Room created successfully",
+		"data":    res,
+	})
 }
