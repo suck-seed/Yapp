@@ -10,59 +10,45 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/suck-seed/yapp/internal/ws"
-
 	"github.com/gin-gonic/gin"
 	"github.com/suck-seed/yapp/config"
 	"github.com/suck-seed/yapp/internal/api/rest"
 	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/services"
+	"github.com/suck-seed/yapp/internal/ws"
 )
 
-// StartServer : Runs up an instance of server, Pass dependency to individual Handlers, Middle ware implemented here
 func StartServer(cfg config.AppConfig) {
-
-	// new app handler
 	router := gin.Default()
 
 	router.Use(auth.CSRFCookieMiddleware())
 	router.Use(cfg.CORS)
 
-	// repositories init
+	// Dependency Injection
 	userRepository := repositories.NewUserRepository()
-
 	hallRepository := repositories.NewHallRepository()
 	roleRepository := repositories.NewRoleRepository()
 	banRepository := repositories.NewBanRepository()
-
 	floorRepository := repositories.NewFloorRepository()
 	roomRepository := repositories.NewRoomRepository()
 	messageRepository := repositories.NewMessageRepository()
 
-	// service init and corresponsing repo's passed
 	userService := services.NewUserService(userRepository, cfg.PostgresPool)
 	hallService := services.NewHallService(hallRepository, roleRepository, banRepository, cfg.PostgresPool)
 	floorService := services.NewFloorService(hallRepository, floorRepository, cfg.PostgresPool)
 	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository, cfg.PostgresPool)
 	roleService := services.NewRoleService(roleRepository, userRepository, hallRepository, banRepository, cfg.PostgresPool)
 	banService := services.NewBanService(banRepository, userRepository, hallRepository, roleRepository, cfg.PostgresPool)
-
-	// message
 	messageService := services.NewMessageService(hallRepository, roomRepository, messageRepository, userRepository, cfg.PostgresPool)
 
-	//	presist function for message
 	presistFunction := ws.MakePresistFunction(messageService, userService)
-
-	// new websocket hub init and running
 	hub := ws.NewHub(presistFunction)
 	go hub.Run()
 
-	// Public Router ( Do not pass AuthMiddleware here pls )
-	// Only used for singup, signin and signout
+	// Routes
 	rest.RegisterAuthRoutes(router, userService)
 
-	// Protected API routed (JWT required, AuthMiddleware Passed)
 	api := router.Group("/api/v1")
 	api.Use(func(c *gin.Context) {
 		log.Printf(">>> MIDDLEWARE HIT: %s %s", c.Request.Method, c.Request.URL.Path)
@@ -76,7 +62,6 @@ func StartServer(cfg config.AppConfig) {
 		rest.RegisterFloorRoutes(api, floorService)
 		rest.RegisterRoomRoutes(api, roomService)
 		rest.RegisterMessageRoutes(api, messageService)
-
 	}
 
 	wsRouter := router.Group("/ws")
@@ -85,77 +70,34 @@ func StartServer(cfg config.AppConfig) {
 		rest.RegisterWebSocketRoutes(wsRouter, &hub, messageService, hallService, roomService, userService)
 	}
 
-	// start(router, cfg)
 	startGracefully(router, cfg, &hub)
 }
 
 func startGracefully(router *gin.Engine, cfg config.AppConfig, hub *ws.Hub) {
-
 	server := http.Server{
-		Addr:    "0.0.0.0:" + cfg.ServerPort,
-		Handler: router,
-
-		// Should be longer than Nginx proxy_read_timeout (30s)
-		ReadTimeout: 45 * time.Second,
-
-		// Should be longer than Nginx proxy_send_timeout (30s)
+		Addr:         "0.0.0.0:" + cfg.ServerPort,
+		Handler:      router,
+		ReadTimeout:  45 * time.Second,
 		WriteTimeout: 45 * time.Second,
-
-		// IdleTimeout: Maximum time to wait for the next request when keep-alives are enabled
-		// CRITICAL: Must be LONGER than Nginx keepalive_timeout (65s default)
-		// This ensures Nginx closes the connection first, preventing "broken pipe" errors
-		IdleTimeout: 120 * time.Second,
-
-		// ReadHeaderTimeout: Time allowed to read request headers
-		ReadHeaderTimeout: 10 * time.Second,
-
-		MaxHeaderBytes: 1 << 20, // 1 MB
-
+		IdleTimeout:  120 * time.Second,
 	}
 
-	// starting server in a go routine
 	go func() {
-
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			fmt.Printf("error: %v\n", err)
 		}
-
 	}()
 
-	// Shutdown handler
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
 	<-quit
-	log.Println("Shutdown signal received, starting graceful shutdown...")
 
+	log.Println("Shutdown signal received, starting graceful shutdown...")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	// CLosing websockets
-	if err := hub.Close(); err != nil {
-		log.Printf("Error closing WebSocket hub: %v", err)
-	}
-
-	// http server clousere
-	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Error closing http server: %v", err)
-	}
-
-	// close postgres db
+	hub.Close()
+	server.Shutdown(ctx)
 	cfg.PostgresPool.Close()
-
-	// log message
 	log.Printf("Gracefully stopped server")
-
-}
-
-func start(router *gin.Engine, cfg config.AppConfig) {
-
-	// runs on 8080 on default
-	err := router.Run(":" + cfg.ServerPort)
-	if err != nil {
-		fmt.Printf("error: %v\n", err)
-		return
-	}
 }

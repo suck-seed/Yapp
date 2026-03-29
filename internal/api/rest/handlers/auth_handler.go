@@ -10,39 +10,29 @@ import (
 )
 
 type AuthHandler struct {
-	// inject IUserService
 	services.IUserService
 }
 
 func NewAuthHandler(userService services.IUserService) *AuthHandler {
-	return &AuthHandler{
-		userService,
-	}
+	return &AuthHandler{userService}
 }
 
 func (h *AuthHandler) Signup(c *gin.Context) {
-
 	u := &dto.SignupUserReq{}
-
 	if err := c.ShouldBindJSON(u); err != nil {
-
 		utils.WriteError(c, utils.ErrorInvalidInput)
 		return
-
 	}
-
 	res, err := h.IUserService.Signup(c.Request.Context(), u)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
 	}
-
 	c.JSON(http.StatusCreated, res)
 }
 
 func (h *AuthHandler) Signin(c *gin.Context) {
 	userSignIn := &dto.SigninUserReq{}
-
 	if err := c.ShouldBindJSON(userSignIn); err != nil {
 		utils.WriteError(c, utils.ErrorInvalidInput)
 		return
@@ -67,12 +57,10 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 		c.SetCookie("jwt", signInRes.AccessToken, cookieSeconds, "/", "", false, true)
 	}
 
-	// filtered response (not sending accesstoken over https, so removed it)
 	res := &dto.SigninUserRes{
 		UserMe:  signInRes.UserMe,
 		Success: signInRes.Success,
 	}
-
 	c.JSON(http.StatusOK, res)
 }
 

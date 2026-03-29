@@ -20,7 +20,8 @@ var (
 	secretKey        string
 )
 
-// AppConfig : Stores configurations for server, includes port, db, and middleware
+// AppConfig : Stores configurations for server, includes port and db.
+// CORS is handled by Nginx (see infra/nginx/nginx.conf), not by Gin.
 type AppConfig struct {
 	ServerPort   string
 	CORS         gin.HandlerFunc
@@ -28,7 +29,7 @@ type AppConfig struct {
 	RedisDb      *redis.Client
 }
 
-// SetupEnvironment : Loads ENV variables, creates instance of middleware and returns the configurations
+// SetupEnvironment : Loads ENV variables and returns the configurations
 func SetupEnvironment() (config AppConfig, err error) {
 
 	// Load Env Variables

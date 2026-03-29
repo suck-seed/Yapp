@@ -36,11 +36,7 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
 
-		// get origin of frontend
-		// origin := r.Header.Get("Origin")
-		// return origin == config.FrontEndOrigin()
-
-		// for dev return true to test using postgres
+		// Restrict by Origin here if needed; browser CORS for HTTP is set in Nginx.
 		return true
 	},
 }
