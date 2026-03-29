@@ -57,10 +57,12 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 		c.SetCookie("jwt", signInRes.AccessToken, cookieSeconds, "/", "", false, true)
 	}
 
+	// filtered response (not sending accesstoken over https, so removed it)
 	res := &dto.SigninUserRes{
 		UserMe:  signInRes.UserMe,
 		Success: signInRes.Success,
 	}
+
 	c.JSON(http.StatusOK, res)
 }
 
