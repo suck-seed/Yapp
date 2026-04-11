@@ -16,7 +16,7 @@ type GetHallProfileRes struct {
 	Name             string    `json:"name"`
 	IconURL          *string   `json:"icon_url"`
 	IconThumbnailURL *string   `json:"icon_thumbnail_url"`
-	BannerColor      string    `json:"banner_color"`
+	BannerColor      *string   `json:"banner_color"`
 	Description      *string   `json:"description"`
 	OwnerID          uuid.UUID `json:"owner_id"`
 	CreatedAt        time.Time `json:"created_at"`
@@ -39,4 +39,17 @@ type HallProfileUpdateRes struct {
 	Description      *string   `json:"description"`
 	OwnerID          uuid.UUID `json:"owner_id"`
 	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+// currentHalldto
+type GetCurrentHallRes struct {
+	ID               uuid.UUID `json:"id"`
+	Name             string    `json:"name"`
+	IconURL          *string   `json:"icon_url"`
+	IconThumbnailURL *string   `json:"icon_thumbnail_url"`
+	BannerColor      *string   `json:"banner_color"`
+	Description      *string   `json:"description"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	OwnerID          uuid.UUID `json:"owner_id"`
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/suck-seed/yapp/internal/database"
 	"github.com/suck-seed/yapp/internal/models"
 )
@@ -21,12 +22,18 @@ type IHallRepository interface {
 	GetUserHallIDs(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]uuid.UUID, error) // R
 	GetHallByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error)   // R
 	GetHallOwnerID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (uuid.UUID, error)   // R
+	GetHallMemberByUserID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (*models.HallMember, error)
+	GetHallMemberByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, memberID uuid.UUID) (*models.HallMember, error)
+	ListHallMembers(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.HallMember, error)
+	UpdateHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID, fields map[string]any) (*models.HallMember, error)
 
-	// Updation
-	// Add to IHallRepository interface
+	// ---------------- USER MANAGEMENT
+	KickHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) error
+
+	// -------------- HALL PROFILE
 	UpdateHallProfile(ctx context.Context, db database.DBRunner, hallID uuid.UUID, fields map[string]any) (*models.Hall, error)
 
-	// check operation
+	// ------------- CHECK OPERATION
 	DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (bool, error)
 	IsUserHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (bool, error)
 }
@@ -145,7 +152,8 @@ func (r *hallRepository) GetHallByID(ctx context.Context, db database.DBRunner, 
 	hall := &models.Hall{}
 
 	query := `SELECT id, name, icon_url, icon_thumbnail_url, banner_color, description, created_at, updated_at, owner_id
-              FROM halls WHERE id = $1`
+              FROM halls WHERE id = $1
+              `
 
 	err := db.QueryRow(ctx, query, hallID).Scan(
 		&hall.ID,
@@ -182,6 +190,156 @@ func (r *hallRepository) GetHallOwnerID(ctx context.Context, db database.DBRunne
 	}
 
 	return ownerID, nil
+}
+
+func (r *hallRepository) GetHallMemberByUserID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (*models.HallMember, error) {
+	query := `
+		SELECT id, hall_id, user_id, role_id, nickname, joined_at, created_at, updated_at
+		FROM hall_members
+		WHERE hall_id = $1 AND user_id = $2
+	`
+
+	m := &models.HallMember{}
+	err := db.QueryRow(ctx, query, hallID, userID).Scan(
+		&m.ID,
+		&m.HallID,
+		&m.UserID,
+		&m.RoleID,
+		&m.Nickname,
+		&m.JoinedAt,
+		&m.CreatedAt,
+		&m.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
+
+func (r *hallRepository) GetHallMemberByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, memberID uuid.UUID) (*models.HallMember, error) {
+	query := `
+		SELECT id, hall_id, user_id, role_id, nickname, joined_at, created_at, updated_at
+		FROM hall_members
+		WHERE hall_id = $1 AND id = $2
+	`
+
+	m := &models.HallMember{}
+	err := db.QueryRow(ctx, query, hallID, memberID).Scan(
+		&m.ID,
+		&m.HallID,
+		&m.UserID,
+		&m.RoleID,
+		&m.Nickname,
+		&m.JoinedAt,
+		&m.CreatedAt,
+		&m.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
+
+func (r *hallRepository) ListHallMembers(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.HallMember, error) {
+	query := `
+		SELECT id, hall_id, user_id, role_id, nickname, joined_at, created_at, updated_at
+		FROM hall_members
+		WHERE hall_id = $1
+		ORDER BY joined_at ASC
+	`
+
+	rows, err := db.Query(ctx, query, hallID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var members []*models.HallMember
+	for rows.Next() {
+		m := &models.HallMember{}
+		if err := rows.Scan(
+			&m.ID,
+			&m.HallID,
+			&m.UserID,
+			&m.RoleID,
+			&m.Nickname,
+			&m.JoinedAt,
+			&m.CreatedAt,
+			&m.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		members = append(members, m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return members, nil
+}
+
+// UpdateHallMember — swap the WHERE clause to use user_id instead of id
+func (r *hallRepository) UpdateHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID, fields map[string]any) (*models.HallMember, error) {
+	setClauses := make([]string, 0, len(fields)+1)
+	args := make([]any, 0, len(fields)+3)
+
+	i := 1
+	for col, val := range fields {
+		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", col, i))
+		args = append(args, val)
+		i++
+	}
+	setClauses = append(setClauses, fmt.Sprintf("updated_at = $%d", i))
+	args = append(args, time.Now())
+	i++
+
+	args = append(args, hallID, userID)
+
+	query := fmt.Sprintf(`
+		UPDATE hall_members
+		SET %s
+		WHERE hall_id = $%d AND user_id = $%d
+		RETURNING id, hall_id, user_id, role_id, nickname, joined_at, created_at, updated_at
+	`, strings.Join(setClauses, ", "), i, i+1)
+
+	m := &models.HallMember{}
+	err := db.QueryRow(ctx, query, args...).Scan(
+		&m.ID,
+		&m.HallID,
+		&m.UserID,
+		&m.RoleID,
+		&m.Nickname,
+		&m.JoinedAt,
+		&m.CreatedAt,
+		&m.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
+
+// DeleteHallMember — same swap
+func (r *hallRepository) KickHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) error {
+	query := `
+		DELETE FROM hall_members
+		WHERE hall_id = $1 AND user_id = $2
+	`
+
+	ct, err := db.Exec(ctx, query, hallID, userID)
+	if err != nil {
+		return err
+	}
+
+	if ct.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
+	return nil
 }
 
 func (r *hallRepository) UpdateHallProfile(ctx context.Context, db database.DBRunner, hallID uuid.UUID, fields map[string]any) (*models.Hall, error) {

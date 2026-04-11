@@ -34,12 +34,14 @@ func StartServer(cfg config.AppConfig) {
 	roomRepository := repositories.NewRoomRepository()
 	messageRepository := repositories.NewMessageRepository()
 
+	permissionCheckerService := services.NewPermissionCheckerService(roleRepository, userRepository, hallRepository, banRepository, cfg.PostgresPool)
+
 	userService := services.NewUserService(userRepository, cfg.PostgresPool)
-	hallService := services.NewHallService(hallRepository, roleRepository, banRepository, cfg.PostgresPool)
+	hallService := services.NewHallService(hallRepository, userRepository, roleRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
 	floorService := services.NewFloorService(hallRepository, floorRepository, cfg.PostgresPool)
 	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository, cfg.PostgresPool)
-	roleService := services.NewRoleService(roleRepository, userRepository, hallRepository, banRepository, cfg.PostgresPool)
-	banService := services.NewBanService(banRepository, userRepository, hallRepository, roleRepository, cfg.PostgresPool)
+	roleService := services.NewRoleService(roleRepository, userRepository, hallRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
+	banService := services.NewBanService(banRepository, userRepository, hallRepository, permissionCheckerService, cfg.PostgresPool)
 	messageService := services.NewMessageService(hallRepository, roomRepository, messageRepository, userRepository, cfg.PostgresPool)
 
 	presistFunction := ws.MakePresistFunction(messageService, userService)

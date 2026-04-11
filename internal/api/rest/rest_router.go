@@ -85,8 +85,10 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 				members.GET("", hallHandler.GetHallMembers)
 				members.GET("/:memberID", hallHandler.GetHallMember)
 				// members.POST("") // There wont be post handler, since we have seperate endpoints for adding and inviting members
-				members.PATCH("/:memberID", hallHandler.UpdateHallMember) // updates nickname, timeout, kick, ban, roles, transfer ownership
-				members.DELETE("/:memberID", hallHandler.RemoveHallMember)
+
+				members.PATCH("/:memberID/role", hallHandler.UpdateHallMemberRole)         // updates roles
+				members.PATCH("/:memberID/nickname", hallHandler.UpdateHallMemberNickname) // updates nickname
+				members.DELETE("/:memberID", hallHandler.KickHallMember)                   // remove member
 			}
 
 			// ROLES MANAGEMENT

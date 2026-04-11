@@ -13,7 +13,7 @@ const (
 	RefreshTokenTTL = 30 * 24 * time.Hour
 )
 
-type MyJWTClaims struct {
+type JWTPayload struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
 	jwt.RegisteredClaims
@@ -21,7 +21,7 @@ type MyJWTClaims struct {
 
 func GetSignedToken(user *models.User) (string, error) {
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, MyJWTClaims{
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, JWTPayload{
 		ID:       user.ID.String(),
 		Username: user.Username,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -32,19 +32,16 @@ func GetSignedToken(user *models.User) (string, error) {
 	})
 
 	secretKey := config.GetSecretKey()
-
 	signedString, err := token.SignedString([]byte(secretKey))
-
 	return signedString, err
 
 }
 
-func ParseAndVerify(token string) (*MyJWTClaims, error) {
+func ParseAndVerify(token string) (*JWTPayload, error) {
 	secretKey := config.GetSecretKey()
-	claims := &MyJWTClaims{}
+	claims := &JWTPayload{}
 
 	_, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (any, error) { return []byte(secretKey), nil })
-
 	if err != nil {
 		return nil, err
 	}

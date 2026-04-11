@@ -44,7 +44,7 @@ type UserBasic struct {
 	ID        uuid.UUID `json:"id" db:"id"`
 	Username  string    `json:"username" db:"username"`
 	Email     string    `json:"email" db:"email"`
-	AvatarURL *string   `json:"avatar_url,omitempty" db:"avatar_url"`
+	AvatarURL *string   `json:"avatar_url" db:"avatar_url"`
 }
 
 type ReactionGroup struct {
@@ -57,9 +57,9 @@ type ReactionGroup struct {
 type MessageDetailed struct {
 	models.Message
 	Author      UserBasic                   `json:"author"`
-	Attachments []AttachmentResponseMinimal `json:"attachments,omitempty"`
-	Reactions   []ReactionGroup             `json:"reactions,omitempty"`
-	Mentions    []UserBasic                 `json:"mentions,omitempty"`
+	Attachments []AttachmentResponseMinimal `json:"attachments"`
+	Reactions   []ReactionGroup             `json:"reactions"`
+	Mentions    []UserBasic                 `json:"mentions"`
 }
 
 type MessageListResponse struct {

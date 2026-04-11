@@ -53,8 +53,6 @@ func AuthMiddleware() gin.HandlerFunc {
 			Username: claims.Username,
 		}
 
-		// Everything's alright, place the context for ws_handler and other handler
-
 		// store in gin.Context
 		c.Set(CtxUserIDKey, userInfo.ID)
 		c.Set(CtxUsernameKey, userInfo.Username)

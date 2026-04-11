@@ -26,11 +26,6 @@ type IRoleService interface {
 	GetUserPermissions(ctx context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*models.RolePermission, error)
 
 	UpdateRolePermissions(ctx context.Context, userInfo *auth.UserInfo, hallID, roleID uuid.UUID, req *dto.UpdateRolePermissionReq) (*dto.UpdateRolePermissionsRes, error)
-
-	// Permission checkers
-	CanManageRoles(ctx context.Context, runner database.DBRunner, userInfo *auth.UserInfo, hallID uuid.UUID) (bool, error)
-	CanBanMembers(ctx context.Context, runner database.DBRunner, userInfo *auth.UserInfo, hallID uuid.UUID) (bool, error)
-	CanKickMembers(ctx context.Context, runner database.DBRunner, userInfo *auth.UserInfo, hallID uuid.UUID) (bool, error)
 }
 
 type roleService struct {
@@ -39,17 +34,21 @@ type roleService struct {
 	repositories.IHallRepository
 	repositories.IBanRepsitory
 
+	// Permission checker service
+	IPermissionCheckerService
+
 	pool    *pgxpool.Pool
 	timeout time.Duration
 	mu      sync.RWMutex
 }
 
-func NewRoleService(roleRepo repositories.IRoleRepository, userRepo repositories.IUserRepository, hallRepo repositories.IHallRepository, banRepo repositories.IBanRepsitory, pool *pgxpool.Pool) IRoleService {
+func NewRoleService(roleRepo repositories.IRoleRepository, userRepo repositories.IUserRepository, hallRepo repositories.IHallRepository, banRepo repositories.IBanRepsitory, permissionChecker IPermissionCheckerService, pool *pgxpool.Pool) IRoleService {
 	return &roleService{
 		roleRepo,
 		userRepo,
 		hallRepo,
 		banRepo,
+		permissionChecker,
 		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
@@ -186,7 +185,7 @@ func (s *roleService) UpdateRolePermissions(ctx context.Context, userInfo *auth.
 	defer runner.Rollback(ctx)
 
 	// Verify if the user have right to manage roles
-	canManageRoles, err := s.CanManageRoles(ctx, runner, userInfo, hallID)
+	canManageRoles, err := s.CanManageRoles(ctx, runner, userInfo.ID, hallID)
 	if err != nil {
 		return nil, err
 	}
@@ -271,125 +270,6 @@ func (s *roleService) UpdateRolePermissions(ctx context.Context, userInfo *auth.
 
 	return res, nil
 
-}
-
-// CanManageRoles - Return bool representing if the current user has appropriate permission to Manage other Roles from the corresponding hall
-func (s *roleService) CanManageRoles(ctx context.Context, runner database.DBRunner, userInfo *auth.UserInfo, hallID uuid.UUID) (bool, error) {
-
-	// this will return the appropriate permissions validation bool and the error if any
-	return s.canManageRolesInternal(ctx, runner, hallID, userInfo.ID)
-}
-
-func (s *roleService) canManageRolesInternal(ctx context.Context, runner database.DBRunner, hallID, userID uuid.UUID) (bool, error) {
-	// check if user is hall owner
-	hall, err := s.IHallRepository.GetHallByID(ctx, runner, hallID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorHallNotFound
-		}
-
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return false, utils.ErrorRequestTimeout
-		}
-
-		return false, utils.ErrorFetchingHall
-	}
-
-	if hall.OwnerID == userID {
-		return true, nil
-	}
-
-	// For any other user, if not owner, check for the appropriate persmissions
-	// And return it back
-	permissions, err := s.IRoleRepository.GetUserPermissionsInHall(ctx, runner, hallID, userID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorPermissionsNotFound
-		}
-
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return false, utils.ErrorRequestTimeout
-		}
-
-		return false, utils.ErrorFetchingPermission
-	}
-
-	return permissions.ManageRoles, nil
-}
-
-// CanBanMembers - Return bool representing if the current user has appropriate permission to Ban other Users from the corresponding hall
-func (s *roleService) CanBanMembers(ctx context.Context, runner database.DBRunner, userInfo *auth.UserInfo, hallID uuid.UUID) (bool, error) {
-
-	// check if user is hall owner
-	hall, err := s.IHallRepository.GetHallByID(ctx, runner, hallID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorHallNotFound
-		}
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return false, utils.ErrorRequestTimeout
-		}
-		return false, utils.ErrorFetchingHall
-	}
-
-	if hall.OwnerID == userInfo.ID {
-		return true, nil
-	}
-
-	// For any other user, if not owner, check for the appropriate persmissions
-	// And return it back
-	permissions, err := s.IRoleRepository.GetUserPermissionsInHall(ctx, runner, hallID, userInfo.ID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorPermissionsNotFound
-		}
-
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return false, utils.ErrorRequestTimeout
-		}
-
-		return false, utils.ErrorFetchingPermission
-	}
-
-	return permissions.BanMembers, nil
-}
-
-func (s *roleService) CanKickMembers(ctx context.Context, runner database.DBRunner, userInfo *auth.UserInfo, hallID uuid.UUID) (bool, error) {
-
-	// check if user is hall owner
-	hall, err := s.IHallRepository.GetHallByID(ctx, runner, hallID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorHallNotFound
-		}
-
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return false, utils.ErrorRequestTimeout
-		}
-
-		return false, utils.ErrorFetchingHall
-	}
-
-	if hall.OwnerID == userInfo.ID {
-		return true, nil
-	}
-
-	// For any other user, if not owner, check for the appropriate persmissions
-	// And return it back
-	permissions, err := s.IRoleRepository.GetUserPermissionsInHall(ctx, runner, hallID, userInfo.ID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorPermissionsNotFound
-		}
-
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return false, utils.ErrorRequestTimeout
-		}
-
-		return false, utils.ErrorFetchingPermission
-	}
-
-	return permissions.KickMembers, nil
 }
 
 // HELPER FUNCTIONS

@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/database"
@@ -24,14 +25,18 @@ type IRoleRepository interface {
 	UpdateRolePermissions(ctx context.Context, db database.DBRunner, permissions *models.RolePermission) (*models.RolePermission, error)
 	DeleteRolePermissions(ctx context.Context, db database.DBRunner, roleID uuid.UUID) (*models.RolePermission, error)
 
-	// User's permissions check
+	// -------------------------------------- USER PERMISSIOIN IN HALL CHECK
 	GetUserPermissionsInHall(ctx context.Context, db database.DBRunner, hallID, userID uuid.UUID) (*models.RolePermission, error)
 
-	// Bulk operations
+	// ------------------------------------- BULK OPERATION
 	GetMultipleRolePermissions(ctx context.Context, db database.DBRunner, roleIDs []uuid.UUID) (map[uuid.UUID]*models.RolePermission, error)
 
-	// Add to IHallRepository interface
+	// ------------------------------------- CHECKING OPERATION
 	GetHallDefaultRole(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Role, error)
+	DoesRoleExist(ctx context.Context, db database.DBRunner, roleID uuid.UUID, hallID uuid.UUID) (bool, error)
+
+	// ------ PERMISSION CHECKER (GENERIC)
+	CheckUserPermission(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID, permissionColumn string) (bool, error)
 }
 
 type roleRepository struct {
@@ -40,6 +45,9 @@ type roleRepository struct {
 func NewRoleRepository() IRoleRepository {
 	return &roleRepository{}
 }
+
+// ---------------------------------------- ROLE
+// Role CUD
 
 func (r *roleRepository) CreateRole(ctx context.Context, db database.DBRunner, hallRole *models.Role) (*models.Role, error) {
 
@@ -393,7 +401,7 @@ func (r *roleRepository) DeleteRolePermissions(ctx context.Context, db database.
 	return saved, nil
 }
 
-// User's permissions check
+// -------------------------------------- USER PERMISSIOIN IN HALL CHECK
 func (r *roleRepository) GetUserPermissionsInHall(ctx context.Context, db database.DBRunner, hallID, userID uuid.UUID) (*models.RolePermission, error) {
 
 	query := `
@@ -440,7 +448,7 @@ func (r *roleRepository) GetUserPermissionsInHall(ctx context.Context, db databa
 	return permissions, nil
 }
 
-// Bulk operations
+// ------------------------------------- BULK OPERATION
 func (r *roleRepository) GetMultipleRolePermissions(ctx context.Context, db database.DBRunner, roleIDs []uuid.UUID) (map[uuid.UUID]*models.RolePermission, error) {
 
 	if len(roleIDs) == 0 {
@@ -493,6 +501,7 @@ func (r *roleRepository) GetMultipleRolePermissions(ctx context.Context, db data
 	return permissionMap, nil
 }
 
+// ------------------------------------- CHECKING OPERATION
 func (r *roleRepository) GetHallDefaultRole(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Role, error) {
 	query := `
 		SELECT id, hall_id, name, color, icon_url, is_default, is_admin, created_at, updated_at
@@ -518,4 +527,44 @@ func (r *roleRepository) GetHallDefaultRole(ctx context.Context, db database.DBR
 	}
 
 	return role, nil
+}
+
+func (r *roleRepository) DoesRoleExist(ctx context.Context, db database.DBRunner, roleID uuid.UUID, hallID uuid.UUID) (bool, error) {
+
+	query := `
+
+		SELECT EXISTS (SELECT 1 FROM roles WHERE id = $1 and hall_id = $2)
+
+	`
+	var exists bool
+
+	err := db.QueryRow(ctx, query, roleID, hallID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+// ---------- PERMISSION CHECKER GENERIC
+func (r *roleRepository) CheckUserPermission(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID, permissionColumn string) (bool, error) {
+
+	// permissionColumn is validated by the service before reaching here — never from user input
+	// checked one to one from the const defined on permissions.go
+	query := fmt.Sprintf(`
+		SELECT rp.%s
+		FROM hall_members hm
+		JOIN roles r ON hm.role_id = r.id
+		JOIN role_permissions rp ON r.id = rp.role_id
+		WHERE hm.hall_id = $1 AND hm.user_id = $2
+		LIMIT 1
+	`, permissionColumn)
+
+	var allowed bool
+	err := db.QueryRow(ctx, query, hallID, userID).Scan(&allowed)
+	if err != nil {
+		return false, err
+	}
+
+	return allowed, nil
 }

@@ -187,3 +187,47 @@ func GetDefaultPermissions() map[string]bool {
 
 	return defaults
 }
+
+// INTERNAL
+const (
+	PermViewChannels       = "view_channels"
+	PermManageChannels     = "manage_channels"
+	PermManageRoles        = "manage_roles"
+	PermManageServers      = "manage_servers"
+	PermChangeNickname     = "change_nickname"
+	PermManageNicknames    = "manage_nicknames"
+	PermKickMembers        = "kick_members"
+	PermBanMembers         = "ban_members"
+	PermTextSendMessages   = "text_send_messages"
+	PermTextAttachFiles    = "text_attach_files"
+	PermTextMentionRoles   = "text_mention_roles"
+	PermTextManageMessages = "text_manage_messages"
+	PermTextReadHistory    = "text_read_history"
+	PermTextSendVoice      = "text_send_voice"
+	PermVoiceConnect       = "voice_connect"
+	PermVoiceSpeak         = "voice_speak"
+	PermVoiceVideo         = "voice_video"
+	PermVoiceMuteMembers   = "voice_mute_members"
+)
+
+// ValidPermissionColumns is the allowlist — prevents SQL injection
+var ValidPermissionColumns = map[string]struct{}{
+	PermViewChannels:       {},
+	PermManageChannels:     {},
+	PermManageRoles:        {},
+	PermManageServers:      {},
+	PermChangeNickname:     {},
+	PermManageNicknames:    {},
+	PermKickMembers:        {},
+	PermBanMembers:         {},
+	PermTextSendMessages:   {},
+	PermTextAttachFiles:    {},
+	PermTextMentionRoles:   {},
+	PermTextManageMessages: {},
+	PermTextReadHistory:    {},
+	PermTextSendVoice:      {},
+	PermVoiceConnect:       {},
+	PermVoiceSpeak:         {},
+	PermVoiceVideo:         {},
+	PermVoiceMuteMembers:   {},
+}

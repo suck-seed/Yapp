@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -169,23 +170,29 @@ func (h *HallHandler) DeleteCurrentHall(c *gin.Context) {
 // PROFILE MANAGEMENT
 func (h *HallHandler) GetHallProfile(c *gin.Context) {
 
-	userInfo, err := auth.CurrentUserFromGinContext(c)
-	if err != nil {
-		utils.WriteError(c, err)
-		return
-	}
-
 	hallID, err := uuid.Parse(c.Param("hallID"))
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidIDFormart)
 		return
 	}
 
+	log.Println(hallID)
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	log.Println(userInfo)
+
 	res, err := h.IHallService.GetHallProfile(c.Request.Context(), userInfo, hallID)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
 	}
+
+	log.Println(res)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -231,19 +238,169 @@ func (h *HallHandler) UpdateHallProfile(c *gin.Context) {
 
 // MEMBERS MANAGEMENT
 func (h *HallHandler) GetHallMembers(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.GetHallMembers(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Hall members retrieved successfully",
+		"data":    res,
+	})
 }
 
 func (h *HallHandler) GetHallMember(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	memberID, err := uuid.Parse(c.Param("memberID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.GetHallMember(c.Request.Context(), userInfo, hallID, memberID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Hall member retrieved successfully",
+		"data":    res,
+	})
 }
 
-func (h *HallHandler) UpdateHallMember(c *gin.Context) {
+func (h *HallHandler) UpdateHallMemberRole(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	memberID, err := uuid.Parse(c.Param("memberID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	var req dto.UpdateHallMemberRoleReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.WriteError(c, utils.ErrorInvalidInput)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.UpdateHallMemberRole(c.Request.Context(), userInfo, hallID, memberID, &req)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Hall member role updated successfully",
+		"data":    res,
+	})
 }
 
-func (h *HallHandler) RemoveHallMember(c *gin.Context) {
+func (h *HallHandler) UpdateHallMemberNickname(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	memberID, err := uuid.Parse(c.Param("memberID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	var req dto.UpdateHallMemberNicknameReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.WriteError(c, utils.ErrorInvalidInput)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.UpdateHallMemberNickname(c.Request.Context(), userInfo, hallID, memberID, &req)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Hall member nickname updated successfully",
+		"data":    res,
+	})
+}
+
+func (h *HallHandler) KickHallMember(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	memberID, err := uuid.Parse(c.Param("memberID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.KickHallMember(c.Request.Context(), userInfo, hallID, memberID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Member removed from hall successfully",
+		"data":    res,
+	})
 }
 
 // ROLE MANAGEMENT
@@ -382,13 +539,91 @@ func (h *HallHandler) DeclineJoinRequest(c *gin.Context) {
 
 // BANS
 func (h *HallHandler) GetBannedUsers(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IBanService.GetAllHallBans(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Banned users retrieved successfully",
+		"data":    res,
+	})
 }
 
 func (h *HallHandler) BanAnUser(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	var req dto.BanUserReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.WriteError(c, utils.ErrorInvalidInput)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IBanService.BanUser(c.Request.Context(), userInfo, hallID, &req)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "User banned successfully",
+		"data":    res,
+	})
 }
 
 func (h *HallHandler) UnbanUser(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	banID, err := uuid.Parse(c.Param("banID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IBanService.UnbanUser(c.Request.Context(), userInfo, hallID, banID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "User unbanned successfully",
+		"data":    res,
+	})
 }
