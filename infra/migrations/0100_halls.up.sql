@@ -1,6 +1,7 @@
 CREATE TABLE halls (
     id uuid PRIMARY KEY,
     name text NOT NULL,
+    is_private boolean NOT NULL DEFAULT false,
     icon_url text,
     icon_thumbnail_url text,
     banner_color text DEFAULT '#1f1f1f',

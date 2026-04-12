@@ -7,12 +7,11 @@ import (
 )
 
 type Floor struct {
-	ID        uuid.UUID `json:"id" db:"id"`
-	HallID    uuid.UUID `json:"hall_id" db:"hall_id"`
-	Name      string    `json:"name" db:"name"`
+	ID        uuid.UUID `json:"id"         db:"id"`
+	HallID    uuid.UUID `json:"hall_id"    db:"hall_id"`
+	Name      string    `json:"name"       db:"name"`
+	Position  float64   `json:"position"   db:"position"`
 	IsPrivate bool      `json:"is_private" db:"is_private"`
-
-	// Position  int       `json:"position" db:"position"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }

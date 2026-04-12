@@ -51,8 +51,9 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 
 }
 
-func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, roleServices services.IRoleService, banServices services.IBanService) {
+func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, roleServices services.IRoleService, banServices services.IBanService, inviteService services.IInviteService) {
 	hallHandler := handlers.NewHallHandler(hallService, roleServices, banServices)
+	inviteHandler := handlers.NewInviteHandler(inviteService)
 
 	halls := r.Group("/halls")
 	{
@@ -85,8 +86,10 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 				members.GET("", hallHandler.GetHallMembers)
 				members.GET("/:memberID", hallHandler.GetHallMember)
 				// members.POST("") // There wont be post handler, since we have seperate endpoints for adding and inviting members
-				members.PATCH("/:memberID", hallHandler.UpdateHallMember) // updates nickname, timeout, kick, ban, roles, transfer ownership
-				members.DELETE("/:memberID", hallHandler.RemoveHallMember)
+
+				members.PATCH("/:memberID/role", hallHandler.UpdateHallMemberRole)         // updates roles
+				members.PATCH("/:memberID/nickname", hallHandler.UpdateHallMemberNickname) // updates nickname
+				members.DELETE("/:memberID", hallHandler.KickHallMember)                   // remove member
 			}
 
 			// ROLES MANAGEMENT
@@ -106,16 +109,15 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 			// INVITES MANAGEMENT
 			invites := settings.Group("/invites")
 			{
-				invites.GET("", hallHandler.GetCurrentInviteLinks)
-				invites.POST("", hallHandler.CreateNewInviteLink)
-				invites.DELETE("/:inviteID", hallHandler.InvokeInviteLink) // revoke invite
+				invites.GET("", inviteHandler.ListInviteLinks)
+				invites.POST("", inviteHandler.CreateInviteLink)
+				invites.DELETE("/:inviteID", inviteHandler.RevokeInviteLink) // revoke invite
 			}
 
 			// JOIN REQUESTS MANAGEMENT
 			requests := settings.Group("/requests")
 			{
 				requests.GET("", hallHandler.GetCurrentRequests)
-				requests.POST("", hallHandler.CreateJoinRequest)                    // create requests
 				requests.PATCH("/:requestID/accept", hallHandler.AcceptJoinRequest) // accept request
 				requests.DELETE("/:requestID", hallHandler.DeclineJoinRequest)      // accept request
 			}
@@ -128,6 +130,18 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 				bans.DELETE("/:banID", hallHandler.UnbanUser) // unban
 			}
 		}
+	}
+}
+
+// Separate top-level registration — these routes are NOT under /halls
+// because the user only has the code, not a hallID, when clicking the link.
+func RegisterInviteRoutes(r *gin.RouterGroup, inviteService services.IInviteService) {
+	inviteHandler := handlers.NewInviteHandler(inviteService)
+
+	invites := r.Group("/invites")
+	{
+		invites.GET("/:code", inviteHandler.GetInviteLinkInfo)                               // public
+		invites.POST("/:code/accept", auth.AuthMiddleware(), inviteHandler.AcceptInviteLink) // authenticated
 	}
 }
 
@@ -145,20 +159,25 @@ func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService
 	floorGroup := r.Group("/floors")
 	{
 		floorGroup.POST("", floorHandler.CreateFloor)
+		floorGroup.GET("", floorHandler.GetFloors) // ?hall_id=
+		floorGroup.GET("/:id", floorHandler.GetFloor)
+		floorGroup.DELETE("/:id", floorHandler.DeleteFloor)
+		floorGroup.PUT("/:id/move", floorHandler.MoveFloor)
 	}
 
 }
 
 func RegisterRoomRoutes(r *gin.RouterGroup, roomService services.IRoomService) {
-
 	roomHandler := handlers.NewRoomHandler(roomService)
-
 	roomGroup := r.Group("/rooms")
 	{
 		roomGroup.POST("", roomHandler.CreateRoom)
-		roomGroup.POST("/add_member")
+		roomGroup.GET("/", roomHandler.GetHallRooms) // ?hall_id=
+		roomGroup.GET("/:id", roomHandler.GetRoom)
+		roomGroup.PATCH("/:id", roomHandler.UpdateRoom)
+		roomGroup.DELETE("/:id", roomHandler.DeleteRoom)
+		roomGroup.PUT("/:id/move", roomHandler.MoveRoom)
 	}
-
 }
 
 func RegisterMessageRoutes(r *gin.RouterGroup, messageService services.IMessageService) {

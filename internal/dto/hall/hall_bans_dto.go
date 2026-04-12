@@ -9,7 +9,7 @@ import (
 // BanUserReq - POST  request mapping struct for banning a user
 type BanUserReq struct {
 	UserID uuid.UUID `json:"user_id" binding:"required"`
-	Reason string    `json:"reason" binding:"required,min=1, max-500"`
+	Reason string    `json:"reason" binding:"required,min=1,max=500"`
 }
 
 // BanUserRes - POST response to a ban user request
@@ -39,7 +39,7 @@ type BanSummaryRes struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"user_id"`
 	Username  string    `json:"username"`
-	AvatarURL *string   `json:"avatar_url,omitempty"`
+	AvatarURL *string   `json:"avatar_url"`
 	Reason    *string   `json:"reason"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

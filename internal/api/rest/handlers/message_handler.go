@@ -44,6 +44,10 @@ func (h *MessageHandler) FetchMessage(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Messages retrieved successfully",
+		"data":    res,
+	})
 
 }

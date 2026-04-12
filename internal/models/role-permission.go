@@ -27,6 +27,8 @@ type RolePermission struct {
 	ManageChannels  bool `db:"manage_channels" json:"manage_channels"`
 	ManageRoles     bool `db:"manage_roles" json:"manage_roles"`
 	ManageServers   bool `db:"manage_servers" json:"manage_servers"`
+	ManageInvites   bool `db:"manage_invites" json:"manage_invites"`
+	ManageRequests  bool `db:"manage_requests" json:"manage_requests"`
 	ChangeNickname  bool `db:"change_nickname" json:"change_nickname"`
 	ManageNicknames bool `db:"manage_nicknames" json:"manage_nicknames"`
 	KickMembers     bool `db:"kick_members" json:"kick_members"`

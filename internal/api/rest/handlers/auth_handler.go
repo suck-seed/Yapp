@@ -28,7 +28,11 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 		utils.WriteError(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, res)
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Account created successfully",
+		"data":    res,
+	})
 }
 
 func (h *AuthHandler) Signin(c *gin.Context) {
@@ -57,11 +61,17 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 		c.SetCookie("jwt", signInRes.AccessToken, cookieSeconds, "/", "", false, true)
 	}
 
+	// filtered response (not sending accesstoken over https, so removed it)
 	res := &dto.SigninUserRes{
 		UserMe:  signInRes.UserMe,
 		Success: signInRes.Success,
 	}
-	c.JSON(http.StatusOK, res)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Signed in successfully",
+		"data":    res,
+	})
 }
 
 func (h *AuthHandler) Signout(c *gin.Context) {
@@ -76,6 +86,8 @@ func (h *AuthHandler) Signout(c *gin.Context) {
 		c.SetCookie("jwt", "", -1, "/", "", false, true)
 	}
 	c.JSON(http.StatusOK, gin.H{
+		"success": true,
 		"message": "Signed out successfully",
+		"data":    nil,
 	})
 }

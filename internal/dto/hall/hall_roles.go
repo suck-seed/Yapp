@@ -1,6 +1,37 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// CreateHallRoleReq — POST /halls/:hallID/settings/roles
+type CreateHallRoleReq struct {
+	Name    string  `json:"name" binding:"required"`
+	Color   *string `json:"color"`
+	IconURL *string `json:"icon_url"`
+}
+
+// UpdateHallRoleReq — PATCH /halls/:hallID/settings/roles/:roleID
+type UpdateHallRoleReq struct {
+	Name    *string `json:"name"`
+	Color   *string `json:"color"`
+	IconURL *string `json:"icon_url"`
+}
+
+// HallRoleRes — role listing and CRUD responses
+type HallRoleRes struct {
+	ID        uuid.UUID `json:"id"`
+	HallID    uuid.UUID `json:"hall_id"`
+	Name      string    `json:"name"`
+	Color     *string   `json:"color"`
+	IconURL   *string   `json:"icon_url"`
+	IsDefault bool      `json:"is_default"`
+	IsAdmin   bool      `json:"is_admin"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
 
 // Each role when created, consists of the default permission values and can only be changed after the creation
 
@@ -13,6 +44,8 @@ type UpdateRolePermissionReq struct {
 	ManageChannels  *bool `json:"manage_channels"`
 	ManageRoles     *bool `json:"manage_roles"`
 	ManageServers   *bool `json:"manage_servers"`
+	ManageInvites   *bool `json:"manage_invites"`
+	ManageRequests  *bool `json:"manage_requests"`
 	ChangeNickname  *bool `json:"change_nickname"`
 	ManageNicknames *bool `json:"manage_nicknames"`
 	KickMembers     *bool `json:"kick_members"`

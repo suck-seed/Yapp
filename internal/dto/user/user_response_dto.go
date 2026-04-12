@@ -25,8 +25,8 @@ type UserPublic struct {
 	ID                 uuid.UUID `json:"id"`
 	Username           string    `json:"username"`
 	DisplayName        string    `json:"display_name"`
-	AvatarURL          *string   `json:"avatar_url,omitempty"`
-	AvatarThumbnailURL *string   `json:"avatar_thumbnail_url,omitempty"`
+	AvatarURL          *string   `json:"avatar_url"`
+	AvatarThumbnailURL *string   `json:"avatar_thumbnail_url"`
 }
 
 type UserMe struct {
@@ -34,10 +34,10 @@ type UserMe struct {
 	Username           string    `json:"username"`
 	DisplayName        string    `json:"display_name"`
 	Email              string    `json:"email"`
-	PhoneNumber        *string   `json:"phone_number,omitempty"`
-	AvatarURL          *string   `json:"avatar_url,omitempty"`
-	AvatarThumbnailURL *string   `json:"avatar_thumbnail_url,omitempty"`
-	Description        *string   `json:"description,omitempty"`
+	PhoneNumber        *string   `json:"phone_number"`
+	AvatarURL          *string   `json:"avatar_url"`
+	AvatarThumbnailURL *string   `json:"avatar_thumbnail_url"`
+	Description        *string   `json:"description"`
 	FriendPolicy       string    `json:"friend_policy"`
 	Active             bool      `json:"active"`
 	//LastSeen     *time.Time          `json:"last_seen,omitempty"`
@@ -55,9 +55,9 @@ type AppLink struct {
 // Auth token
 type AuthToken struct {
 	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token,omitempty"`
+	RefreshToken string `json:"refresh_token"`
 	ExpiresIn    int64  `json:"expires_in"`
-	TokenType    string `json:"token_type,omitempty"` // e.g., "Bearer"
+	TokenType    string `json:"token_type"` // e.g., "Bearer"
 }
 
 type AuthResponse struct {

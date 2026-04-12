@@ -2,8 +2,10 @@ package repositories
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/suck-seed/yapp/internal/database"
 	"github.com/suck-seed/yapp/internal/models"
 	"github.com/suck-seed/yapp/internal/utils"
@@ -69,6 +71,9 @@ func (r *banRepository) UnBanUser(ctx context.Context, db database.DBRunner, ban
 	// Fetching ban before deleting it
 	ban, err := r.GetBanByID(ctx, db, banID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorBanNotFound
+		}
 		return nil, utils.ErrorFetchingBan
 	}
 
@@ -95,7 +100,7 @@ func (r *banRepository) GetBanByID(ctx context.Context, db database.DBRunner, ba
 	query := `
 	SELECT id, reason, user_id, hall_id, created_at, updated_at
 	FROM hall_bans
-	WHERE id = $
+	WHERE id = $1
 	`
 
 	row := db.QueryRow(ctx, query, banID)
