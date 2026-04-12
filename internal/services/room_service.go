@@ -74,16 +74,16 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, req
 		return nil, utils.ErrorHallNotFound
 	}
 
-	if req.FloorID != nil {
-		floorExists, err := s.IFloorRepository.DoesFloorExistsInRoom(ctx, runner, *req.FloorID, req.HallID)
-		if err != nil {
-			return nil, utils.ErrorFetchingFloor
-		}
+	// if req.FloorID != nil {
+	// 	floorExists, err := s.IFloorRepository.DoesFloorExistsInRoom(ctx, runner, *req.FloorID, req.HallID)
+	// 	if err != nil {
+	// 		return nil, utils.ErrorFetchingFloor
+	// 	}
 
-		if !floorExists {
-			return nil, utils.ErrorFloorNotFound
-		}
-	}
+	// 	if !floorExists {
+	// 		return nil, utils.ErrorFloorNotFound
+	// 	}
+	// }
 
 	//	this can be done better, prolly enums
 	canonRoomType, err := utils.ParseRoomType(req.RoomType)

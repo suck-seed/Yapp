@@ -582,12 +582,12 @@ func (r *roleRepository) CheckUserPermission(ctx context.Context, db database.DB
 	// permissionColumn is validated by the service before reaching here — never from user input
 	// checked one to one from the const defined on permissions.go
 	query := fmt.Sprintf(`
-		SELECT rp.%s
+		SELECT bool_or(rp.%s)
 		FROM hall_members hm
 		JOIN roles r ON hm.role_id = r.id
 		JOIN role_permissions rp ON r.id = rp.role_id
 		WHERE hm.hall_id = $1 AND hm.user_id = $2
-		LIMIT 1
+		GROUP BY hm.user_id
 	`, permissionColumn)
 
 	var allowed bool

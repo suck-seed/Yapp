@@ -159,6 +159,11 @@ func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService
 	floorGroup := r.Group("/floors")
 	{
 		floorGroup.POST("", floorHandler.CreateFloor)
+		floorGroup.GET("", floorHandler.GetFloors)             // ?hall_id=
+		floorGroup.PUT("/reorder", floorHandler.ReorderFloors) // must be before /:id
+		floorGroup.GET("/:id", floorHandler.GetFloor)
+		floorGroup.PATCH("/:id", floorHandler.UpdateFloor)
+		floorGroup.DELETE("/:id", floorHandler.DeleteFloor)
 	}
 
 }
