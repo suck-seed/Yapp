@@ -39,7 +39,11 @@ func (h *InviteHandler) ListInviteLinks(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Current Invite Links",
+		"data":    res,
+	})
 }
 
 // POST /halls/:hallID/settings/invites
@@ -67,7 +71,12 @@ func (h *InviteHandler) CreateInviteLink(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, res)
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Invite Link created sucessfully",
+		"data":    res,
+	})
 }
 
 // DELETE /halls/:hallID/settings/invites/:inviteID
@@ -94,7 +103,11 @@ func (h *InviteHandler) RevokeInviteLink(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Invite link revoked sucessfully",
+		"data":    res,
+	})
 }
 
 // GET /invites/:code  — public, no auth required
@@ -105,7 +118,11 @@ func (h *InviteHandler) GetInviteLinkInfo(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Invite Links fetched successfully",
+		"data":    res,
+	})
 }
 
 // POST /invites/:code/accept  — requires auth
@@ -123,5 +140,9 @@ func (h *InviteHandler) AcceptInviteLink(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Invite accepted successfully",
+		"data":    res,
+	})
 }
