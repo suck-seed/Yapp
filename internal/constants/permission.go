@@ -194,6 +194,7 @@ const (
 	PermManageChannels     = "manage_channels"
 	PermManageRoles        = "manage_roles"
 	PermManageServers      = "manage_servers"
+	PermManageInvites	   = "manage_invites"
 	PermChangeNickname     = "change_nickname"
 	PermManageNicknames    = "manage_nicknames"
 	PermKickMembers        = "kick_members"

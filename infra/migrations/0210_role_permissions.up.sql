@@ -5,6 +5,7 @@ CREATE TABLE role_permissions (
     manage_channels boolean NOT NULL DEFAULT false,
     manage_roles boolean NOT NULL DEFAULT false,
     manage_servers boolean NOT NULL DEFAULT false,
+    manage_invites boolean NOT NULL DEFAULT false,
     change_nickname boolean NOT NULL DEFAULT true,
     manage_nicknames boolean NOT NULL DEFAULT false,
     kick_members boolean NOT NULL DEFAULT false,
