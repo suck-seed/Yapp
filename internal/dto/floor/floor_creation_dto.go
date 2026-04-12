@@ -65,8 +65,9 @@ type UpdateFloorRes struct {
 
 // ── Reorder ───────────────────────────────────────────────────────────────────
 
-// FloorIDs must contain every floor that belongs to the hall, in the desired order.
-type ReorderFloorsReq struct {
-	HallID   uuid.UUID   `json:"hall_id"   binding:"required"`
-	FloorIDs []uuid.UUID `json:"floor_ids" binding:"required,min=1"`
+// AfterID = nil → place at very top
+// AfterID = uuid → place immediately after that floor
+type MoveFloorReq struct {
+	HallID  uuid.UUID  `json:"hall_id" binding:"required"`
+	AfterID *uuid.UUID `json:"after_id" binding:"omitempty"`
 }

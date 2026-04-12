@@ -159,25 +159,25 @@ func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService
 	floorGroup := r.Group("/floors")
 	{
 		floorGroup.POST("", floorHandler.CreateFloor)
-		floorGroup.GET("", floorHandler.GetFloors)             // ?hall_id=
-		floorGroup.PUT("/reorder", floorHandler.ReorderFloors) // must be before /:id
+		floorGroup.GET("", floorHandler.GetFloors) // ?hall_id=
 		floorGroup.GET("/:id", floorHandler.GetFloor)
-		floorGroup.PATCH("/:id", floorHandler.UpdateFloor)
 		floorGroup.DELETE("/:id", floorHandler.DeleteFloor)
+		floorGroup.PUT("/:id/move", floorHandler.MoveFloor)
 	}
 
 }
 
 func RegisterRoomRoutes(r *gin.RouterGroup, roomService services.IRoomService) {
-
 	roomHandler := handlers.NewRoomHandler(roomService)
-
 	roomGroup := r.Group("/rooms")
 	{
 		roomGroup.POST("", roomHandler.CreateRoom)
-		roomGroup.POST("/add_member")
+		roomGroup.GET("/", roomHandler.GetHallRooms) // ?hall_id=
+		roomGroup.GET("/:id", roomHandler.GetRoom)
+		roomGroup.PATCH("/:id", roomHandler.UpdateRoom)
+		roomGroup.DELETE("/:id", roomHandler.DeleteRoom)
+		roomGroup.PUT("/:id/move", roomHandler.MoveRoom)
 	}
-
 }
 
 func RegisterMessageRoutes(r *gin.RouterGroup, messageService services.IMessageService) {

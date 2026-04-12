@@ -22,7 +22,7 @@ type IFloorService interface {
 	GetFloors(c context.Context, hallID uuid.UUID) (*dto.GetFloorsRes, error)
 	UpdateFloor(c context.Context, floorID uuid.UUID, req *dto.UpdateFloorReq) (*dto.UpdateFloorRes, error)
 	DeleteFloor(c context.Context, floorID uuid.UUID) error
-	ReorderFloors(c context.Context, req *dto.ReorderFloorsReq) error
+	MoveFloor(c context.Context, floorID uuid.UUID, req *dto.MoveFloorReq) (*dto.GetFloorRes, error)
 }
 
 type floorService struct {
@@ -49,6 +49,7 @@ func NewFloorService(
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func isDeadline(err error) bool {
+
 	return errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
 }
 
@@ -272,27 +273,51 @@ func (s *floorService) DeleteFloor(c context.Context, floorID uuid.UUID) error {
 }
 
 // ── ReorderFloors ─────────────────────────────────────────────────────────────
-
-func (s *floorService) ReorderFloors(c context.Context, req *dto.ReorderFloorsReq) error {
+// MoveFloor handles any floor drag-drop in one atomic call.
+// after_id = nil → move to top of hall
+// after_id = uuid → place immediately after that floor
+func (s *floorService) MoveFloor(c context.Context, floorID uuid.UUID, req *dto.MoveFloorReq) (*dto.GetFloorRes, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return utils.ErrorInternal
+		return nil, utils.ErrorInternal
 	}
 	runner := database.NewTxWrapper(tx)
 	defer runner.Rollback(ctx)
 
-	if err := s.IFloorRepository.ReorderFloors(ctx, runner, req.HallID, req.FloorIDs); err != nil {
+	// Verify floor belongs to this hall
+	exists, err := s.IFloorRepository.DoesFloorExistInHall(ctx, runner, floorID, req.HallID)
+	if err != nil || !exists {
 		if isDeadline(err) {
-			return utils.ErrorRequestTimeout
+			return nil, utils.ErrorRequestTimeout
 		}
-		return utils.ErrorInternal
+		return nil, utils.ErrorFloorNotFound
+	}
+
+	lower, upper, err := s.IFloorRepository.GetFloorPositionBounds(ctx, runner, req.HallID, req.AfterID)
+	if err != nil {
+		if isDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingFloor
+	}
+
+	newPos := utils.CalcPosition(lower, upper)
+
+	updated, err := s.IFloorRepository.UpdateFloorPosition(ctx, runner, floorID, newPos)
+	if err != nil {
+		if isDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingFloor
 	}
 
 	if err := runner.Commit(ctx); err != nil {
-		return utils.ErrorInternal
+		return nil, utils.ErrorInternal
 	}
-	return nil
+
+	res := floorToGetRes(updated)
+	return &res, nil
 }

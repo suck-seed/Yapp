@@ -18,6 +18,9 @@ type IFloorRepository interface {
 	GetMaxPosition(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (float64, error)
 	ReorderFloors(ctx context.Context, db database.DBRunner, hallID uuid.UUID, orderedIDs []uuid.UUID) error
 	DoesFloorExistInHall(ctx context.Context, db database.DBRunner, floorID uuid.UUID, hallID uuid.UUID) (bool, error)
+
+	GetFloorPositionBounds(ctx context.Context, db database.DBRunner, hallID uuid.UUID, afterID *uuid.UUID) (lower float64, upper *float64, err error)
+	UpdateFloorPosition(ctx context.Context, db database.DBRunner, floorID uuid.UUID, position float64) (*models.Floor, error)
 }
 
 type floorRepository struct{}
@@ -156,4 +159,71 @@ func (r *floorRepository) DoesFloorExistInHall(ctx context.Context, db database.
 		return false, err
 	}
 	return exists, nil
+}
+
+// GetFloorPositionBounds returns the position of afterID and the position
+// of the next floor after it within the hall.
+//
+//	afterID = nil  → lower = 0, upper = position of first floor (or nil)
+//	afterID = uuid → lower = that floor's position, upper = next floor's position (or nil)
+//
+// If upper is nil, caller should use lower + 1000 (append at end).
+func (r *floorRepository) GetFloorPositionBounds(
+	ctx context.Context,
+	db database.DBRunner,
+	hallID uuid.UUID,
+	afterID *uuid.UUID,
+) (lower float64, upper *float64, err error) {
+	if afterID == nil {
+		// inserting at top: lower = 0, upper = current minimum position
+		query := `
+            SELECT MIN(position) FROM floors WHERE hall_id = $1
+        `
+		var min *float64
+		if err := db.QueryRow(ctx, query, hallID).Scan(&min); err != nil {
+			return 0, nil, err
+		}
+		return 0, min, nil
+	}
+
+	// lower = afterID's position
+	// upper = smallest position in the hall that is strictly greater than lower
+	query := `
+        WITH anchor AS (
+            SELECT position FROM floors
+            WHERE id = $1 AND hall_id = $2
+        )
+        SELECT
+            anchor.position,
+            (
+                SELECT position FROM floors
+                WHERE  hall_id  = $2
+                  AND  position > anchor.position
+                ORDER  BY position ASC
+                LIMIT  1
+            )
+        FROM anchor
+    `
+	var up *float64
+	if err := db.QueryRow(ctx, query, afterID, hallID).Scan(&lower, &up); err != nil {
+		return 0, nil, err
+	}
+	return lower, up, nil
+}
+
+func (r *floorRepository) UpdateFloorPosition(ctx context.Context, db database.DBRunner, floorID uuid.UUID, position float64) (*models.Floor, error) {
+	query := `
+        UPDATE floors SET position = $1, updated_at = now()
+        WHERE id = $2
+        RETURNING id, hall_id, name, position, is_private, created_at, updated_at
+    `
+	out := &models.Floor{}
+	err := db.QueryRow(ctx, query, position, floorID).Scan(
+		&out.ID, &out.HallID, &out.Name, &out.Position,
+		&out.IsPrivate, &out.CreatedAt, &out.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }

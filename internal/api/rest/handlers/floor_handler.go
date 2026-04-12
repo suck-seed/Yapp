@@ -140,22 +140,29 @@ func (h *FloorHandler) DeleteFloor(c *gin.Context) {
 
 // ── PUT /floors/reorder ───────────────────────────────────────────────────────
 
-func (h *FloorHandler) ReorderFloors(c *gin.Context) {
-	var req dto.ReorderFloorsReq
+func (h *FloorHandler) MoveFloor(c *gin.Context) {
+	floorID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	var req dto.MoveFloorReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.WriteError(c, utils.ErrorInvalidInput)
 		return
 	}
 
-	if err := h.IFloorService.ReorderFloors(c.Request.Context(), &req); err != nil {
+	res, err := h.IFloorService.MoveFloor(c.Request.Context(), floorID, &req)
+	if err != nil {
 		utils.WriteError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    http.StatusOK,
-		"message": "Floors reordered successfully",
 		"success": true,
-		"data":    nil,
+		"message": "Floor moved successfully",
+		"data":    res,
 	})
 }
