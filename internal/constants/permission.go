@@ -41,6 +41,13 @@ var AllPermissions = []PermissionMetadata{
 		DefaultValue: false,
 	},
 	{
+		Key:          "manage_invites",
+		Name:         "Manage Invites",
+		Description:  "Change hall invitition links",
+		Category:     "general",
+		DefaultValue: false,
+	},
+	{
 		Key:          "change_nickname",
 		Name:         "Change Nickname",
 		Description:  "Change their own nickname in the server",
@@ -194,7 +201,7 @@ const (
 	PermManageChannels     = "manage_channels"
 	PermManageRoles        = "manage_roles"
 	PermManageServers      = "manage_servers"
-	PermManageInvites	   = "manage_invites"
+	PermManageInvites      = "manage_invites"
 	PermChangeNickname     = "change_nickname"
 	PermManageNicknames    = "manage_nicknames"
 	PermKickMembers        = "kick_members"
@@ -217,6 +224,7 @@ var ValidPermissionColumns = map[string]struct{}{
 	PermManageChannels:     {},
 	PermManageRoles:        {},
 	PermManageServers:      {},
+	PermManageInvites:      {},
 	PermChangeNickname:     {},
 	PermManageNicknames:    {},
 	PermKickMembers:        {},

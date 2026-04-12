@@ -229,15 +229,15 @@ func (r *roleRepository) CreateRolePermissions(ctx context.Context, db database.
 	query := `
     INSERT INTO role_permissions (
         role_id,
-        view_channels, manage_channels, manage_roles, manage_servers,
+        view_channels, manage_channels, manage_roles, manage_servers,manage_invites,
         change_nickname, manage_nicknames, kick_members, ban_members,
         text_send_messages, text_attach_files, text_mention_roles,
         text_manage_messages, text_read_history, text_send_voice,
         voice_connect, voice_speak, voice_video, voice_mute_members
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
     RETURNING 	role_id,
-    			view_channels, manage_channels, manage_roles, manage_servers,
+    			view_channels, manage_channels, manage_roles, manage_servers,manage_invites,
        			change_nickname, manage_nicknames, kick_members, ban_members,
           		text_send_messages, text_attach_files, text_mention_roles,
             	text_manage_messages, text_read_history, text_send_voice,
@@ -252,6 +252,7 @@ func (r *roleRepository) CreateRolePermissions(ctx context.Context, db database.
 		permissions.ViewChannels, permissions.ManageChannels,
 		permissions.ManageRoles,
 		permissions.ManageServers,
+		permissions.ManageInvites,
 		permissions.ChangeNickname, permissions.ManageNicknames, permissions.KickMembers,
 		permissions.BanMembers,
 		permissions.TextSendMessages, permissions.TextAttachFiles, permissions.TextMentionRoles,
@@ -265,7 +266,7 @@ func (r *roleRepository) CreateRolePermissions(ctx context.Context, db database.
 		&saved.RoleID,
 		&saved.ViewChannels, &saved.ManageChannels,
 		&saved.ManageRoles,
-		&saved.ManageServers,
+		&saved.ManageServers, &permissions.ManageInvites,
 		&saved.ChangeNickname, &saved.ManageNicknames, &saved.KickMembers,
 		&saved.BanMembers,
 		&saved.TextSendMessages, &saved.TextAttachFiles, &saved.TextMentionRoles,
@@ -286,7 +287,7 @@ func (r *roleRepository) GetRolePermissions(ctx context.Context, db database.DBR
 	query := `
     SELECT
         role_id,
-        view_channels, manage_channels, manage_roles, manage_servers,
+        view_channels, manage_channels, manage_roles, manage_servers,manage_invites,
         change_nickname, manage_nicknames, kick_members, ban_members,
         text_send_messages, text_attach_files, text_mention_roles,
         text_manage_messages, text_read_history, text_send_voice,
@@ -299,7 +300,7 @@ func (r *roleRepository) GetRolePermissions(ctx context.Context, db database.DBR
 
 	err := db.QueryRow(ctx, query, roleID).Scan(
 		&permissions.RoleID,
-		&permissions.ViewChannels, &permissions.ManageChannels, &permissions.ManageRoles, &permissions.ManageServers,
+		&permissions.ViewChannels, &permissions.ManageChannels, &permissions.ManageRoles, &permissions.ManageServers, &permissions.ManageInvites,
 		&permissions.ChangeNickname, &permissions.ManageNicknames, &permissions.KickMembers, &permissions.BanMembers,
 		&permissions.TextSendMessages, &permissions.TextAttachFiles, &permissions.TextMentionRoles,
 		&permissions.TextManageMessages, &permissions.TextReadHistory, &permissions.TextSendVoice,
@@ -316,15 +317,15 @@ func (r *roleRepository) UpdateRolePermissions(ctx context.Context, db database.
 
 	query := `
     UPDATE role_permissions SET
-        view_channels = $2, manage_channels = $3, manage_roles = $4, manage_servers = $5,
-        change_nickname = $6, manage_nicknames = $7, kick_members = $8, ban_members = $9,
-        text_send_messages = $10, text_attach_files = $11, text_mention_roles = $12,
-        text_manage_messages = $13, text_read_history = $14, text_send_voice = $15,
-        voice_connect = $16, voice_speak = $17, voice_video = $18, voice_mute_members = $19
+        view_channels = $2, manage_channels = $3, manage_roles = $4, manage_servers = $5, manage_invites=$6,
+        change_nickname = $7, manage_nicknames = $8, kick_members = $9, ban_members = $10,
+        text_send_messages = $11, text_attach_files = $12, text_mention_roles = $13,
+        text_manage_messages = $14, text_read_history = $15, text_send_voice = $16,
+        voice_connect = $17, voice_speak = $18, voice_video = $19, voice_mute_members = $20
     WHERE role_id = $1
 
     RETURNING 	role_id,
-    			view_channels, manage_channels, manage_roles, manage_servers,
+    			view_channels, manage_channels, manage_roles, manage_servers, manage_invites,
        			change_nickname, manage_nicknames, kick_members, ban_members,
           		text_send_messages, text_attach_files, text_mention_roles,
             	text_manage_messages, text_read_history, text_send_voice,
@@ -337,7 +338,7 @@ func (r *roleRepository) UpdateRolePermissions(ctx context.Context, db database.
 		permissions.RoleID,
 		permissions.ViewChannels, permissions.ManageChannels,
 		permissions.ManageRoles,
-		permissions.ManageServers,
+		permissions.ManageServers, permissions.ManageInvites,
 		permissions.ChangeNickname, permissions.ManageNicknames, permissions.KickMembers,
 		permissions.BanMembers,
 		permissions.TextSendMessages, permissions.TextAttachFiles, permissions.TextMentionRoles,
@@ -352,6 +353,7 @@ func (r *roleRepository) UpdateRolePermissions(ctx context.Context, db database.
 		&saved.ViewChannels, &saved.ManageChannels,
 		&saved.ManageRoles,
 		&saved.ManageServers,
+		&permissions.ManageInvites,
 		&saved.ChangeNickname, &saved.ManageNicknames, &saved.KickMembers,
 		&saved.BanMembers,
 		&saved.TextSendMessages, &saved.TextAttachFiles, &saved.TextMentionRoles,
@@ -370,7 +372,7 @@ func (r *roleRepository) DeleteRolePermissions(ctx context.Context, db database.
 	query := `
 		DELETE FROM role_permissions WHERE role_id = $1
 	 	RETURNING 	role_id,
-    			view_channels, manage_channels, manage_roles, manage_servers,
+    			view_channels, manage_channels, manage_roles, manage_servers, manage_invites,
        			change_nickname, manage_nicknames, kick_members, ban_members,
           		text_send_messages, text_attach_files, text_mention_roles,
             	text_manage_messages, text_read_history, text_send_voice,
@@ -386,6 +388,7 @@ func (r *roleRepository) DeleteRolePermissions(ctx context.Context, db database.
 		&saved.ViewChannels, &saved.ManageChannels,
 		&saved.ManageRoles,
 		&saved.ManageServers,
+		&saved.ManageInvites,
 		&saved.ChangeNickname, &saved.ManageNicknames, &saved.KickMembers,
 		&saved.BanMembers,
 		&saved.TextSendMessages, &saved.TextAttachFiles, &saved.TextMentionRoles,
@@ -410,6 +413,7 @@ func (r *roleRepository) GetUserPermissionsInHall(ctx context.Context, db databa
         bool_or(rp.manage_channels) as manage_channels,
         bool_or(rp.manage_roles) as manage_roles,
         bool_or(rp.manage_servers) as manage_servers,
+        bool_or(rp.manage_invites) as manage_invites,
         bool_or(rp.change_nickname) as change_nickname,
         bool_or(rp.manage_nicknames) as manage_nicknames,
         bool_or(rp.kick_members) as kick_members,
@@ -435,7 +439,7 @@ func (r *roleRepository) GetUserPermissionsInHall(ctx context.Context, db databa
 		RoleID: uuid.Nil,
 	}
 
-	err := db.QueryRow(ctx, query, hallID, userID).Scan(&permissions.ViewChannels, &permissions.ManageChannels, &permissions.ManageRoles, &permissions.ManageServers,
+	err := db.QueryRow(ctx, query, hallID, userID).Scan(&permissions.ViewChannels, &permissions.ManageChannels, &permissions.ManageRoles, &permissions.ManageServers, &permissions.ManageInvites,
 		&permissions.ChangeNickname, &permissions.ManageNicknames, &permissions.KickMembers, &permissions.BanMembers,
 		&permissions.TextSendMessages, &permissions.TextAttachFiles, &permissions.TextMentionRoles,
 		&permissions.TextManageMessages, &permissions.TextReadHistory, &permissions.TextSendVoice,
@@ -459,7 +463,7 @@ func (r *roleRepository) GetMultipleRolePermissions(ctx context.Context, db data
 
 	SELECT
         role_id,
-        view_channels, manage_channels, manage_roles, manage_servers,
+        view_channels, manage_channels, manage_roles, manage_servers,manage_invites,
         change_nickname, manage_nicknames, kick_members, ban_members,
         text_send_messages, text_attach_files, text_mention_roles,
         text_manage_messages, text_read_history, text_send_voice,
@@ -480,7 +484,7 @@ func (r *roleRepository) GetMultipleRolePermissions(ctx context.Context, db data
 		currentPermissions := &models.RolePermission{}
 
 		err := rows.Scan(&currentPermissions.RoleID,
-			&currentPermissions.ViewChannels, &currentPermissions.ManageChannels, &currentPermissions.ManageRoles, &currentPermissions.ManageServers,
+			&currentPermissions.ViewChannels, &currentPermissions.ManageChannels, &currentPermissions.ManageRoles, &currentPermissions.ManageServers, &currentPermissions.ManageInvites,
 			&currentPermissions.ChangeNickname, &currentPermissions.ManageNicknames, &currentPermissions.KickMembers, &currentPermissions.BanMembers,
 			&currentPermissions.TextSendMessages, &currentPermissions.TextAttachFiles, &currentPermissions.TextMentionRoles,
 			&currentPermissions.TextManageMessages, &currentPermissions.TextReadHistory, &currentPermissions.TextSendVoice,

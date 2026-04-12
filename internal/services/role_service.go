@@ -432,6 +432,7 @@ func defaultRolePermissions(roleID uuid.UUID) *models.RolePermission {
 		ManageChannels:     false,
 		ManageRoles:        false,
 		ManageServers:      false,
+		ManageInvites:      false,
 		ChangeNickname:     true,
 		ManageNicknames:    false,
 		KickMembers:        false,
@@ -739,6 +740,8 @@ func (s *roleService) getPermissionValue(permissions *models.RolePermission, key
 		return permissions.ManageRoles
 	case "manage_servers":
 		return permissions.ManageServers
+	case "manage_invites":
+		return permissions.ManageInvites
 	case "change_nickname":
 		return permissions.ChangeNickname
 	case "manage_nicknames":
@@ -788,6 +791,9 @@ func (s *roleService) applyPermissionUpdates(current *models.RolePermission, upd
 	}
 	if updates.ManageServers != nil {
 		updated.ManageServers = *updates.ManageServers
+	}
+	if updates.ManageInvites != nil {
+		updated.ManageInvites = *updates.ManageInvites
 	}
 	if updates.ChangeNickname != nil {
 		updated.ChangeNickname = *updates.ChangeNickname
@@ -847,6 +853,7 @@ func (s *roleService) getAllPermissionsEnabled() *models.RolePermission {
 		ManageChannels:     true,
 		ManageRoles:        true,
 		ManageServers:      true,
+		ManageInvites:      true,
 		ChangeNickname:     true,
 		ManageNicknames:    true,
 		KickMembers:        true,

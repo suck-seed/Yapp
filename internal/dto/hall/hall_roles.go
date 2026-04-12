@@ -44,6 +44,7 @@ type UpdateRolePermissionReq struct {
 	ManageChannels  *bool `json:"manage_channels"`
 	ManageRoles     *bool `json:"manage_roles"`
 	ManageServers   *bool `json:"manage_servers"`
+	ManageInvites   *bool `json:"manage_invites"`
 	ChangeNickname  *bool `json:"change_nickname"`
 	ManageNicknames *bool `json:"manage_nicknames"`
 	KickMembers     *bool `json:"kick_members"`

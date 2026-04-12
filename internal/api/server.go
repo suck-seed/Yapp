@@ -33,6 +33,7 @@ func StartServer(cfg config.AppConfig) {
 	floorRepository := repositories.NewFloorRepository()
 	roomRepository := repositories.NewRoomRepository()
 	messageRepository := repositories.NewMessageRepository()
+	inviteRepository := repositories.NewInviteRepository()
 
 	permissionCheckerService := services.NewPermissionCheckerService(roleRepository, userRepository, hallRepository, banRepository, cfg.PostgresPool)
 
@@ -43,6 +44,7 @@ func StartServer(cfg config.AppConfig) {
 	roleService := services.NewRoleService(roleRepository, userRepository, hallRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
 	banService := services.NewBanService(banRepository, userRepository, hallRepository, permissionCheckerService, cfg.PostgresPool)
 	messageService := services.NewMessageService(hallRepository, roomRepository, messageRepository, userRepository, cfg.PostgresPool)
+	inviteService := services.NewInviteService(inviteRepository, hallRepository, roleRepository, permissionCheckerService, cfg.PostgresPool)
 
 	presistFunction := ws.MakePresistFunction(messageService, userService)
 	hub := ws.NewHub(presistFunction)
@@ -60,10 +62,11 @@ func StartServer(cfg config.AppConfig) {
 	api.Use(auth.AuthMiddleware())
 	{
 		rest.RegisterUserRoutes(api, userService)
-		rest.RegisterHallRoutes(api, hallService, roleService, banService)
+		rest.RegisterHallRoutes(api, hallService, roleService, banService, inviteService)
 		rest.RegisterFloorRoutes(api, floorService)
 		rest.RegisterRoomRoutes(api, roomService)
 		rest.RegisterMessageRoutes(api, messageService)
+		rest.RegisterInviteRoutes(api, inviteService)
 	}
 
 	wsRouter := router.Group("/ws")

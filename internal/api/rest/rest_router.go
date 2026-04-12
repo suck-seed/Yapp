@@ -51,8 +51,9 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 
 }
 
-func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, roleServices services.IRoleService, banServices services.IBanService) {
+func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, roleServices services.IRoleService, banServices services.IBanService, inviteService services.IInviteService) {
 	hallHandler := handlers.NewHallHandler(hallService, roleServices, banServices)
+	inviteHandler := handlers.NewInviteHandler(inviteService)
 
 	halls := r.Group("/halls")
 	{
@@ -108,9 +109,9 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 			// INVITES MANAGEMENT
 			invites := settings.Group("/invites")
 			{
-				invites.GET("", hallHandler.GetCurrentInviteLinks)
-				invites.POST("", hallHandler.CreateNewInviteLink)
-				invites.DELETE("/:inviteID", hallHandler.InvokeInviteLink) // revoke invite
+				invites.GET("", inviteHandler.ListInviteLinks)
+				invites.POST("", inviteHandler.CreateInviteLink)
+				invites.DELETE("/:inviteID", inviteHandler.RevokeInviteLink) // revoke invite
 			}
 
 			// JOIN REQUESTS MANAGEMENT
@@ -130,6 +131,18 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 				bans.DELETE("/:banID", hallHandler.UnbanUser) // unban
 			}
 		}
+	}
+}
+
+// Separate top-level registration — these routes are NOT under /halls
+// because the user only has the code, not a hallID, when clicking the link.
+func RegisterInviteRoutes(r *gin.RouterGroup, inviteService services.IInviteService) {
+	inviteHandler := handlers.NewInviteHandler(inviteService)
+
+	invites := r.Group("/invites")
+	{
+		invites.GET("/:code", inviteHandler.GetInviteLinkInfo)                               // public
+		invites.POST("/:code/accept", auth.AuthMiddleware(), inviteHandler.AcceptInviteLink) // authenticated
 	}
 }
 
