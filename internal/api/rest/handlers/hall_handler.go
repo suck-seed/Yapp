@@ -405,23 +405,163 @@ func (h *HallHandler) KickHallMember(c *gin.Context) {
 
 // ROLE MANAGEMENT
 func (h *HallHandler) GetHallRoles(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IRoleService.ListHallRoles(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Hall roles retrieved successfully",
+		"data":    res,
+	})
 }
 
 func (h *HallHandler) GetHallRole(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	roleID, err := uuid.Parse(c.Param("roleID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IRoleService.GetHallRole(c.Request.Context(), userInfo, hallID, roleID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Hall role retrieved successfully",
+		"data":    res,
+	})
 }
 
 func (h *HallHandler) CreateHallRoles(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	var req dto.CreateHallRoleReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.WriteError(c, utils.ErrorInvalidInput)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IRoleService.CreateHallRole(c.Request.Context(), userInfo, hallID, &req)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Hall role created successfully",
+		"data":    res,
+	})
 }
 
 func (h *HallHandler) UpdateHallRoles(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	roleID, err := uuid.Parse(c.Param("roleID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	var req dto.UpdateHallRoleReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.WriteError(c, utils.ErrorInvalidInput)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IRoleService.UpdateHallRole(c.Request.Context(), userInfo, hallID, roleID, &req)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Hall role updated successfully",
+		"data":    res,
+	})
 }
 
 func (h *HallHandler) DeleteHallRoles(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	roleID, err := uuid.Parse(c.Param("roleID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IRoleService.DeleteHallRole(c.Request.Context(), userInfo, hallID, roleID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Hall role deleted successfully",
+		"data":    res,
+	})
 }
 
 // ROLE PERMISSIONS

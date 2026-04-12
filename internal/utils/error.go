@@ -104,6 +104,10 @@ var (
 	ErrorUserCannotManageNicknames         = &AppError{Code: http.StatusUnauthorized, Message: "User does not have permission to manage nicknames"}
 	ErrorCannotUpdateDefaultRolePermission = &AppError{Code: http.StatusUnauthorized, Message: "Default Role's Permissions cannot be updated"}
 	ErrorCannotUpdateAdminRolePermission   = &AppError{Code: http.StatusUnauthorized, Message: "Admin Role's Permissions cannot be updated"}
+	ErrorCannotModifyProtectedHallRole     = &AppError{Code: http.StatusUnauthorized, Message: "Cannot modify or delete the default or admin hall role"}
+	ErrorUserCannotCreateHallRoles         = &AppError{Code: http.StatusUnauthorized, Message: "You are not allowed to create roles in this hall"}
+	ErrorRoleNameAlreadyExists             = &AppError{Code: http.StatusConflict, Message: "A role with this name already exists in this hall"}
+	ErrorCannotDeleteRoleInUse             = &AppError{Code: http.StatusConflict, Message: "Cannot delete a role that is still assigned to hall members"}
 	ErrorUnauthorizedToUpdateHall          = &AppError{Code: http.StatusUnauthorized, Message: "Not Authorized to update hall"}
 
 	// ITERATING

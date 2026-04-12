@@ -128,7 +128,7 @@ func (r *roleRepository) GetAllRole(ctx context.Context, db database.DBRunner, h
 
 	rows, err := db.Query(ctx, query, hallID)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -169,12 +169,12 @@ func (r *roleRepository) UpdateRole(ctx context.Context, db database.DBRunner, r
 	updatedRole := &models.Role{}
 
 	query := `
-        UPDATE users
-        SET name = $1, color = $2, icon_url = $3, is_default = $4, is_admin = $5
-        WHERE id = $6
+        UPDATE roles
+        SET name = $1, color = $2, icon_url = $3, is_default = $4, is_admin = $5, updated_at = now()
+        WHERE id = $6 AND hall_id = $7
         RETURNING id, hall_id, name, color, icon_url, is_default, is_admin, created_at, updated_at
     `
-	err := db.QueryRow(ctx, query, role.Name, role.Color, role.IconURL, role.IsDefault, role.IsAdmin).Scan(
+	err := db.QueryRow(ctx, query, role.Name, role.Color, role.IconURL, role.IsDefault, role.IsAdmin, role.ID, role.HallID).Scan(
 		&updatedRole.ID,
 		&updatedRole.HallID,
 		&updatedRole.Name,
