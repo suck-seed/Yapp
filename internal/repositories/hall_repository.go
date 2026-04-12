@@ -36,6 +36,14 @@ type IHallRepository interface {
 	// ------------- CHECK OPERATION
 	DoesHallExist(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (bool, error)
 	IsUserHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (bool, error)
+
+	// ---------------- JOIN OPERATIONS
+	CreateJoinRequest(ctx context.Context, db database.DBRunner, request *models.HallRequest) (*models.HallRequest, error)
+	GetJoinRequestByID(ctx context.Context, db database.DBRunner, requestID uuid.UUID) (*models.HallRequest, error)
+	GetJoinRequestByHallAndUser(ctx context.Context, db database.DBRunner, hallID, userID uuid.UUID) (*models.HallRequest, error)
+	GetAllHallRequests(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.HallRequest, error)
+	DeleteJoinRequest(ctx context.Context, db database.DBRunner, requestID uuid.UUID) (*models.HallRequest, error)
+	DoesPendingJoinRequestExist(ctx context.Context, db database.DBRunner, hallID, userID uuid.UUID) (bool, error)
 }
 
 type hallRepository struct {
@@ -50,14 +58,16 @@ func (r *hallRepository) CreateHall(ctx context.Context, db database.DBRunner, h
 
 	query := `
 
-	INSERT INTO halls (id, name, icon_url, icon_thumbnail_url, banner_color, description, owner_id)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING id, name, icon_url, icon_thumbnail_url, banner_color, description, owner_id, created_at, updated_at
+	INSERT INTO halls (id, name, is_private, icon_url, icon_thumbnail_url, banner_color, description, owner_id)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	RETURNING id, name, is_private, icon_url, icon_thumbnail_url, banner_color, description, owner_id, created_at, updated_at
+
 	`
 
 	row := db.QueryRow(ctx, query,
 		hall.ID,
 		hall.Name,
+		hall.IsPrivate,
 		hall.IconURL,
 		hall.IconThumbnailURL,
 		hall.BannerColor,
@@ -70,6 +80,7 @@ func (r *hallRepository) CreateHall(ctx context.Context, db database.DBRunner, h
 	err := row.Scan(
 		&saved.ID,
 		&saved.Name,
+		&saved.IsPrivate,
 		&saved.IconURL,
 		&saved.IconThumbnailURL,
 		&saved.BannerColor,
@@ -151,13 +162,14 @@ func (r *hallRepository) GetUserHallIDs(ctx context.Context, db database.DBRunne
 func (r *hallRepository) GetHallByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error) {
 	hall := &models.Hall{}
 
-	query := `SELECT id, name, icon_url, icon_thumbnail_url, banner_color, description, created_at, updated_at, owner_id
+	query := `SELECT id, name, is_private, icon_url, icon_thumbnail_url, banner_color, description, created_at, updated_at, owner_id
               FROM halls WHERE id = $1
               `
 
 	err := db.QueryRow(ctx, query, hallID).Scan(
 		&hall.ID,
 		&hall.Name,
+		&hall.IsPrivate,
 		&hall.IconURL,
 		&hall.IconThumbnailURL,
 		&hall.BannerColor,
@@ -366,13 +378,14 @@ func (r *hallRepository) UpdateHallProfile(ctx context.Context, db database.DBRu
 			UPDATE halls
 			SET %s
 			WHERE id = $%d
-			RETURNING id, name, icon_url, icon_thumbnail_url, banner_color, description, owner_id, created_at, updated_at
+			RETURNING id, name, is_private, icon_url, icon_thumbnail_url, banner_color, description, owner_id, created_at, updated_at
 		`, strings.Join(setClauses, ", "), i)
 
 	hall := &models.Hall{}
 	err := db.QueryRow(ctx, query, args...).Scan(
 		&hall.ID,
 		&hall.Name,
+		&hall.IsPrivate,
 		&hall.IconURL,
 		&hall.IconThumbnailURL,
 		&hall.BannerColor,
@@ -421,4 +434,151 @@ func (r *hallRepository) IsUserHallMember(ctx context.Context, db database.DBRun
 
 	return exists, nil
 
+}
+
+// ------------------- JOIN REQUEST OPERATIONS
+
+func (r *hallRepository) CreateJoinRequest(ctx context.Context, db database.DBRunner, request *models.HallRequest) (*models.HallRequest, error) {
+	query := `
+		INSERT INTO hall_requests (id, hall_id, user_id)
+		VALUES ($1, $2, $3)
+		RETURNING id, hall_id, user_id, created_at, updated_at
+	`
+
+	saved := &models.HallRequest{}
+	err := db.QueryRow(ctx, query,
+		request.ID,
+		request.HallID,
+		request.UserID,
+	).Scan(
+		&saved.ID,
+		&saved.HallID,
+		&saved.UserID,
+		&saved.CreatedAt,
+		&saved.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return saved, nil
+}
+
+func (r *hallRepository) GetJoinRequestByID(ctx context.Context, db database.DBRunner, requestID uuid.UUID) (*models.HallRequest, error) {
+	query := `
+		SELECT id, hall_id, user_id, created_at, updated_at
+		FROM hall_requests
+		WHERE id = $1
+	`
+
+	saved := &models.HallRequest{}
+	err := db.QueryRow(ctx, query, requestID).Scan(
+		&saved.ID,
+		&saved.HallID,
+		&saved.UserID,
+		&saved.CreatedAt,
+		&saved.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return saved, nil
+}
+
+func (r *hallRepository) GetJoinRequestByHallAndUser(ctx context.Context, db database.DBRunner, hallID, userID uuid.UUID) (*models.HallRequest, error) {
+	query := `
+		SELECT id, hall_id, user_id, created_at, updated_at
+		FROM hall_requests
+		WHERE hall_id = $1 AND user_id = $2
+	`
+
+	saved := &models.HallRequest{}
+	err := db.QueryRow(ctx, query, hallID, userID).Scan(
+		&saved.ID,
+		&saved.HallID,
+		&saved.UserID,
+		&saved.CreatedAt,
+		&saved.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return saved, nil
+}
+
+func (r *hallRepository) GetAllHallRequests(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.HallRequest, error) {
+	query := `
+		SELECT id, hall_id, user_id, created_at, updated_at
+		FROM hall_requests
+		WHERE hall_id = $1
+		ORDER BY created_at ASC
+	`
+
+	rows, err := db.Query(ctx, query, hallID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var requests []*models.HallRequest
+	for rows.Next() {
+		current := &models.HallRequest{}
+		if err := rows.Scan(
+			&current.ID,
+			&current.HallID,
+			&current.UserID,
+			&current.CreatedAt,
+			&current.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		requests = append(requests, current)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return requests, nil
+}
+
+func (r *hallRepository) DeleteJoinRequest(ctx context.Context, db database.DBRunner, requestID uuid.UUID) (*models.HallRequest, error) {
+	query := `
+		DELETE FROM hall_requests
+		WHERE id = $1
+		RETURNING id, hall_id, user_id, created_at, updated_at
+	`
+
+	deleted := &models.HallRequest{}
+	err := db.QueryRow(ctx, query, requestID).Scan(
+		&deleted.ID,
+		&deleted.HallID,
+		&deleted.UserID,
+		&deleted.CreatedAt,
+		&deleted.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return deleted, nil
+}
+
+func (r *hallRepository) DoesPendingJoinRequestExist(ctx context.Context, db database.DBRunner, hallID, userID uuid.UUID) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM hall_requests
+			WHERE hall_id = $1 AND user_id = $2
+		)
+	`
+
+	var exists bool
+	if err := db.QueryRow(ctx, query, hallID, userID).Scan(&exists); err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }

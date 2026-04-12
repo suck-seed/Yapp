@@ -8,6 +8,7 @@ import (
 
 type CreateHallReq struct {
 	Name             string  `json:"name" binding:"required"`
+	IsPrivate        bool    `json:"is_private" binding:"omitempty"`
 	IconURL          *string `json:"icon_url" binding:"omitempty,url"`
 	IconThumbnailURL *string `json:"icon_thumbnail_url" binding:"omitempty,url"`
 	BannerColor      *string `json:"banner_color" binding:"omitempty"`
@@ -17,6 +18,7 @@ type CreateHallReq struct {
 type CreateHallRes struct {
 	ID               uuid.UUID `json:"id"`
 	Name             string    `json:"name"`
+	IsPrivate        bool      `json:"is_private"`
 	IconURL          *string   `json:"icon_url"`
 	IconThumbnailURL *string   `json:"icon_thumbnail_url"`
 	BannerColor      *string   `json:"banner_color"`

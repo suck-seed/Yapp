@@ -110,6 +110,14 @@ var (
 	ErrorHallDefaultRoleNotFound = &AppError{Code: http.StatusNotFound, Message: "Hall Member not found"}
 
 	// =========================
+	// JOIN REQUEST ERRORS
+	// =========================
+	ErrorFetchingJoinRequest = &AppError{Code: http.StatusInternalServerError, Message: "Error occurred while fetching Join Request Information"}
+	ErrorCreatingJoinRequest = &AppError{Code: http.StatusInternalServerError, Message: "Error occurred while creating Join Request"}
+	ErrorDeletingJoinRequest = &AppError{Code: http.StatusInternalServerError, Message: "Error occurred while deleting Join Request"}
+	ErrorJoinRequestNotFound = &AppError{Code: http.StatusNotFound, Message: "Join Request not found"}
+
+	// =========================
 	// RELATION / OWNERSHIP ERRORS
 	// =========================
 	ErrorUserDoesntExist            = &AppError{Code: http.StatusBadRequest, Message: "User Does Not Exist"}
@@ -132,6 +140,7 @@ var (
 	ErrorUserCannotManageNicknames         = &AppError{Code: http.StatusUnauthorized, Message: "User does not have permission to manage nicknames"}
 	ErrorUserCannotCreateHallRoles         = &AppError{Code: http.StatusUnauthorized, Message: "You are not allowed to create roles in this hall"}
 	ErrorUserCannotManageInvites           = &AppError{Code: http.StatusUnauthorized, Message: "User does not have privilege to manage invites"}
+	ErrorUserCannotManageRequests          = &AppError{Code: http.StatusUnauthorized, Message: "User does not have privilege to manage requests"}
 	ErrorUnauthorizedToUpdateHall          = &AppError{Code: http.StatusUnauthorized, Message: "Not Authorized to update hall"}
 	ErrorCannotUpdateDefaultRolePermission = &AppError{Code: http.StatusUnauthorized, Message: "Default Role's Permissions cannot be updated"}
 	ErrorCannotUpdateAdminRolePermission   = &AppError{Code: http.StatusUnauthorized, Message: "Admin Role's Permissions cannot be updated"}
@@ -185,6 +194,11 @@ var (
 	ErrorInternal             = &AppError{Code: http.StatusInternalServerError, Message: "Internal server error"}
 	ErrorMessageRowsIteration = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while iterating message rows"}
 	ErrorRequestTimeout       = &AppError{Code: http.StatusRequestTimeout, Message: "Request Timeout"}
+
+	// conflict / state
+	ErrorJoinRequestAlreadyExists      = &AppError{Code: http.StatusConflict, Message: "A pending join request already exists for this hall"}
+	ErrorCannotRequestPublicHall       = &AppError{Code: http.StatusBadRequest, Message: "Join requests are only allowed for private halls"}
+	ErrorJoinRequestDoesntBelongToHall = &AppError{Code: http.StatusBadRequest, Message: "Join Request does not belong to this hall"}
 )
 
 // Writing Errors from handlers to client

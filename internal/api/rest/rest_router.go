@@ -118,7 +118,6 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 			requests := settings.Group("/requests")
 			{
 				requests.GET("", hallHandler.GetCurrentRequests)
-				requests.POST("", hallHandler.CreateJoinRequest)                    // create requests
 				requests.PATCH("/:requestID/accept", hallHandler.AcceptJoinRequest) // accept request
 				requests.DELETE("/:requestID", hallHandler.DeclineJoinRequest)      // accept request
 			}

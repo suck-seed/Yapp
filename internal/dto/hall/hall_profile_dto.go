@@ -14,6 +14,7 @@ import (
 type GetHallProfileRes struct {
 	ID               uuid.UUID `json:"id"`
 	Name             string    `json:"name"`
+	IsPrivate        bool      `json:"is_private"`
 	IconURL          *string   `json:"icon_url"`
 	IconThumbnailURL *string   `json:"icon_thumbnail_url"`
 	BannerColor      *string   `json:"banner_color"`
@@ -26,6 +27,7 @@ type GetHallProfileRes struct {
 // PATCH
 type HallProfileUpdateReq struct {
 	Name        *string `json:"name"         binding:"omitempty,min=1,max=100"`
+	IsPrivate   *bool   `json:"is_private" binding:"omitempty"`
 	Description *string `json:"description"  binding:"omitempty,max=500"`
 	BannerColor *string `json:"banner_color" binding:"omitempty"`
 }
@@ -33,6 +35,7 @@ type HallProfileUpdateReq struct {
 type HallProfileUpdateRes struct {
 	ID               uuid.UUID `json:"id"`
 	Name             string    `json:"name"`
+	IsPrivate        bool      `json:"is_private"`
 	IconURL          *string   `json:"icon_url"`
 	IconThumbnailURL *string   `json:"icon_thumbnail_url"`
 	BannerColor      string    `json:"banner_color"`
@@ -45,6 +48,7 @@ type HallProfileUpdateRes struct {
 type GetCurrentHallRes struct {
 	ID               uuid.UUID `json:"id"`
 	Name             string    `json:"name"`
+	IsPrivate        bool      `json:"is_private"`
 	IconURL          *string   `json:"icon_url"`
 	IconThumbnailURL *string   `json:"icon_thumbnail_url"`
 	BannerColor      *string   `json:"banner_color"`

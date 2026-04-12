@@ -202,6 +202,7 @@ const (
 	PermManageRoles        = "manage_roles"
 	PermManageServers      = "manage_servers"
 	PermManageInvites      = "manage_invites"
+	PermManageRequests     = "manage_requests"
 	PermChangeNickname     = "change_nickname"
 	PermManageNicknames    = "manage_nicknames"
 	PermKickMembers        = "kick_members"
@@ -225,6 +226,7 @@ var ValidPermissionColumns = map[string]struct{}{
 	PermManageRoles:        {},
 	PermManageServers:      {},
 	PermManageInvites:      {},
+	PermManageRequests:     {},
 	PermChangeNickname:     {},
 	PermManageNicknames:    {},
 	PermKickMembers:        {},

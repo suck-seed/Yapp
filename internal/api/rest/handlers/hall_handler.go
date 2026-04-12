@@ -55,7 +55,6 @@ func (h *HallHandler) CreateHall(c *gin.Context) {
 	})
 
 }
-
 func (h *HallHandler) JoinHall(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -75,9 +74,14 @@ func (h *HallHandler) JoinHall(c *gin.Context) {
 		return
 	}
 
+	message := "Joined hall successfully"
+	if res.Status == "requested" {
+		message = "Join request created successfully"
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
-		"message": "Joined hall successfully",
+		"message": message,
 		"data":    res,
 	})
 }
@@ -662,19 +666,93 @@ func (h *HallHandler) InvokeInviteLink(c *gin.Context) {
 // JOIN REQUEST MANAGEMENT
 
 func (h *HallHandler) GetCurrentRequests(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
-}
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
 
-func (h *HallHandler) CreateJoinRequest(c *gin.Context) {
+	res, err := h.IHallService.GetCurrentRequests(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
 
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Join requests retrieved successfully",
+		"data":    res,
+	})
 }
 
 func (h *HallHandler) AcceptJoinRequest(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	requestID, err := uuid.Parse(c.Param("requestID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.AcceptJoinRequest(c.Request.Context(), userInfo, hallID, requestID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Join request accepted successfully",
+		"data":    res,
+	})
 }
 
 func (h *HallHandler) DeclineJoinRequest(c *gin.Context) {
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
 
+	requestID, err := uuid.Parse(c.Param("requestID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	res, err := h.IHallService.DeclineJoinRequest(c.Request.Context(), userInfo, hallID, requestID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Join request declined successfully",
+		"data":    res,
+	})
 }
 
 // BANS

@@ -23,6 +23,7 @@ type IPermissionCheckerService interface {
 	CanChangeNickname(ctx context.Context, runner database.DBRunner, userID, hallID uuid.UUID) (bool, error)
 	CanManageNicknames(ctx context.Context, runner database.DBRunner, userID, hallID uuid.UUID) (bool, error)
 	CanManageInvites(ctx context.Context, runner database.DBRunner, userID, hallID uuid.UUID) (bool, error)
+	CanManageRequests(ctx context.Context, runner database.DBRunner, userID, hallID uuid.UUID) (bool, error)
 
 	checkPermission(ctx context.Context, runner database.DBRunner, userID uuid.UUID, hallID uuid.UUID, permColumn string) (bool, error)
 }
@@ -120,4 +121,8 @@ func (s *permissionCheckerService) CanManageNicknames(ctx context.Context, runne
 
 func (s *permissionCheckerService) CanManageInvites(ctx context.Context, runner database.DBRunner, userID, hallID uuid.UUID) (bool, error) {
 	return s.checkPermission(ctx, runner, userID, hallID, constants.PermManageInvites)
+}
+
+func (s *permissionCheckerService) CanManageRequests(ctx context.Context, runner database.DBRunner, userID, hallID uuid.UUID) (bool, error) {
+	return s.checkPermission(ctx, runner, userID, hallID, constants.PermManageRequests)
 }

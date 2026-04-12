@@ -433,6 +433,7 @@ func defaultRolePermissions(roleID uuid.UUID) *models.RolePermission {
 		ManageRoles:        false,
 		ManageServers:      false,
 		ManageInvites:      false,
+		ManageRequests:     false,
 		ChangeNickname:     true,
 		ManageNicknames:    false,
 		KickMembers:        false,
@@ -447,6 +448,32 @@ func defaultRolePermissions(roleID uuid.UUID) *models.RolePermission {
 		VoiceSpeak:         true,
 		VoiceVideo:         false,
 		VoiceMuteMembers:   false,
+	}
+}
+
+func adminRolePermissions(roleID uuid.UUID) *models.RolePermission {
+	return &models.RolePermission{
+		RoleID:             roleID,
+		ViewChannels:       true,
+		ManageChannels:     true,
+		ManageRoles:        true,
+		ManageServers:      true,
+		ManageInvites:      true,
+		ManageRequests:     true,
+		ChangeNickname:     true,
+		ManageNicknames:    true,
+		KickMembers:        true,
+		BanMembers:         true,
+		TextSendMessages:   true,
+		TextAttachFiles:    true,
+		TextMentionRoles:   true,
+		TextManageMessages: true,
+		TextReadHistory:    true,
+		TextSendVoice:      true,
+		VoiceConnect:       true,
+		VoiceSpeak:         true,
+		VoiceVideo:         true,
+		VoiceMuteMembers:   true,
 	}
 }
 
@@ -742,6 +769,8 @@ func (s *roleService) getPermissionValue(permissions *models.RolePermission, key
 		return permissions.ManageServers
 	case "manage_invites":
 		return permissions.ManageInvites
+	case "manage_requests":
+		return permissions.ManageRequests
 	case "change_nickname":
 		return permissions.ChangeNickname
 	case "manage_nicknames":
@@ -794,6 +823,9 @@ func (s *roleService) applyPermissionUpdates(current *models.RolePermission, upd
 	}
 	if updates.ManageInvites != nil {
 		updated.ManageInvites = *updates.ManageInvites
+	}
+	if updates.ManageInvites != nil {
+		updated.ManageRequests = *updates.ManageRequests
 	}
 	if updates.ChangeNickname != nil {
 		updated.ChangeNickname = *updates.ChangeNickname
@@ -854,6 +886,7 @@ func (s *roleService) getAllPermissionsEnabled() *models.RolePermission {
 		ManageRoles:        true,
 		ManageServers:      true,
 		ManageInvites:      true,
+		ManageRequests:     true,
 		ChangeNickname:     true,
 		ManageNicknames:    true,
 		KickMembers:        true,
