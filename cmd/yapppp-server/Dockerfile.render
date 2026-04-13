@@ -32,7 +32,6 @@ COPY infra/migrations /app/infra/migrations
 COPY assets /app/assets
 
 ENV APP_ENV=production
-ENV HTTP_PORT=10000
 ENV PORT=10000
 
 EXPOSE 10000
