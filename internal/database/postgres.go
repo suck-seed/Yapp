@@ -11,17 +11,29 @@ import (
 
 func PostgresDBConnection() (*pgxpool.Pool, error) {
 
-	dbUser := os.Getenv("POSTGRES_USER")
-	dbPass := os.Getenv("POSTGRES_PASSWORD")
-	dbHost := os.Getenv("POSTGRES_HOST")
-	dbPort := os.Getenv("POSTGRES_PORT")
-	dbName := os.Getenv("POSTGRES_DB")
+	env := os.Getenv("APP_ENV")
 
-	// Build a URL-style connection string
-	connStr := fmt.Sprintf(
-		"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
-		dbUser, dbPass, dbHost, dbPort, dbName,
-	)
+	var connStr string
+
+	if env == "production" {
+		// Render way
+		connStr = os.Getenv("DATABASE_URL")
+		if connStr == "" {
+			return nil, fmt.Errorf("DATABASE_URL not set")
+		}
+	} else {
+		// Local dev way
+		dbUser := os.Getenv("POSTGRES_USER")
+		dbPass := os.Getenv("POSTGRES_PASSWORD")
+		dbHost := os.Getenv("POSTGRES_HOST")
+		dbPort := os.Getenv("POSTGRES_PORT")
+		dbName := os.Getenv("POSTGRES_DB")
+
+		connStr = fmt.Sprintf(
+			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
+			dbUser, dbPass, dbHost, dbPort, dbName,
+		)
+	}
 
 	// create a pgx config
 	config, err := pgxpool.ParseConfig(connStr)
