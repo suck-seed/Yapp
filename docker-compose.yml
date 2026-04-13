@@ -70,7 +70,7 @@ services:
       - ./:/app
 
     expose:
-      - "${HTTP_PORT}"
+      - "${PORT}"
 
     restart: always
 

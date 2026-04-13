@@ -17,7 +17,7 @@ func loadEnvVariables() error {
 		fmt.Print("No .env File, proceeding with real ENV vars")
 	}
 
-	httpPort = os.Getenv("HTTP_PORT")
+	httpPort = os.Getenv("PORT")
 	postgresUser = os.Getenv("POSTGRES_USER")
 	postgresPassword = os.Getenv("POSTGRES_PASSWORD")
 
@@ -50,7 +50,7 @@ func loadEnvVariables() error {
 			return errors.New("Http Port cannot be <= 0s")
 		}
 
-		return errors.New("Forgot to set HTTP_PORT ? ")
+		return errors.New("Forgot to set PORT ? ")
 	}
 
 	intPostgresPort, err := strconv.Atoi(postgresPort)

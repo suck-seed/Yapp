@@ -45,7 +45,7 @@ func SetupEnvironment() (config AppConfig, err error) {
 	}
 
 	return AppConfig{
-		ServerPort:   os.Getenv("HTTP_PORT"),
+		ServerPort:   os.Getenv("PORT"),
 		CORS:         buildCORS(),
 		PostgresPool: pgPool,
 	}, nil
