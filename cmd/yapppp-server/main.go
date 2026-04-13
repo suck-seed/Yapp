@@ -10,6 +10,9 @@ import (
 
 func main() {
 
+	// setting gin SETMODE
+	// gin.SetMode(gin.DebugMode)
+
 	//	get config
 	cfg, err := config.SetupEnvironment()
 	if err != nil {

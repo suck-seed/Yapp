@@ -51,7 +51,7 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 
 }
 
-func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, roleServices services.IRoleService, banServices services.IBanService, inviteService services.IInviteService, floorService services.IFloorService, roomService services.IRoomService) {
+func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, roleServices services.IRoleService, banServices services.IBanService, inviteService services.IInviteService, floorService services.IFloorService, roomService services.IRoomService, messageService services.IMessageService) {
 	hallHandler := handlers.NewHallHandler(hallService, roleServices, banServices)
 	inviteHandler := handlers.NewInviteHandler(inviteService)
 
@@ -135,7 +135,7 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 		hallScoped := halls.Group("/:hallID")
 		{
 			RegisterFloorRoutes(hallScoped, floorService)
-			RegisterRoomRoutes(hallScoped, roomService)
+			RegisterRoomRoutes(hallScoped, roomService, messageService)
 		}
 	}
 }
@@ -173,17 +173,23 @@ func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService
 	}
 
 }
-
-func RegisterRoomRoutes(r *gin.RouterGroup, roomService services.IRoomService) {
+func RegisterRoomRoutes(r *gin.RouterGroup, roomService services.IRoomService, messageService services.IMessageService) {
 	roomHandler := handlers.NewRoomHandler(roomService)
+
 	roomGroup := r.Group("/rooms")
 	{
 		roomGroup.POST("", roomHandler.CreateRoom)
-		roomGroup.GET("/", roomHandler.GetHallRooms) // ?hall_id=
-		roomGroup.GET("/:id", roomHandler.GetRoom)
-		roomGroup.PATCH("/:id", roomHandler.UpdateRoom)
-		roomGroup.DELETE("/:id", roomHandler.DeleteRoom)
-		roomGroup.PUT("/:id/move", roomHandler.MoveRoom)
+		roomGroup.GET("", roomHandler.GetHallRooms)
+		roomGroup.GET("/:roomID", roomHandler.GetRoom)
+		roomGroup.PATCH("/:roomID", roomHandler.UpdateRoom)
+		roomGroup.DELETE("/:roomID", roomHandler.DeleteRoom)
+		roomGroup.PUT("/:roomID/move", roomHandler.MoveRoom)
+
+		// Room scoped routes
+		roomScoped := roomGroup.Group("/:roomID")
+		{
+			RegisterMessageRoutes(roomScoped, messageService)
+		}
 	}
 }
 
@@ -193,7 +199,12 @@ func RegisterMessageRoutes(r *gin.RouterGroup, messageService services.IMessageS
 
 	messageGroup := r.Group("/messages")
 	{
-		messageGroup.POST("", messageHandler.FetchMessage)
+		messageGroup.GET("", messageHandler.FetchMessages)
+		messageGroup.GET("/:messageID", messageHandler.GetMessage)
+		messageGroup.PATCH("/:messageID", messageHandler.UpdateMessage)
+		messageGroup.DELETE("/:messageID", messageHandler.DeleteMessage)
+		messageGroup.PUT("/:messageID/reactions/:emoji", messageHandler.AddReaction)
+		messageGroup.DELETE("/:messageID/reactions/:emoji", messageHandler.RemoveReaction)
 	}
 
 }

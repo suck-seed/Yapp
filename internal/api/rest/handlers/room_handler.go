@@ -94,7 +94,7 @@ func (h *RoomHandler) GetRoom(c *gin.Context) {
 		return
 	}
 
-	roomID, err := uuid.Parse(c.Param("id"))
+	roomID, err := uuid.Parse(c.Param("roomID"))
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidIDFormart)
 		return
@@ -127,7 +127,7 @@ func (h *RoomHandler) UpdateRoom(c *gin.Context) {
 		return
 	}
 
-	roomID, err := uuid.Parse(c.Param("id"))
+	roomID, err := uuid.Parse(c.Param("roomID"))
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidIDFormart)
 		return
@@ -166,7 +166,7 @@ func (h *RoomHandler) DeleteRoom(c *gin.Context) {
 		return
 	}
 
-	roomID, err := uuid.Parse(c.Param("id"))
+	roomID, err := uuid.Parse(c.Param("roomID"))
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidIDFormart)
 		return
@@ -198,7 +198,7 @@ func (h *RoomHandler) MoveRoom(c *gin.Context) {
 		return
 	}
 
-	roomID, err := uuid.Parse(c.Param("id"))
+	roomID, err := uuid.Parse(c.Param("roomID"))
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidIDFormart)
 		return

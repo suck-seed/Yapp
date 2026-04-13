@@ -16,7 +16,7 @@ func (e *AppError) Error() string {
 }
 
 var (
-
+	ErrorForbidden = &AppError{Code: http.StatusForbidden, Message: "Forbidden"}
 	// =========================
 	// CONTEXT ERRORS
 	// =========================
@@ -108,6 +108,8 @@ var (
 	ErrorFloorNotFound           = &AppError{Code: http.StatusNotFound, Message: "Floor not found in this hall"}
 	ErrorMemberNotFound          = &AppError{Code: http.StatusNotFound, Message: "Hall Member not found"}
 	ErrorHallDefaultRoleNotFound = &AppError{Code: http.StatusNotFound, Message: "Hall Member not found"}
+	ErrorMessageNotFound         = &AppError{Code: http.StatusNotFound, Message: "Message not found"}
+	ErrorReactionNotFound        = &AppError{Code: http.StatusNotFound, Message: "Reaction not found"}
 
 	// =========================
 	// JOIN REQUEST ERRORS
