@@ -38,6 +38,14 @@ func SetupEnvironment() (config AppConfig, err error) {
 		return AppConfig{}, err
 	}
 
+	// setting up SETMODE
+	if envMode := os.Getenv("APP_ENV"); envMode == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	if endMode := os.Getenv("APP_ENV"); endMode == "development" {
+		gin.SetMode(gin.DebugMode)
+	}
+
 	// load postgres instance
 	pgPool, err := database.PostgresDBConnection()
 	if err != nil {

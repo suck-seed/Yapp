@@ -25,6 +25,22 @@ func StartServer(cfg config.AppConfig) {
 	router.Use(auth.CSRFCookieMiddleware())
 	router.Use(cfg.CORS)
 
+	// health check
+	router.GET("/health", func(c *gin.Context) {
+		if cfg.PostgresPool != nil {
+			if err := cfg.PostgresPool.Ping(context.Background()); err != nil {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"status": "unhealthy",
+					"error":  "database unavailable",
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status": "ok",
+		})
+	})
+
 	// Dependency Injection
 	userRepository := repositories.NewUserRepository()
 	hallRepository := repositories.NewHallRepository()

@@ -3,21 +3,14 @@ FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache git curl ca-certificates
+RUN apk add --no-cache git ca-certificates
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-# Build the Go server
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/bin/yapp ./cmd/yapppp-server
-
-# Install migrate binary for pre-deploy migrations
-RUN curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.3/migrate.linux-amd64.tar.gz \
-  | tar xvz -C /tmp && \
-  mv /tmp/migrate /app/bin/migrate && \
-  chmod +x /app/bin/migrate
 
 # ---------- runtime stage ----------
 FROM alpine:3.20
@@ -27,7 +20,6 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates tzdata
 
 COPY --from=builder /app/bin/yapp /app/yapp
-COPY --from=builder /app/bin/migrate /usr/local/bin/migrate
 COPY infra/migrations /app/infra/migrations
 COPY assets /app/assets
 
