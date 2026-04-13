@@ -4,9 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
@@ -20,7 +21,11 @@ func RunProductionMigrations() error {
 		return fmt.Errorf("DATABASE_URL not set")
 	}
 
-	// This path matches your Dockerfile.render copy destination
+	// golang-migrate expects postgres://, but hosted providers often give postgresql://
+	if strings.HasPrefix(databaseURL, "postgresql://") {
+		databaseURL = "postgres://" + strings.TrimPrefix(databaseURL, "postgresql://")
+	}
+
 	sourceURL := "file:///app/infra/migrations"
 
 	m, err := migrate.New(sourceURL, databaseURL)
@@ -36,10 +41,6 @@ func RunProductionMigrations() error {
 			fmt.Printf("migration database close error: %v\n", dbErr)
 		}
 	}()
-
-	// Optional graceful stop channel
-	stopChan := make(chan bool, 1)
-	m.GracefulStop = stopChan
 
 	if err := m.Up(); err != nil {
 		if errors.Is(err, migrate.ErrNoChange) {
