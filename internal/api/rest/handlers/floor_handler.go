@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/suck-seed/yapp/internal/auth"
 	dto "github.com/suck-seed/yapp/internal/dto/floor"
 	"github.com/suck-seed/yapp/internal/services"
 	"github.com/suck-seed/yapp/internal/utils"
@@ -18,16 +19,28 @@ func NewFloorHandler(floorService services.IFloorService) *FloorHandler {
 	return &FloorHandler{floorService}
 }
 
-// ── POST /floors ──────────────────────────────────────────────────────────────
+// ── POST /halls/:hallID/floors ────────────────────────────────────────────────
 
 func (h *FloorHandler) CreateFloor(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
 	var req dto.CreateFloorReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.WriteError(c, utils.ErrorInvalidInput)
 		return
 	}
 
-	res, err := h.IFloorService.CreateFloor(c.Request.Context(), &req)
+	res, err := h.IFloorService.CreateFloor(c.Request.Context(), userInfo, hallID, &req)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
@@ -41,39 +54,22 @@ func (h *FloorHandler) CreateFloor(c *gin.Context) {
 	})
 }
 
-// ── GET /floors/:id ───────────────────────────────────────────────────────────
+// ── GET /halls/:hallID/floors ─────────────────────────────────────────────────
 
-func (h *FloorHandler) GetFloor(c *gin.Context) {
-	floorID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		utils.WriteError(c, utils.ErrorInvalidIDFormart)
-		return
-	}
-
-	res, err := h.IFloorService.GetFloor(c.Request.Context(), floorID)
+func (h *FloorHandler) GetFloors(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    http.StatusOK,
-		"message": "Floor fetched successfully",
-		"success": true,
-		"data":    res,
-	})
-}
-
-// ── GET /floors?hall_id= ──────────────────────────────────────────────────────
-
-func (h *FloorHandler) GetFloors(c *gin.Context) {
-	var req dto.GetFloorsReq
-	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.WriteError(c, utils.ErrorInvalidInput)
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
 		return
 	}
 
-	res, err := h.IFloorService.GetFloors(c.Request.Context(), req.HallID)
+	res, err := h.IFloorService.GetFloors(c.Request.Context(), userInfo, hallID)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
@@ -87,9 +83,56 @@ func (h *FloorHandler) GetFloors(c *gin.Context) {
 	})
 }
 
-// ── PATCH /floors/:id ─────────────────────────────────────────────────────────
+// ── GET /halls/:hallID/floors/:id ─────────────────────────────────────────────
+
+func (h *FloorHandler) GetFloor(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	floorID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IFloorService.GetFloor(c.Request.Context(), userInfo, hallID, floorID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "Floor fetched successfully",
+		"success": true,
+		"data":    res,
+	})
+}
+
+// ── PATCH /halls/:hallID/floors/:id ──────────────────────────────────────────
 
 func (h *FloorHandler) UpdateFloor(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
 	floorID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidIDFormart)
@@ -102,7 +145,7 @@ func (h *FloorHandler) UpdateFloor(c *gin.Context) {
 		return
 	}
 
-	res, err := h.IFloorService.UpdateFloor(c.Request.Context(), floorID, &req)
+	res, err := h.IFloorService.UpdateFloor(c.Request.Context(), userInfo, hallID, floorID, &req)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
@@ -116,16 +159,28 @@ func (h *FloorHandler) UpdateFloor(c *gin.Context) {
 	})
 }
 
-// ── DELETE /floors/:id ────────────────────────────────────────────────────────
+// ── DELETE /halls/:hallID/floors/:id ─────────────────────────────────────────
 
 func (h *FloorHandler) DeleteFloor(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
 	floorID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidIDFormart)
 		return
 	}
 
-	if err := h.IFloorService.DeleteFloor(c.Request.Context(), floorID); err != nil {
+	if err := h.IFloorService.DeleteFloor(c.Request.Context(), userInfo, hallID, floorID); err != nil {
 		utils.WriteError(c, err)
 		return
 	}
@@ -138,9 +193,21 @@ func (h *FloorHandler) DeleteFloor(c *gin.Context) {
 	})
 }
 
-// ── PUT /floors/reorder ───────────────────────────────────────────────────────
+// ── PUT /halls/:hallID/floors/:id/move ────────────────────────────────────────
 
 func (h *FloorHandler) MoveFloor(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
 	floorID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidIDFormart)
@@ -153,7 +220,7 @@ func (h *FloorHandler) MoveFloor(c *gin.Context) {
 		return
 	}
 
-	res, err := h.IFloorService.MoveFloor(c.Request.Context(), floorID, &req)
+	res, err := h.IFloorService.MoveFloor(c.Request.Context(), userInfo, hallID, floorID, &req)
 	if err != nil {
 		utils.WriteError(c, err)
 		return

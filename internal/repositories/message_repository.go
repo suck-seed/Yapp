@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/suck-seed/yapp/internal/database"
 	dto "github.com/suck-seed/yapp/internal/dto/message"
 	"github.com/suck-seed/yapp/internal/models"
@@ -13,159 +14,154 @@ import (
 )
 
 type IMessageRepository interface {
-
-	//	Message creation flow
+	// Message creation flow
 	CreateMessage(ctx context.Context, db database.DBRunner, message *models.Message) (*models.Message, error)
-	AddMessageMention(ctx context.Context, db database.DBRunner, messageId uuid.UUID, userID uuid.UUID) error
+	AddMessageMention(ctx context.Context, db database.DBRunner, messageID uuid.UUID, userID uuid.UUID) error
 	AddAttachment(ctx context.Context, db database.DBRunner, attachment *models.Attachment) (*models.Attachment, error)
 
-	//	Additional
+	// Read
 	GetMessageByID(ctx context.Context, db database.DBRunner, messageID uuid.UUID) (*models.Message, error)
+	GetMessageDetailed(ctx context.Context, db database.DBRunner, messageID uuid.UUID) (*dto.MessageDetailed, error)
 	GetMessagesByRoomID(ctx context.Context, db database.DBRunner, roomID uuid.UUID, limit int, offset int) ([]*models.Message, error)
-
 	GetMessages(ctx context.Context, db database.DBRunner, params *dto.MessageQueryParams) ([]*dto.MessageDetailed, error)
 
+	// Write
+	UpdateMessageContent(ctx context.Context, db database.DBRunner, messageID uuid.UUID, content string) (*models.Message, error)
+	SoftDeleteMessage(ctx context.Context, db database.DBRunner, messageID uuid.UUID) error
 	UpdateMessage(ctx context.Context, db database.DBRunner, message *models.Message) (*models.Message, error)
 	DeleteMessage(ctx context.Context, db database.DBRunner, message *models.Message) error
+
+	// Reactions
+	AddReaction(ctx context.Context, db database.DBRunner, reactionID uuid.UUID, messageID uuid.UUID, userID uuid.UUID, emoji string) error
+	RemoveReaction(ctx context.Context, db database.DBRunner, messageID uuid.UUID, userID uuid.UUID, emoji string) (bool, error)
 }
 
-type messageRepository struct {
-}
+type messageRepository struct{}
 
 func NewMessageRepository() IMessageRepository {
-
 	return &messageRepository{}
 }
 
+// ── CreateMessage ─────────────────────────────────────────────────────────────
+
 func (r *messageRepository) CreateMessage(ctx context.Context, db database.DBRunner, message *models.Message) (*models.Message, error) {
-
 	query := `
-			INSERT INTO messages (id, room_id, author_id, content, sent_at, mention_everyone)
-			VALUES ($1, $2, $3, $4, $5, $6)
-
-			RETURNING id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
-
-			`
-
-	row := db.QueryRow(
-		ctx,
-		query,
-		message.ID,
-		message.RoomID,
-		message.AuthorID,
-		message.Content,
-		message.SentAt,
-		message.MentionEveryone,
+		INSERT INTO messages (id, room_id, author_id, content, sent_at, mention_everyone)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
+	`
+	out := &models.Message{}
+	err := db.QueryRow(ctx, query,
+		message.ID, message.RoomID, message.AuthorID,
+		message.Content, message.SentAt, message.MentionEveryone,
+	).Scan(
+		&out.ID, &out.RoomID, &out.AuthorID, &out.Content, &out.SentAt,
+		&out.EditedAt, &out.DeletedAt, &out.MentionEveryone,
+		&out.CreatedAt, &out.UpdatedAt,
 	)
-
-	messageCRES := &models.Message{}
-
-	err := row.Scan(
-		&messageCRES.ID,
-		&messageCRES.RoomID,
-		&messageCRES.AuthorID,
-		&messageCRES.Content,
-		&messageCRES.SentAt,
-		&messageCRES.EditedAt,
-		&messageCRES.DeletedAt,
-		&messageCRES.MentionEveryone,
-		&messageCRES.CreatedAt,
-		&messageCRES.UpdatedAt,
-	)
-
 	if err != nil {
 		return nil, err
 	}
-
-	return messageCRES, nil
-
+	return out, nil
 }
+
+// ── AddAttachment ─────────────────────────────────────────────────────────────
 
 func (r *messageRepository) AddAttachment(ctx context.Context, db database.DBRunner, attachment *models.Attachment) (*models.Attachment, error) {
-
 	query := `
-			INSERT INTO attachments (id, message_id, file_name, url, file_type, file_size)
-			VALUES ($1, $2, $3, $4, $5, $6)
-
-			RETURNING id, message_id, file_name, url, file_type, file_size, created_at, updated_at
-
-			`
-
-	row := db.QueryRow(
-		ctx,
-		query,
-		attachment.ID,
-		attachment.MessageID,
-		attachment.FileName,
-		attachment.URL,
-		attachment.FileType,
-		attachment.FileSize,
-	)
-
-	attachmentCRES := &models.Attachment{}
-	err := row.Scan(
-		&attachmentCRES.ID,
-		&attachmentCRES.MessageID,
-		&attachmentCRES.FileName,
-		&attachmentCRES.URL,
-		&attachmentCRES.FileType,
-		&attachmentCRES.FileSize,
-		&attachmentCRES.CreatedAt,
-		&attachmentCRES.UpdatedAt,
+		INSERT INTO attachments (id, message_id, file_name, url, file_type, file_size)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, message_id, file_name, url, file_type, file_size, created_at, updated_at
+	`
+	out := &models.Attachment{}
+	err := db.QueryRow(ctx, query,
+		attachment.ID, attachment.MessageID, attachment.FileName,
+		attachment.URL, attachment.FileType, attachment.FileSize,
+	).Scan(
+		&out.ID, &out.MessageID, &out.FileName, &out.URL,
+		&out.FileType, &out.FileSize, &out.CreatedAt, &out.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
-
-	return attachmentCRES, nil
+	return out, nil
 }
 
-func (r *messageRepository) AddMessageMention(ctx context.Context, db database.DBRunner, messageId uuid.UUID, userID uuid.UUID) error {
+// ── AddMessageMention ─────────────────────────────────────────────────────────
 
-	query := `
-  				INSERT INTO message_mentions (message_id,user_id)
-      			VALUES ($1, $2)
-        		ON CONFLICT (message_id, user_id) DO NOTHING
-
-   			`
-
-	_, err := db.Exec(ctx, query, messageId, userID)
-
+func (r *messageRepository) AddMessageMention(ctx context.Context, db database.DBRunner, messageID uuid.UUID, userID uuid.UUID) error {
+	_, err := db.Exec(ctx, `
+		INSERT INTO message_mentions (message_id, user_id)
+		VALUES ($1, $2)
+		ON CONFLICT (message_id, user_id) DO NOTHING
+	`, messageID, userID)
 	return err
 }
 
-func (r *messageRepository) GetMessageByID(ctx context.Context, tx database.DBRunner, messageID uuid.UUID) (*models.Message, error) {
+// ── GetMessageByID ────────────────────────────────────────────────────────────
 
+func (r *messageRepository) GetMessageByID(ctx context.Context, db database.DBRunner, messageID uuid.UUID) (*models.Message, error) {
 	query := `
 		SELECT id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
 		FROM messages
 		WHERE id = $1 AND deleted_at IS NULL
 	`
-
-	messageCRES := &models.Message{}
-
-	err := tx.QueryRow(ctx, query, messageID).Scan(
-		&messageCRES.ID,
-		&messageCRES.RoomID,
-		&messageCRES.AuthorID,
-		&messageCRES.Content,
-		&messageCRES.SentAt,
-		&messageCRES.EditedAt,
-		&messageCRES.DeletedAt,
-		&messageCRES.MentionEveryone,
-		&messageCRES.CreatedAt,
-		&messageCRES.UpdatedAt,
+	out := &models.Message{}
+	err := db.QueryRow(ctx, query, messageID).Scan(
+		&out.ID, &out.RoomID, &out.AuthorID, &out.Content, &out.SentAt,
+		&out.EditedAt, &out.DeletedAt, &out.MentionEveryone,
+		&out.CreatedAt, &out.UpdatedAt,
 	)
-
 	if err != nil {
 		return nil, err
 	}
-
-	return messageCRES, nil
+	return out, nil
 }
 
-func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, db database.DBRunner, roomID uuid.UUID, limit int, offset int) ([]*models.Message, error) {
+// ── GetMessageDetailed ────────────────────────────────────────────────────────
+// Returns a single message with author, attachments, and reactions joined in.
 
+func (r *messageRepository) GetMessageDetailed(ctx context.Context, db database.DBRunner, messageID uuid.UUID) (*dto.MessageDetailed, error) {
+	query := `
+		SELECT
+			m.id, m.room_id, m.author_id, m.content, m.mention_everyone,
+			m.sent_at, m.edited_at, m.created_at, m.updated_at,
+
+			u.id, u.username, u.email, u.avatar_url,
+
+			a.id, a.message_id, a.url, a.file_name, a.file_type, a.created_at, a.updated_at,
+
+			r.id, r.emoji, r.user_id, ru.username, ru.avatar_url,
+
+			mu.id, mu.username, mu.email, mu.avatar_url
+		FROM messages m
+		INNER JOIN users u ON m.author_id = u.id
+		LEFT JOIN attachments a ON m.id = a.message_id
+		LEFT JOIN reactions r ON m.id = r.message_id
+		LEFT JOIN users ru ON r.user_id = ru.id
+		LEFT JOIN message_mentions mm ON m.id = mm.message_id
+		LEFT JOIN users mu ON mm.user_id = mu.id
+		WHERE m.id = $1 AND m.deleted_at IS NULL
+	`
+	rows, err := db.Query(ctx, query, messageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	messages, err := r.scanMessagesWithDetails(rows)
+	if err != nil {
+		return nil, err
+	}
+	if len(messages) == 0 {
+		return nil, pgx.ErrNoRows
+	}
+	return messages[0], nil
+}
+
+// ── GetMessagesByRoomID ───────────────────────────────────────────────────────
+
+func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, db database.DBRunner, roomID uuid.UUID, limit int, offset int) ([]*models.Message, error) {
 	query := `
 		SELECT id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
 		FROM messages
@@ -173,242 +169,239 @@ func (r *messageRepository) GetMessagesByRoomID(ctx context.Context, db database
 		ORDER BY sent_at DESC
 		LIMIT $2 OFFSET $3
 	`
-
 	rows, err := db.Query(ctx, query, roomID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	messagesCRES := []*models.Message{}
-
+	var messages []*models.Message
 	for rows.Next() {
-
-		messageCRES := &models.Message{}
-
-		err := rows.Scan(
-			&messageCRES.ID,
-			&messageCRES.RoomID,
-			&messageCRES.AuthorID,
-			&messageCRES.Content,
-			&messageCRES.SentAt,
-			&messageCRES.EditedAt,
-			&messageCRES.DeletedAt,
-			&messageCRES.MentionEveryone,
-			&messageCRES.CreatedAt,
-			&messageCRES.UpdatedAt,
-		)
-
-		if err != nil {
+		m := &models.Message{}
+		if err := rows.Scan(
+			&m.ID, &m.RoomID, &m.AuthorID, &m.Content, &m.SentAt,
+			&m.EditedAt, &m.DeletedAt, &m.MentionEveryone,
+			&m.CreatedAt, &m.UpdatedAt,
+		); err != nil {
 			return nil, err
 		}
-
-		messagesCRES = append(messagesCRES, messageCRES)
-
+		messages = append(messages, m)
 	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return messagesCRES, nil
+	return messages, rows.Err()
 }
 
+// ── GetMessages ───────────────────────────────────────────────────────────────
 func (r *messageRepository) GetMessages(ctx context.Context, db database.DBRunner, params *dto.MessageQueryParams) ([]*dto.MessageDetailed, error) {
-
 	if params.Around != nil {
 		return r.getMessagesAround(ctx, db, params)
 	}
+
 	query := `
-
-	WITH target_messages AS (
-
-	    SELECT m.id, m.room_id, m.author_id, m.content, m.mention_everyone,
-					m.sent_at, m.edited_at, m.created_at, m.updated_at
-		FROM messages m
-		WHERE m.room_id = $1
-		AND m.deleted_at IS NULL
+		WITH target_messages AS (
+			SELECT m.id, m.room_id, m.author_id, m.content, m.mention_everyone,
+				   m.sent_at, m.edited_at, m.created_at, m.updated_at
+			FROM messages m
+			WHERE m.room_id = $1
+			  AND m.deleted_at IS NULL
 	`
 
 	args := []any{params.RoomID}
-	argCount := 1
+	argIdx := 1
 
-	// CURSOR BASED PAGINATION
 	if params.Before != nil {
-		argCount++
-
-		//  FETCHING ANYTHING BEFORE OR == params.Before
-		//  AND whose uuid < params.Before
-		// UUID7 are time based type shit
+		argIdx++
 		query += fmt.Sprintf(`
-
-		AND (
-		    m.sent_at < (SELECT sent_at FROM messages WHERE id = $%d)
-            OR
-            m.sent_at = (SELECT sent_at FROM messages WHERE id = $%d)
-			AND
-			m.id < $%d
-		)
-
-		`, argCount, argCount, argCount)
-
+			AND (
+				m.sent_at < (SELECT sent_at FROM messages WHERE id = $%d)
+				OR (
+					m.sent_at = (SELECT sent_at FROM messages WHERE id = $%d)
+					AND m.id < $%d
+				)
+			)
+			ORDER BY m.sent_at DESC, m.id DESC
+		`, argIdx, argIdx, argIdx)
 		args = append(args, params.Before)
-
-		// ORDERING
-		query += `ORDER BY m.sent_at DESC, m.id DESC`
 	} else if params.After != nil {
-		argCount++
-
+		argIdx++
 		query += fmt.Sprintf(`
-
-		AND (
-		    m.sent_at > (SELECT sent_at FROM messages WHERE id = $%d)
-            OR
-            m.sent_at = (SELECT sent_at FROM messages WHERE id = $%d)
-			AND
-			m.id > $%d
-		)
-
-		`, argCount, argCount, argCount)
-
+			AND (
+				m.sent_at > (SELECT sent_at FROM messages WHERE id = $%d)
+				OR (
+					m.sent_at = (SELECT sent_at FROM messages WHERE id = $%d)
+					AND m.id > $%d
+				)
+			)
+			ORDER BY m.sent_at ASC, m.id ASC
+		`, argIdx, argIdx, argIdx)
 		args = append(args, params.After)
-
-		// SORTING BASED ON TIME AND UUID
-		query += `ORDER BY m.sent_at ASC, m.id ASC`
-
 	} else {
-
-		// JUST SORT THE RECENT ONES
 		query += `ORDER BY m.sent_at DESC, m.id DESC`
-
 	}
 
-	// add LIMIT
-	argCount++
-	query += fmt.Sprintf(` LIMIT $%d`, argCount)
+	argIdx++
+	query += fmt.Sprintf(` LIMIT $%d`, argIdx)
 	args = append(args, params.Limit)
 
-	// Fetch and add Join for other data too
-
-	// tm for Message
-	// u for userbasic
-
-	// LEFT JOIN is used for scenarios where a record in the left table can correspond to zero, one, or multiple (0...N) records in the right table
-	// attachments a (0..N per message)
-	// reactions r (0..N per message)
-
 	query += `
-	 )
+		)
 		SELECT
-		tm.id, tm.room_id, tm.author_id, tm.content, tm.mention_everyone,
-		tm.sent_at, tm.edited_at, tm.created_at, tm.updated_at,
+			tm.id, tm.room_id, tm.author_id, tm.content, tm.mention_everyone,
+			tm.sent_at, tm.edited_at, tm.created_at, tm.updated_at,
 
-		u.id, u.username, u.email, u.avatar_url,
+			u.id, u.username, u.email, u.avatar_url,
 
-		a.id, a.message_id, a.url, a.file_name, a.file_type, a.created_at, a.updated_at,
+			a.id, a.message_id, a.url, a.file_name, a.file_type, a.created_at, a.updated_at,
 
-		r.id, r.emoji, r.user_id, ru.username, ru.avatar_url
+			r.id, r.emoji, r.user_id, ru.username, ru.avatar_url,
 
-		FROM target_messages as tm
-		INNER JOIN users u ON tm.author_id=u.id
+			mu.id, mu.username, mu.email, mu.avatar_url
+		FROM target_messages tm
+		INNER JOIN users u ON tm.author_id = u.id
 		LEFT JOIN attachments a ON tm.id = a.message_id
 		LEFT JOIN reactions r ON tm.id = r.message_id
 		LEFT JOIN users ru ON r.user_id = ru.id
-
+		LEFT JOIN message_mentions mm ON tm.id = mm.message_id
+		LEFT JOIN users mu ON mm.user_id = mu.id
 		ORDER BY tm.sent_at ASC, tm.id ASC
 	`
 
-	// PROCESSING WITH DB
 	rows, err := db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, utils.ErrorFetchingMessages
 	}
-
 	defer rows.Close()
 
 	return r.scanMessagesWithDetails(rows)
-
-	// rows.Next()
-	// rows.Err()
-	// rows.Scan()
-
 }
 
-// GET MESSAGES AROUND A MESSAGE
+// ── getMessagesAround ─────────────────────────────────────────────────────────
 func (r *messageRepository) getMessagesAround(ctx context.Context, db database.DBRunner, params *dto.MessageQueryParams) ([]*dto.MessageDetailed, error) {
-
-	// before and after equally lina paryo so
 	halfLimit := params.Limit / 2
 
-	// query
 	query := `
-
-	WITH target_messages AS (
-	    (
-	    SELECT m.id, m.room_id, m.author_id, m.content, m.mention_everyone,
-					m.sent_at, m.edited_at, m.created_at, m.updated_at
-		FROM messages m
-		WHERE m.room_id = $1
-		    AND m.deleted_at IS NULL
-			AND (
-			    m.sent_at < (SELECT sent_at FROM messages WHERE id = $2)
-				OR (
-				    m.sent_at = (SELECT sent_at FROM messages WHERE id = $2)
-					AND m.id <= 2
-				)
+		WITH target_messages AS (
+			(
+				SELECT m.id, m.room_id, m.author_id, m.content, m.mention_everyone,
+					   m.sent_at, m.edited_at, m.created_at, m.updated_at
+				FROM messages m
+				WHERE m.room_id = $1
+				  AND m.deleted_at IS NULL
+				  AND (
+					  m.sent_at < (SELECT sent_at FROM messages WHERE id = $2)
+					  OR (
+						  m.sent_at = (SELECT sent_at FROM messages WHERE id = $2)
+						  AND m.id <= $2
+					  )
+				  )
+				ORDER BY m.sent_at DESC, m.id DESC
+				LIMIT $3
 			)
-		ORDER BY m.sent_at DECS, m.id DESC
-		LIMIT $3
-		)
-
-		UNION ALL (
-		SELECT m.id, m.room_id, m.author_id, m.content, m.mention_everyone,
-		m.sent_at, m.edited_at, m.created_at, m.updated_at
-		FROM messages m
-		WHERE m.room_id = $1
-		    AND m.deleted_at IS NULL
-			AND (
-			    m.sent_at < (SELECT sent_at FROM messages WHERE id = $2)
-				OR (
-				m.sent_at = (SELECT sent_at FROM messages WHERE id = $2)
-				AND m.id <= 2
-				)
+			UNION ALL
+			(
+				SELECT m.id, m.room_id, m.author_id, m.content, m.mention_everyone,
+					   m.sent_at, m.edited_at, m.created_at, m.updated_at
+				FROM messages m
+				WHERE m.room_id = $1
+				  AND m.deleted_at IS NULL
+				  AND (
+					  m.sent_at > (SELECT sent_at FROM messages WHERE id = $2)
+					  OR (
+						  m.sent_at = (SELECT sent_at FROM messages WHERE id = $2)
+						  AND m.id > $2
+					  )
+				  )
+				ORDER BY m.sent_at ASC, m.id ASC
+				LIMIT $4
 			)
-			ORDER BY m.sent_at ASC, m.id ASC
-			LIMIT $4
 		)
-	)
+		SELECT
+			tm.id, tm.room_id, tm.author_id, tm.content, tm.mention_everyone,
+			tm.sent_at, tm.edited_at, tm.created_at, tm.updated_at,
 
-	SELECT
-	tm.id, tm.room_id, tm.author_id, tm.content, tm.mention_everyone,
-	tm.sent_at, tm.edited_at, tm.created_at, tm.updated_at,
+			u.id, u.username, u.email, u.avatar_url,
 
-	u.id, u.username, u.email, u.avatar_url,
+			a.id, a.message_id, a.url, a.file_name, a.file_type, a.created_at, a.updated_at,
 
-	a.id, a.message_id, a.url, a.file_name, a.file_type, a.created_at, a.updated_at,
+			r.id, r.emoji, r.user_id, ru.username, ru.avatar_url,
 
-	r.id, r.emoji, r.user_id, ru.username, ru.avatar_url
-
-	FROM target_messages as tm
-	INNER JOIN users u ON tm.author_id=u.id
-	LEFT JOIN attachments a ON tm.id = a.message_id
-	LEFT JOIN reactions r ON tm.id = r.message_id
-	LEFT JOIN users ru ON r.user_id = ru.user_id
-
-	ORDER BY tm.sent_at ASC, tm.id ASC
+			mu.id, mu.username, mu.email, mu.avatar_url
+		FROM target_messages tm
+		INNER JOIN users u ON tm.author_id = u.id
+		LEFT JOIN attachments a ON tm.id = a.message_id
+		LEFT JOIN reactions r ON tm.id = r.message_id
+		LEFT JOIN users ru ON r.user_id = ru.id
+		LEFT JOIN message_mentions mm ON tm.id = mm.message_id
+		LEFT JOIN users mu ON mm.user_id = mu.id
+		ORDER BY tm.sent_at ASC, tm.id ASC
 	`
 
 	rows, err := db.Query(ctx, query, params.RoomID, params.Around, halfLimit, halfLimit)
 	if err != nil {
 		return nil, utils.ErrorFetchingMessages
 	}
-
 	defer rows.Close()
 
 	return r.scanMessagesWithDetails(rows)
-
 }
 
-// accept the needed methods through the row interface
+// ── UpdateMessageContent ──────────────────────────────────────────────────────
+
+func (r *messageRepository) UpdateMessageContent(ctx context.Context, db database.DBRunner, messageID uuid.UUID, content string) (*models.Message, error) {
+	query := `
+		UPDATE messages
+		SET content = $1, edited_at = now(), updated_at = now()
+		WHERE id = $2 AND deleted_at IS NULL
+		RETURNING id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
+	`
+	out := &models.Message{}
+	err := db.QueryRow(ctx, query, content, messageID).Scan(
+		&out.ID, &out.RoomID, &out.AuthorID, &out.Content, &out.SentAt,
+		&out.EditedAt, &out.DeletedAt, &out.MentionEveryone,
+		&out.CreatedAt, &out.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ── SoftDeleteMessage ─────────────────────────────────────────────────────────
+
+func (r *messageRepository) SoftDeleteMessage(ctx context.Context, db database.DBRunner, messageID uuid.UUID) error {
+	_, err := db.Exec(ctx, `
+		UPDATE messages SET deleted_at = now(), updated_at = now() WHERE id = $1
+	`, messageID)
+	return err
+}
+
+// ── AddReaction ───────────────────────────────────────────────────────────────
+// ON CONFLICT DO NOTHING makes this idempotent — duplicate reactions are silently ignored.
+
+func (r *messageRepository) AddReaction(ctx context.Context, db database.DBRunner, reactionID uuid.UUID, messageID uuid.UUID, userID uuid.UUID, emoji string) error {
+	_, err := db.Exec(ctx, `
+		INSERT INTO reactions (id, message_id, user_id, emoji)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (message_id, user_id, emoji) DO NOTHING
+	`, reactionID, messageID, userID, emoji)
+	return err
+}
+
+// ── RemoveReaction ────────────────────────────────────────────────────────────
+// Returns (true, nil) if a row was deleted, (false, nil) if reaction didn't exist.
+
+func (r *messageRepository) RemoveReaction(ctx context.Context, db database.DBRunner, messageID uuid.UUID, userID uuid.UUID, emoji string) (bool, error) {
+	tag, err := db.Exec(ctx, `
+		DELETE FROM reactions WHERE message_id = $1 AND user_id = $2 AND emoji = $3
+	`, messageID, userID, emoji)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+// ── scanMessagesWithDetails ───────────────────────────────────────────────────
+// Collapses the JOIN-expanded rows (one row per attachment per reaction) back into
+// MessageDetailed structs, deduplicating attachments and grouping reactions by emoji.
 func (r *messageRepository) scanMessagesWithDetails(rows interface {
 	Next() bool
 	Err() error
@@ -417,179 +410,143 @@ func (r *messageRepository) scanMessagesWithDetails(rows interface {
 	messageMap := make(map[uuid.UUID]*dto.MessageDetailed)
 	messageOrder := []uuid.UUID{}
 
-	// iterate over the rows
 	for rows.Next() {
-
-		// define variables
 		var (
 			message models.Message
 			author  dto.UserBasic
 
 			attachmentID    *uuid.UUID
 			attachmentMsgID *uuid.UUID
-			url             *string
-			fileName        *string
-			fileType        *string
+			attURL          *string
+			attFileName     *string
+			attFileType     *string
 			attCreatedAt    *time.Time
 			attUpdatedAt    *time.Time
 
-			// REACTION (COUNT NEEDED SO DOING IT LIKE THIS)
 			reactionID       *uuid.UUID
 			emoji            *string
 			reactorUserID    *uuid.UUID
 			reactorUsername  *string
 			reactorAvatarURL *string
+
+			mentionUserID    *uuid.UUID
+			mentionUsername  *string
+			mentionEmail     *string
+			mentionAvatarURL *string
 		)
 
-		// gotta be in the same order
-		err := rows.Scan(
-			// tm
-			&message.ID,
-			&message.RoomID,
-			&message.AuthorID,
-			&message.Content,
-			&message.MentionEveryone,
-			&message.SentAt,
-			&message.EditedAt,
-			&message.CreatedAt,
-			&message.UpdatedAt,
+		if err := rows.Scan(
+			&message.ID, &message.RoomID, &message.AuthorID, &message.Content, &message.MentionEveryone,
+			&message.SentAt, &message.EditedAt, &message.CreatedAt, &message.UpdatedAt,
 
-			// author
-			&author.ID,
-			&author.Username,
-			&author.Email,
-			&author.AvatarURL,
+			&author.ID, &author.Username, &author.Email, &author.AvatarURL,
 
-			// attachment
-			&attachmentID,
-			&attachmentMsgID,
-			&url,
-			&fileName,
-			&fileType,
-			&attCreatedAt,
-			&attUpdatedAt,
+			&attachmentID, &attachmentMsgID, &attURL, &attFileName, &attFileType, &attCreatedAt, &attUpdatedAt,
 
-			// reaction
-			&reactionID,
-			&emoji,
-			&reactorUserID,
-			&reactorUsername,
-			&reactorAvatarURL,
-		)
+			&reactionID, &emoji, &reactorUserID, &reactorUsername, &reactorAvatarURL,
 
-		if err != nil {
+			&mentionUserID, &mentionUsername, &mentionEmail, &mentionAvatarURL,
+		); err != nil {
 			return nil, utils.ErrorFetchingMessages
 		}
 
-		// Check if message already exist in map or not
-		msgDetailed, ok := messageMap[message.ID]
-
-		// if doesnt exist
-		if !ok {
+		msgDetailed, exists := messageMap[message.ID]
+		if !exists {
 			msgDetailed = &dto.MessageDetailed{
-				Message: message,
-				Author:  author,
-
-				// we will handles these down below
+				Message:     message,
+				Author:      author,
 				Attachments: []dto.AttachmentResponseMinimal{},
 				Reactions:   []dto.ReactionGroup{},
 				Mentions:    []dto.UserBasic{},
 			}
-
-			// add above messageDetailed on messagemap
 			messageMap[message.ID] = msgDetailed
-
-			// we order them serially on the way they came from db (ASC/DES)
 			messageOrder = append(messageOrder, message.ID)
 		}
 
-		// ATTACHMENTS if exists and not added already
 		if attachmentID != nil {
-
-			// check if already exists
 			found := false
-			for _, attachment := range msgDetailed.Attachments {
-
-				if attachment.ID == *attachmentID {
+			for _, a := range msgDetailed.Attachments {
+				if a.ID == *attachmentID {
 					found = true
 					break
 				}
 			}
-
 			if !found {
-				attachment := &dto.AttachmentResponseMinimal{
+				msgDetailed.Attachments = append(msgDetailed.Attachments, dto.AttachmentResponseMinimal{
 					ID:        *attachmentID,
 					MessageID: *attachmentMsgID,
-					URL:       *url,
-					FileName:  *fileName,
-					FileType:  fileType,
+					URL:       *attURL,
+					FileName:  *attFileName,
+					FileType:  attFileType,
 					CreatedAt: *attCreatedAt,
-					UpdatedAt: *attCreatedAt,
-				}
-
-				// add the attachment to the Attachments in msgDetailed
-				msgDetailed.Attachments = append(msgDetailed.Attachments, *attachment)
+					UpdatedAt: *attUpdatedAt,
+				})
 			}
-
 		}
 
-		// REACTION IF EXISTS
 		if reactionID != nil && emoji != nil {
-			found := false
+			emojiFound := false
 			for i := range msgDetailed.Reactions {
+				if msgDetailed.Reactions[i].Emoji != *emoji {
+					continue
+				}
+				emojiFound = true
 
-				// is this emoji already added
-				if msgDetailed.Reactions[i].Emoji == *emoji {
-					found = true
-
-					// is this current userAdded in the userlist?
-					userFound := false
-					// loop through the reactors
-					for _, reactor := range msgDetailed.Reactions[i].Reactors {
-						// loop over reactors
-						if reactorUserID != nil && reactor.ID == *reactorUserID {
-							userFound = true
-							break
-						}
+				reactorFound := false
+				for _, reactor := range msgDetailed.Reactions[i].Reactors {
+					if reactorUserID != nil && reactor.ID == *reactorUserID {
+						reactorFound = true
+						break
 					}
-
-					if userFound && reactorUserID != nil {
-
-						// add user
-						currentReactor := &dto.UserBasic{
-							ID:        *reactorUserID,
-							Username:  *reactorUsername,
-							AvatarURL: reactorAvatarURL,
-						}
-						msgDetailed.Reactions[i].Reactors = append(msgDetailed.Reactions[i].Reactors, *currentReactor)
-
-					}
-					break
 				}
 
-			}
-
-			// NOT FOUND, NEW EMOJI
-			if !found {
-				reactionGroup := &dto.ReactionGroup{
-					Emoji:    *emoji,
-					Count:    1,
-					Reactors: []dto.UserBasic{},
-				}
-
-				// add user
-				if reactorUserID != nil {
-					currentReactor := &dto.UserBasic{
+				if !reactorFound && reactorUserID != nil && reactorUsername != nil {
+					msgDetailed.Reactions[i].Reactors = append(msgDetailed.Reactions[i].Reactors, dto.UserBasic{
 						ID:        *reactorUserID,
 						Username:  *reactorUsername,
 						AvatarURL: reactorAvatarURL,
-					}
-					reactionGroup.Reactors = append(reactionGroup.Reactors, *currentReactor)
+					})
+					msgDetailed.Reactions[i].Count++
+				}
+				break
+			}
 
+			if !emojiFound {
+				group := dto.ReactionGroup{
+					Emoji:    *emoji,
+					Count:    0,
+					Reactors: []dto.UserBasic{},
 				}
 
-				// add this emoji group to Reaction in msgDetailed
-				msgDetailed.Reactions = append(msgDetailed.Reactions, *reactionGroup)
+				if reactorUserID != nil && reactorUsername != nil {
+					group.Reactors = append(group.Reactors, dto.UserBasic{
+						ID:        *reactorUserID,
+						Username:  *reactorUsername,
+						AvatarURL: reactorAvatarURL,
+					})
+					group.Count = 1
+				}
+
+				msgDetailed.Reactions = append(msgDetailed.Reactions, group)
+			}
+		}
+
+		if mentionUserID != nil && mentionUsername != nil && mentionEmail != nil {
+			found := false
+			for _, mentionedUser := range msgDetailed.Mentions {
+				if mentionedUser.ID == *mentionUserID {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				msgDetailed.Mentions = append(msgDetailed.Mentions, dto.UserBasic{
+					ID:        *mentionUserID,
+					Username:  *mentionUsername,
+					Email:     *mentionEmail,
+					AvatarURL: mentionAvatarURL,
+				})
 			}
 		}
 	}
@@ -598,24 +555,20 @@ func (r *messageRepository) scanMessagesWithDetails(rows interface {
 		return nil, utils.ErrorMessageRowsIteration
 	}
 
-	// convert map to ordered slice
 	result := make([]*dto.MessageDetailed, 0, len(messageOrder))
-	for _, msgID := range messageOrder {
-		result = append(result, messageMap[msgID])
+	for _, id := range messageOrder {
+		result = append(result, messageMap[id])
 	}
 
 	return result, nil
-
 }
 
-// TODO : Implement message  update and delete
+// ── TODO stubs ────────────────────────────────────────────────────────────────
+
 func (r *messageRepository) UpdateMessage(ctx context.Context, db database.DBRunner, message *models.Message) (*models.Message, error) {
-
 	return &models.Message{}, nil
-
 }
 
 func (r *messageRepository) DeleteMessage(ctx context.Context, db database.DBRunner, message *models.Message) error {
-
 	return nil
 }

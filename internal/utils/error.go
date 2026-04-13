@@ -16,7 +16,7 @@ func (e *AppError) Error() string {
 }
 
 var (
-
+	ErrorForbidden = &AppError{Code: http.StatusForbidden, Message: "Forbidden"}
 	// =========================
 	// CONTEXT ERRORS
 	// =========================
@@ -108,6 +108,8 @@ var (
 	ErrorFloorNotFound           = &AppError{Code: http.StatusNotFound, Message: "Floor not found in this hall"}
 	ErrorMemberNotFound          = &AppError{Code: http.StatusNotFound, Message: "Hall Member not found"}
 	ErrorHallDefaultRoleNotFound = &AppError{Code: http.StatusNotFound, Message: "Hall Member not found"}
+	ErrorMessageNotFound         = &AppError{Code: http.StatusNotFound, Message: "Message not found"}
+	ErrorReactionNotFound        = &AppError{Code: http.StatusNotFound, Message: "Reaction not found"}
 
 	// =========================
 	// JOIN REQUEST ERRORS
@@ -140,6 +142,7 @@ var (
 	ErrorUserCannotManageNicknames         = &AppError{Code: http.StatusUnauthorized, Message: "User does not have permission to manage nicknames"}
 	ErrorUserCannotCreateHallRoles         = &AppError{Code: http.StatusUnauthorized, Message: "You are not allowed to create roles in this hall"}
 	ErrorUserCannotManageInvites           = &AppError{Code: http.StatusUnauthorized, Message: "User does not have privilege to manage invites"}
+	ErrorUserCannotManageServer            = &AppError{Code: http.StatusUnauthorized, Message: "User does not have privilege to manage hall"}
 	ErrorUserCannotManageRequests          = &AppError{Code: http.StatusUnauthorized, Message: "User does not have privilege to manage requests"}
 	ErrorUnauthorizedToUpdateHall          = &AppError{Code: http.StatusUnauthorized, Message: "Not Authorized to update hall"}
 	ErrorCannotUpdateDefaultRolePermission = &AppError{Code: http.StatusUnauthorized, Message: "Default Role's Permissions cannot be updated"}

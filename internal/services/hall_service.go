@@ -65,7 +65,15 @@ type hallService struct {
 	mu      sync.RWMutex
 }
 
-func NewHallService(hallRepo repositories.IHallRepository, userRepo repositories.IUserRepository, roleRepo repositories.IRoleRepository, banRepo repositories.IBanRepsitory, permissionChecker IPermissionCheckerService, pool *pgxpool.Pool) IHallService {
+func NewHallService(
+	hallRepo repositories.IHallRepository,
+	userRepo repositories.IUserRepository,
+	roleRepo repositories.IRoleRepository,
+	banRepo repositories.IBanRepsitory,
+	permissionChecker IPermissionCheckerService,
+	pool *pgxpool.Pool,
+
+) IHallService {
 	return &hallService{
 		hallRepo,
 		userRepo,

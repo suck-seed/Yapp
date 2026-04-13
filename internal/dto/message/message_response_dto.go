@@ -23,7 +23,6 @@ type CreateMessageRes struct {
 	UpdatedAt time.Time  `json:"updated_at"`
 }
 
-// RESPONSE TYPES FOR MESSAGE
 type AttachmentResponseMinimal struct {
 	ID        uuid.UUID `json:"id"`
 	MessageID uuid.UUID `json:"message_id"`
@@ -39,7 +38,6 @@ type MentionResponseMinimal struct {
 	Username string    `json:"username"`
 }
 
-// MESSAGE FETCH RESPONSE
 type UserBasic struct {
 	ID        uuid.UUID `json:"id" db:"id"`
 	Username  string    `json:"username" db:"username"`
@@ -50,8 +48,13 @@ type UserBasic struct {
 type ReactionGroup struct {
 	Emoji    string      `json:"emoji"`
 	Count    int         `json:"count"`
-	Reactors []UserBasic `json:"user_ids"` // Users who reacted with this emoji
+	Reactors []UserBasic `json:"user_ids"`
+}
 
+type ReactionRes struct {
+	MessageID uuid.UUID `json:"message_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Emoji     string    `json:"emoji"`
 }
 
 type MessageDetailed struct {

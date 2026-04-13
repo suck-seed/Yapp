@@ -19,22 +19,28 @@ func NewRoomHandler(roomService services.IRoomService) *RoomHandler {
 	return &RoomHandler{roomService}
 }
 
-// ── POST /rooms ───────────────────────────────────────────────────────────────
+// ── POST /halls/:hallID/rooms ─────────────────────────────────────────────────
 
 func (h *RoomHandler) CreateRoom(c *gin.Context) {
-	var req dto.CreateRoomReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.WriteError(c, utils.ErrorInvalidInput)
-		return
-	}
-
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
 	}
 
-	res, err := h.IRoomService.CreateRoom(c.Request.Context(), userInfo, &req)
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	var req dto.CreateRoomReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.WriteError(c, utils.ErrorInvalidInput)
+		return
+	}
+
+	res, err := h.IRoomService.CreateRoom(c.Request.Context(), userInfo, hallID, &req)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
@@ -46,37 +52,22 @@ func (h *RoomHandler) CreateRoom(c *gin.Context) {
 	})
 }
 
-// ── GET /rooms/:id ────────────────────────────────────────────────────────────
+// ── GET /halls/:hallID/rooms ──────────────────────────────────────────────────
 
-func (h *RoomHandler) GetRoom(c *gin.Context) {
-	roomID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		utils.WriteError(c, utils.ErrorInvalidIDFormart)
-		return
-	}
-
-	res, err := h.IRoomService.GetRoom(c.Request.Context(), roomID)
+func (h *RoomHandler) GetHallRooms(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": http.StatusOK, "success": true,
-		"message": "Room fetched successfully", "data": res,
-	})
-}
-
-// ── GET /rooms?hall_id= ───────────────────────────────────────────────────────
-
-func (h *RoomHandler) GetHallRooms(c *gin.Context) {
-	var req dto.GetHallRoomsReq
-	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.WriteError(c, utils.ErrorInvalidInput)
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
 		return
 	}
 
-	res, err := h.IRoomService.GetHallRooms(c.Request.Context(), req.HallID)
+	res, err := h.IRoomService.GetHallRooms(c.Request.Context(), userInfo, hallID)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
@@ -88,10 +79,55 @@ func (h *RoomHandler) GetHallRooms(c *gin.Context) {
 	})
 }
 
-// ── PATCH /rooms/:id ──────────────────────────────────────────────────────────
+// ── GET /halls/:hallID/rooms/:id ──────────────────────────────────────────────
+
+func (h *RoomHandler) GetRoom(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	roomID, err := uuid.Parse(c.Param("roomID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IRoomService.GetRoom(c.Request.Context(), userInfo, hallID, roomID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": http.StatusOK, "success": true,
+		"message": "Room fetched successfully", "data": res,
+	})
+}
+
+// ── PATCH /halls/:hallID/rooms/:id ────────────────────────────────────────────
 
 func (h *RoomHandler) UpdateRoom(c *gin.Context) {
-	roomID, err := uuid.Parse(c.Param("id"))
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	roomID, err := uuid.Parse(c.Param("roomID"))
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidIDFormart)
 		return
@@ -103,7 +139,7 @@ func (h *RoomHandler) UpdateRoom(c *gin.Context) {
 		return
 	}
 
-	res, err := h.IRoomService.UpdateRoom(c.Request.Context(), roomID, &req)
+	res, err := h.IRoomService.UpdateRoom(c.Request.Context(), userInfo, hallID, roomID, &req)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
@@ -115,16 +151,28 @@ func (h *RoomHandler) UpdateRoom(c *gin.Context) {
 	})
 }
 
-// ── DELETE /rooms/:id ─────────────────────────────────────────────────────────
+// ── DELETE /halls/:hallID/rooms/:id ───────────────────────────────────────────
 
 func (h *RoomHandler) DeleteRoom(c *gin.Context) {
-	roomID, err := uuid.Parse(c.Param("id"))
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidIDFormart)
 		return
 	}
 
-	if err := h.IRoomService.DeleteRoom(c.Request.Context(), roomID); err != nil {
+	roomID, err := uuid.Parse(c.Param("roomID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	if err := h.IRoomService.DeleteRoom(c.Request.Context(), userInfo, hallID, roomID); err != nil {
 		utils.WriteError(c, err)
 		return
 	}
@@ -135,10 +183,22 @@ func (h *RoomHandler) DeleteRoom(c *gin.Context) {
 	})
 }
 
-// ── PUT /rooms/:id/move ───────────────────────────────────────────────────────
+// ── PUT /halls/:hallID/rooms/:id/move ─────────────────────────────────────────
 
 func (h *RoomHandler) MoveRoom(c *gin.Context) {
-	roomID, err := uuid.Parse(c.Param("id"))
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	roomID, err := uuid.Parse(c.Param("roomID"))
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidIDFormart)
 		return
@@ -150,7 +210,7 @@ func (h *RoomHandler) MoveRoom(c *gin.Context) {
 		return
 	}
 
-	res, err := h.IRoomService.MoveRoom(c.Request.Context(), roomID, &req)
+	res, err := h.IRoomService.MoveRoom(c.Request.Context(), userInfo, hallID, roomID, &req)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
