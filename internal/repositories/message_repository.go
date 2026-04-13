@@ -356,7 +356,7 @@ func (r *messageRepository) getMessagesAround(ctx context.Context, db database.D
 					AND m.id <= 2
 				)
 			)
-		ORDER BY m.sent_at DECS, m.id DESC
+		ORDER BY m.sent_at DESC, m.id DESC
 		LIMIT $3
 		)
 
