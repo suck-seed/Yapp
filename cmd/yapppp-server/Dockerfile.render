@@ -1,5 +1,5 @@
 # ---------- build stage ----------
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -21,7 +21,6 @@ RUN apk add --no-cache ca-certificates tzdata
 
 COPY --from=builder /app/bin/yapp /app/yapp
 COPY infra/migrations /app/infra/migrations
-#COPY assets /app/asset
 
 ENV APP_ENV=production
 ENV PORT=10000
