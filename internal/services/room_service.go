@@ -18,13 +18,12 @@ import (
 )
 
 type IRoomService interface {
-	CreateRoom(c context.Context, userInfo *auth.UserInfo, req *dto.CreateRoomReq) (*dto.CreateRoomRes, error)
-	GetRoom(c context.Context, roomID uuid.UUID) (*dto.GetRoomRes, error)
-	GetHallRooms(c context.Context, hallID uuid.UUID) (*dto.GetHallRoomsRes, error)
-	UpdateRoom(c context.Context, roomID uuid.UUID, req *dto.UpdateRoomReq) (*dto.UpdateRoomRes, error)
-	DeleteRoom(c context.Context, roomID uuid.UUID) error
-
-	MoveRoom(c context.Context, roomID uuid.UUID, req *dto.MoveRoomReq) (*dto.RoomRes, error)
+	CreateRoom(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, req *dto.CreateRoomReq) (*dto.CreateRoomRes, error)
+	GetRoom(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID) (*dto.GetRoomRes, error)
+	GetHallRooms(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*dto.GetHallRoomsRes, error)
+	UpdateRoom(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID, req *dto.UpdateRoomReq) (*dto.UpdateRoomRes, error)
+	DeleteRoom(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID) error
+	MoveRoom(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID, req *dto.MoveRoomReq) (*dto.RoomRes, error)
 	// internal
 	GetRoomByID(c context.Context, roomID uuid.UUID) (*models.Room, error)
 	IsUserRoomMember(c context.Context, roomID uuid.UUID, userID uuid.UUID) (bool, error)
@@ -34,6 +33,10 @@ type roomService struct {
 	repositories.IHallRepository
 	repositories.IFloorRepository
 	repositories.IRoomRepository
+	repositories.IBanRepsitory
+
+	IPermissionCheckerService
+
 	pool    *pgxpool.Pool
 	timeout time.Duration
 	mu      sync.RWMutex
@@ -43,14 +46,19 @@ func NewRoomService(
 	hallRepo repositories.IHallRepository,
 	floorRepo repositories.IFloorRepository,
 	roomRepo repositories.IRoomRepository,
+	banRepo repositories.IBanRepsitory,
+	permissionChecker IPermissionCheckerService,
 	pool *pgxpool.Pool,
 ) IRoomService {
 	return &roomService{
-		IHallRepository:  hallRepo,
-		IFloorRepository: floorRepo,
-		IRoomRepository:  roomRepo,
-		pool:             pool,
-		timeout:          2 * time.Second,
+		hallRepo,
+		floorRepo,
+		roomRepo,
+		banRepo,
+		permissionChecker,
+		pool,
+		time.Duration(2) * time.Second,
+		sync.RWMutex{},
 	}
 }
 
@@ -70,9 +78,20 @@ func roomToRes(r *models.Room) dto.RoomRes {
 	}
 }
 
+func (s *roomService) requireManageServers(ctx context.Context, runner database.DBRunner, userID, hallID uuid.UUID) error {
+	ok, err := s.IPermissionCheckerService.CanManageServers(ctx, runner, userID, hallID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return utils.ErrorUserCannotManageServer
+	}
+	return nil
+}
+
 // ── CreateRoom ────────────────────────────────────────────────────────────────
 
-func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, req *dto.CreateRoomReq) (*dto.CreateRoomRes, error) {
+func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, req *dto.CreateRoomReq) (*dto.CreateRoomRes, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
@@ -83,12 +102,16 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, req
 	runner := database.NewTxWrapper(tx)
 	defer runner.Rollback(ctx)
 
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return nil, err
+	}
+
 	canonName, err := utils.SanitizeFloorname(req.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	hallExists, err := s.IHallRepository.DoesHallExist(ctx, runner, req.HallID)
+	hallExists, err := s.IHallRepository.DoesHallExist(ctx, runner, hallID)
 	if err != nil || !hallExists {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorHallNotFound
@@ -101,7 +124,7 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, req
 
 	// If a floor is specified, verify it belongs to this hall
 	if req.FloorID != nil {
-		floorExists, err := s.IFloorRepository.DoesFloorExistInHall(ctx, runner, *req.FloorID, req.HallID)
+		floorExists, err := s.IFloorRepository.DoesFloorExistInHall(ctx, runner, *req.FloorID, hallID)
 		if err != nil || !floorExists {
 			if isDeadline(err) {
 				return nil, utils.ErrorRequestTimeout
@@ -115,8 +138,7 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, req
 		return nil, err
 	}
 
-	// Position is scoped to the container (floor or top-level)
-	maxPos, err := s.IRoomRepository.GetMaxPositionInContainer(ctx, runner, req.HallID, req.FloorID)
+	maxPos, err := s.IRoomRepository.GetMaxPositionInContainer(ctx, runner, hallID, req.FloorID)
 	if err != nil {
 		if isDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
@@ -136,7 +158,7 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, req
 
 	created, err := s.IRoomRepository.CreateRoom(ctx, runner, &models.Room{
 		ID:        roomID,
-		HallID:    req.HallID,
+		HallID:    hallID,
 		FloorID:   req.FloorID,
 		Name:      canonName,
 		RoomType:  string(canonRoomType),
@@ -162,11 +184,26 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, req
 
 // ── GetRoom ───────────────────────────────────────────────────────────────────
 
-func (s *roomService) GetRoom(c context.Context, roomID uuid.UUID) (*dto.GetRoomRes, error) {
+func (s *roomService) GetRoom(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID) (*dto.GetRoomRes, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	room, err := s.IRoomRepository.GetRoomByID(ctx, s.pool, roomID)
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
+	ok, err := s.IHallRepository.IsUserHallMember(ctx, runner, hallID, userInfo.ID)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	if !ok {
+		return nil, utils.ErrorUserDoesntBelongHall
+	}
+
+	room, err := s.IRoomRepository.GetRoomByID(ctx, runner, roomID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorRoomNotFound
@@ -177,17 +214,37 @@ func (s *roomService) GetRoom(c context.Context, roomID uuid.UUID) (*dto.GetRoom
 		return nil, utils.ErrorFetchingRoom
 	}
 
+	// Ensure room belongs to this hall
+	if room.HallID != hallID {
+		return nil, utils.ErrorRoomNotFound
+	}
+
 	res := roomToRes(room)
 	return &res, nil
 }
 
 // ── GetHallRooms ──────────────────────────────────────────────────────────────
 
-func (s *roomService) GetHallRooms(c context.Context, hallID uuid.UUID) (*dto.GetHallRoomsRes, error) {
+func (s *roomService) GetHallRooms(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*dto.GetHallRoomsRes, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// Fetch all rooms and floors in parallel using goroutines
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
+	ok, err := s.IHallRepository.IsUserHallMember(ctx, runner, hallID, userInfo.ID)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	if !ok {
+		return nil, utils.ErrorUserDoesntBelongHall
+	}
+
+	// Fetch all rooms and floors in parallel
 	type roomsResult struct {
 		rooms []*models.Room
 		err   error
@@ -225,8 +282,6 @@ func (s *roomService) GetHallRooms(c context.Context, hallID uuid.UUID) (*dto.Ge
 		return nil, utils.ErrorFetchingFloor
 	}
 
-	// Group rooms into their containers in Go — no complex SQL needed
-	// Index floor rooms by floor_id for O(1) lookup
 	floorRooms := make(map[uuid.UUID][]dto.RoomRes)
 	var topLevel []dto.RoomRes
 
@@ -243,7 +298,7 @@ func (s *roomService) GetHallRooms(c context.Context, hallID uuid.UUID) (*dto.Ge
 	for _, f := range fr.floors {
 		rooms := floorRooms[f.ID]
 		if rooms == nil {
-			rooms = []dto.RoomRes{} // never return null for empty floors
+			rooms = []dto.RoomRes{}
 		}
 		floors = append(floors, dto.FloorWithRoomsRes{
 			ID:        f.ID,
@@ -267,7 +322,7 @@ func (s *roomService) GetHallRooms(c context.Context, hallID uuid.UUID) (*dto.Ge
 
 // ── UpdateRoom ────────────────────────────────────────────────────────────────
 
-func (s *roomService) UpdateRoom(c context.Context, roomID uuid.UUID, req *dto.UpdateRoomReq) (*dto.UpdateRoomRes, error) {
+func (s *roomService) UpdateRoom(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID, req *dto.UpdateRoomReq) (*dto.UpdateRoomRes, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
@@ -290,6 +345,25 @@ func (s *roomService) UpdateRoom(c context.Context, roomID uuid.UUID, req *dto.U
 	runner := database.NewTxWrapper(tx)
 	defer runner.Rollback(ctx)
 
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return nil, err
+	}
+
+	// Verify room belongs to this hall before updating
+	room, err := s.IRoomRepository.GetRoomByID(ctx, runner, roomID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorRoomNotFound
+		}
+		if isDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingRoom
+	}
+	if room.HallID != hallID {
+		return nil, utils.ErrorRoomNotFound
+	}
+
 	updated, err := s.IRoomRepository.UpdateRoom(ctx, runner, roomID, req.Name, req.IsPrivate)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -311,7 +385,7 @@ func (s *roomService) UpdateRoom(c context.Context, roomID uuid.UUID, req *dto.U
 
 // ── DeleteRoom ────────────────────────────────────────────────────────────────
 
-func (s *roomService) DeleteRoom(c context.Context, roomID uuid.UUID) error {
+func (s *roomService) DeleteRoom(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID) error {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
@@ -322,7 +396,11 @@ func (s *roomService) DeleteRoom(c context.Context, roomID uuid.UUID) error {
 	runner := database.NewTxWrapper(tx)
 	defer runner.Rollback(ctx)
 
-	_, err = s.IRoomRepository.GetRoomByID(ctx, runner, roomID)
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return err
+	}
+
+	room, err := s.IRoomRepository.GetRoomByID(ctx, runner, roomID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return utils.ErrorRoomNotFound
@@ -331,6 +409,9 @@ func (s *roomService) DeleteRoom(c context.Context, roomID uuid.UUID) error {
 			return utils.ErrorRequestTimeout
 		}
 		return utils.ErrorFetchingRoom
+	}
+	if room.HallID != hallID {
+		return utils.ErrorRoomNotFound
 	}
 
 	if err := s.IRoomRepository.DeleteRoom(ctx, runner, roomID); err != nil {
@@ -341,6 +422,75 @@ func (s *roomService) DeleteRoom(c context.Context, roomID uuid.UUID) error {
 	}
 
 	return runner.Commit(ctx)
+}
+
+// ── MoveRoom ──────────────────────────────────────────────────────────────────
+
+func (s *roomService) MoveRoom(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID, req *dto.MoveRoomReq) (*dto.RoomRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
+
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return nil, err
+	}
+
+	// Verify room belongs to this hall
+	room, err := s.IRoomRepository.GetRoomByID(ctx, runner, roomID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorRoomNotFound
+		}
+		if isDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingRoom
+	}
+	if room.HallID != hallID {
+		return nil, utils.ErrorRoomNotFound
+	}
+
+	// Verify target floor belongs to this hall (if targeting a floor)
+	if req.NewFloorID != nil {
+		floorExists, err := s.IFloorRepository.DoesFloorExistInHall(ctx, runner, *req.NewFloorID, hallID)
+		if err != nil || !floorExists {
+			if isDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFloorNotFound
+		}
+	}
+
+	lower, upper, err := s.IRoomRepository.GetRoomPositionBounds(ctx, runner, hallID, req.NewFloorID, req.AfterID)
+	if err != nil {
+		if isDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingRoom
+	}
+
+	newPos := utils.CalcPosition(lower, upper)
+
+	moved, err := s.IRoomRepository.MoveRoom(ctx, runner, roomID, req.NewFloorID, newPos)
+	if err != nil {
+		if isDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorInternal
+	}
+
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	res := roomToRes(moved)
+	return &res, nil
 }
 
 // ── Internal ──────────────────────────────────────────────────────────────────
@@ -373,71 +523,4 @@ func (s *roomService) IsUserRoomMember(c context.Context, roomID uuid.UUID, user
 	defer conn.Release()
 
 	return s.IRoomRepository.IsUserRoomMember(ctx, database.NewConnWrapper(conn), roomID, userID)
-}
-
-// MoveRoom handles every drag-drop case atomically:
-//   - reorder within same floor
-//   - drag into a floor and place at exact spot
-//   - drag out of floor and place at exact spot among top-level rooms
-func (s *roomService) MoveRoom(c context.Context, roomID uuid.UUID, req *dto.MoveRoomReq) (*dto.RoomRes, error) {
-	ctx, cancel := context.WithTimeout(c, s.timeout)
-	defer cancel()
-
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return nil, utils.ErrorInternal
-	}
-	runner := database.NewTxWrapper(tx)
-	defer runner.Rollback(ctx)
-
-	// Verify room belongs to this hall
-	room, err := s.IRoomRepository.GetRoomByID(ctx, runner, roomID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, utils.ErrorRoomNotFound
-		}
-		if isDeadline(err) {
-			return nil, utils.ErrorRequestTimeout
-		}
-		return nil, utils.ErrorFetchingRoom
-	}
-	if room.HallID != req.HallID {
-		return nil, utils.ErrorUserDoesntBelongRoom
-	}
-
-	// Verify target floor belongs to this hall (if targeting a floor)
-	if req.NewFloorID != nil {
-		floorExists, err := s.IFloorRepository.DoesFloorExistInHall(ctx, runner, *req.NewFloorID, req.HallID)
-		if err != nil || !floorExists {
-			if isDeadline(err) {
-				return nil, utils.ErrorRequestTimeout
-			}
-			return nil, utils.ErrorFloorNotFound
-		}
-	}
-
-	lower, upper, err := s.IRoomRepository.GetRoomPositionBounds(ctx, runner, req.HallID, req.NewFloorID, req.AfterID)
-	if err != nil {
-		if isDeadline(err) {
-			return nil, utils.ErrorRequestTimeout
-		}
-		return nil, utils.ErrorFetchingRoom
-	}
-
-	newPos := utils.CalcPosition(lower, upper)
-
-	moved, err := s.IRoomRepository.MoveRoom(ctx, runner, roomID, req.NewFloorID, newPos)
-	if err != nil {
-		if isDeadline(err) {
-			return nil, utils.ErrorRequestTimeout
-		}
-		return nil, utils.ErrorInternal
-	}
-
-	if err := runner.Commit(ctx); err != nil {
-		return nil, utils.ErrorInternal
-	}
-
-	res := roomToRes(moved)
-	return &res, nil
 }

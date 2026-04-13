@@ -39,8 +39,8 @@ func StartServer(cfg config.AppConfig) {
 
 	userService := services.NewUserService(userRepository, cfg.PostgresPool)
 	hallService := services.NewHallService(hallRepository, userRepository, roleRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
-	floorService := services.NewFloorService(hallRepository, floorRepository, cfg.PostgresPool)
-	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository, cfg.PostgresPool)
+	floorService := services.NewFloorService(hallRepository, floorRepository, roomRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
+	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
 	roleService := services.NewRoleService(roleRepository, userRepository, hallRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
 	banService := services.NewBanService(banRepository, userRepository, hallRepository, permissionCheckerService, cfg.PostgresPool)
 	messageService := services.NewMessageService(hallRepository, roomRepository, messageRepository, userRepository, cfg.PostgresPool)
@@ -62,9 +62,9 @@ func StartServer(cfg config.AppConfig) {
 	api.Use(auth.AuthMiddleware())
 	{
 		rest.RegisterUserRoutes(api, userService)
-		rest.RegisterHallRoutes(api, hallService, roleService, banService, inviteService)
-		rest.RegisterFloorRoutes(api, floorService)
-		rest.RegisterRoomRoutes(api, roomService)
+		rest.RegisterHallRoutes(api, hallService, roleService, banService, inviteService, floorService, roomService)
+		// rest.RegisterFloorRoutes(api, floorService)
+		// rest.RegisterRoomRoutes(api, roomService)
 		rest.RegisterMessageRoutes(api, messageService)
 		rest.RegisterInviteRoutes(api, inviteService)
 	}

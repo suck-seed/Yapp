@@ -140,6 +140,7 @@ var (
 	ErrorUserCannotManageNicknames         = &AppError{Code: http.StatusUnauthorized, Message: "User does not have permission to manage nicknames"}
 	ErrorUserCannotCreateHallRoles         = &AppError{Code: http.StatusUnauthorized, Message: "You are not allowed to create roles in this hall"}
 	ErrorUserCannotManageInvites           = &AppError{Code: http.StatusUnauthorized, Message: "User does not have privilege to manage invites"}
+	ErrorUserCannotManageServer            = &AppError{Code: http.StatusUnauthorized, Message: "User does not have privilege to manage hall"}
 	ErrorUserCannotManageRequests          = &AppError{Code: http.StatusUnauthorized, Message: "User does not have privilege to manage requests"}
 	ErrorUnauthorizedToUpdateHall          = &AppError{Code: http.StatusUnauthorized, Message: "Not Authorized to update hall"}
 	ErrorCannotUpdateDefaultRolePermission = &AppError{Code: http.StatusUnauthorized, Message: "Default Role's Permissions cannot be updated"}

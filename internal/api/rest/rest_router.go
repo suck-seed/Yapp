@@ -51,7 +51,7 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 
 }
 
-func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, roleServices services.IRoleService, banServices services.IBanService, inviteService services.IInviteService) {
+func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, roleServices services.IRoleService, banServices services.IBanService, inviteService services.IInviteService, floorService services.IFloorService, roomService services.IRoomService) {
 	hallHandler := handlers.NewHallHandler(hallService, roleServices, banServices)
 	inviteHandler := handlers.NewInviteHandler(inviteService)
 
@@ -129,6 +129,13 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 				bans.POST("", hallHandler.BanAnUser)          // ban someone
 				bans.DELETE("/:banID", hallHandler.UnbanUser) // unban
 			}
+		}
+
+		// Halls scoped routes
+		hallScoped := halls.Group("/:hallID")
+		{
+			RegisterFloorRoutes(hallScoped, floorService)
+			RegisterRoomRoutes(hallScoped, roomService)
 		}
 	}
 }
