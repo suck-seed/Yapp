@@ -9,7 +9,7 @@ import (
 )
 
 // TODO Make router for halls, messages
-func RegisterAuthRoutes(r *gin.Engine, userService services.IUserService) {
+func RegisterAuthRoutes(r *gin.RouterGroup, userService services.IUserService) {
 
 	authHandler := handlers.NewAuthHandler(userService)
 
@@ -141,12 +141,20 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 
 // Separate top-level registration — these routes are NOT under /halls
 // because the user only has the code, not a hallID, when clicking the link.
-func RegisterInviteRoutes(r *gin.RouterGroup, inviteService services.IInviteService) {
+func RegisterInvitePublicRoutes(r *gin.RouterGroup, inviteService services.IInviteService) {
 	inviteHandler := handlers.NewInviteHandler(inviteService)
 
 	invites := r.Group("/invites")
 	{
-		invites.GET("/:code", inviteHandler.GetInviteLinkInfo)        // public
+		invites.GET("/:code", inviteHandler.GetInviteLinkInfo) // public
+	}
+}
+
+func RegisterInvitePrivateRoutes(r *gin.RouterGroup, inviteService services.IInviteService) {
+	inviteHandler := handlers.NewInviteHandler(inviteService)
+
+	invites := r.Group("/invites")
+	{
 		invites.POST("/:code/accept", inviteHandler.AcceptInviteLink) // authenticated
 	}
 }

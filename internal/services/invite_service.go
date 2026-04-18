@@ -373,7 +373,7 @@ func (s *inviteService) AcceptInviteLink(ctx context.Context, userInfo *auth.Use
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			return nil, utils.ErrorRequestTimeout
 		}
-		return nil, utils.ErrorInternal
+		return nil, utils.ErrorTest1
 	}
 	if isMember {
 		return nil, utils.ErrorAlreadyHallMember
@@ -389,12 +389,12 @@ func (s *inviteService) AcceptInviteLink(ctx context.Context, userInfo *auth.Use
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			return nil, utils.ErrorRequestTimeout
 		}
-		return nil, utils.ErrorInternal
+		return nil, utils.ErrorTest2
 	}
 
 	memberID, err := uuid.NewV7()
 	if err != nil {
-		return nil, utils.ErrorInternal
+		return nil, utils.ErrorTest3
 	}
 
 	member, err := s.IHallRepository.CreateHallMember(ctx, runner, &models.HallMember{
@@ -411,7 +411,7 @@ func (s *inviteService) AcceptInviteLink(ctx context.Context, userInfo *auth.Use
 	}
 
 	if err := runner.Commit(ctx); err != nil {
-		return nil, utils.ErrorInternal
+		return nil, utils.ErrorTest4
 	}
 
 	return &dto.AcceptInviteLinkRes{

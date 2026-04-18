@@ -16,6 +16,11 @@ func (e *AppError) Error() string {
 }
 
 var (
+	ErrorTest1 = &AppError{Code: http.StatusForbidden, Message: "Forbidden 1"}
+	ErrorTest2 = &AppError{Code: http.StatusForbidden, Message: "Forbidden 2"}
+	ErrorTest3 = &AppError{Code: http.StatusForbidden, Message: "Forbidden 3"}
+	ErrorTest4 = &AppError{Code: http.StatusForbidden, Message: "Forbidden 4"}
+
 	ErrorForbidden = &AppError{Code: http.StatusForbidden, Message: "Forbidden"}
 	// =========================
 	// CONTEXT ERRORS
