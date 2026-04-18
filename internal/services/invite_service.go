@@ -20,7 +20,7 @@ import (
 
 const (
 	inviteCodeLength = 10
-	baseInviteURL    = "https://yourdomain.com/invites/" // move to config
+	baseInviteURL    = "https://yappserver.onrender.com/invites/" // move to config
 )
 
 var expireAfterDurations = map[dto.ExpireAfterOption]time.Duration{
