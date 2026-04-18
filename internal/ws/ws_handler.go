@@ -41,8 +41,36 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// Join Room
-// /ws/JoinRoom/:roomID
+// JoinRoom godoc
+// @Summary      Join a room via WebSocket
+// @Description  Upgrades the HTTP connection to WebSocket and subscribes the caller to the room's message stream.
+//
+//	The client must send **inbound** messages as JSON matching `dto.InboundMessage` and will
+//	receive **outbound** messages matching `dto.OutboundMessage`.
+//
+//	**Inbound message shape**
+//	```json
+//	{ "type": "send" | "edit" | "delete" | "typing", "content": "...", ... }
+//	```
+//
+//	**Outbound message shape**
+//	```json
+//	{ "type": "send", "id": "uuid", "room_id": "uuid", "author_id": "uuid", "content": "...", "sent_at": "..." }
+//	```
+//
+//	**Connection lifecycle**: the server sends a WebSocket ping every ~54 s and expects
+//	a pong reply within 60 s, otherwise the connection is closed.
+//
+// @Tags         websocket
+// @Produce      json
+// @Security     CookieAuth
+// @Param        room_id  path  string  true  "Room ID (UUID)"
+// @Success      101      "Switching Protocols — WebSocket handshake successful"
+// @Failure      400      {object}  map[string]interface{}  "Bad room / hall ID"
+// @Failure      401      {object}  map[string]interface{}  "Not authenticated"
+// @Failure      403      {object}  map[string]interface{}  "Not a hall/room member"
+// @Failure      404      {object}  map[string]interface{}  "Room or hall not found"
+// @Router       /ws/rooms/{room_id} [get]
 func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	// cant trust user with sending their userID, so we fetch it from context
 
@@ -167,8 +195,16 @@ type GetClientRes struct {
 	Username string `json:"username"`
 }
 
-// ws/clients/roomId
-// can be used for listing joined members, for @ tagging
+// GetClients godoc
+// @Summary      List connected clients in a room
+// @Description  Returns the user IDs of every WebSocket client currently connected to the room. Useful for @-mention autocomplete.
+// @Tags         websocket
+// @Produce      json
+// @Security     CookieAuth
+// @Param        room_id  path      string  true  "Room ID (UUID)"
+// @Success      200      {object}  map[string]interface{}
+// @Failure      400      {object}  map[string]interface{}
+// @Router       /ws/clients/{room_id} [get]
 func (h *WebsocketHandler) GetClients(c *gin.Context) {
 
 	var clients []GetClientRes

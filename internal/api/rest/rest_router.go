@@ -155,6 +155,7 @@ func RegisterWebSocketRoutes(r *gin.RouterGroup, hub *ws.Hub, messageService ser
 	wsHandler := ws.NewWebsocketHandler(hub, messageService, hallService, roomService, userService)
 
 	r.GET("/rooms/:room_id", wsHandler.JoinRoom)
+	r.GET("/clients/:room_id")
 
 }
 
