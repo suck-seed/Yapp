@@ -504,8 +504,23 @@ func (s *hallService) DeleteHall(c context.Context, userInfo *auth.UserInfo, hal
 	}
 
 	// everything is valid, go on to DeleteHall
+	deletedHall, err := s.IHallRepository.DeleteHall(ctx, runner, hallID)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorHallNotFound
+		}
+		return nil, utils.ErrorDeletingHall
+	}
 
-	return nil, nil
+	// transaction commit
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	return deletedHall, nil
 }
 
 func (s *hallService) IsUserHallMember(c context.Context, hallID uuid.UUID, userID uuid.UUID) (bool, error) {

@@ -24,7 +24,7 @@ type AttachmentReq struct {
 	FileSize *int64  `json:"file_size" binding:"omitempty"`
 }
 
-type FetchMessagesParams struct {
+type FetchMessagesQuery struct {
 	Limit  int        `form:"limit"`
 	Before *uuid.UUID `form:"before" binding:"omitempty"`
 	After  *uuid.UUID `form:"after" binding:"omitempty"`

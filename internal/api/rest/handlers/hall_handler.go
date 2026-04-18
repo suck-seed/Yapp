@@ -79,7 +79,7 @@ func (h *HallHandler) JoinHall(c *gin.Context) {
 		message = "Join request created successfully"
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": message,
 		"data":    res,
@@ -155,7 +155,7 @@ func (h *HallHandler) DeleteCurrentHall(c *gin.Context) {
 		return
 	}
 
-	res, err := h.IHallService.GetCurrentHall(c.Request.Context(), userInfo, hallID)
+	res, err := h.IHallService.DeleteHall(c.Request.Context(), userInfo, hallID)
 	if err != nil {
 		utils.WriteError(c, err)
 		return

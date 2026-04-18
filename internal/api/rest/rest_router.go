@@ -67,7 +67,6 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 
 		// SINGLE HALL RUD
 		halls.GET("/:hallID", hallHandler.GetCurrentHall)
-		// halls.PATCH("/:hallID", hallHandler.UpdateCurrentHall)
 		halls.DELETE("/:hallID", hallHandler.DeleteCurrentHall)
 
 		// SETTING SCOPE
