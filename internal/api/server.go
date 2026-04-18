@@ -75,26 +75,27 @@ func StartServer(cfg config.AppConfig) {
 	go hub.Run()
 
 	// Routes
-	rest.RegisterAuthRoutes(router, userService)
 
-	api := router.Group("/api/v1")
-	api.Use(func(c *gin.Context) {
-		log.Printf(">>> MIDDLEWARE HIT: %s %s", c.Request.Method, c.Request.URL.Path)
-		c.Next()
-		log.Printf(">>> RESPONSE STATUS: %d", c.Writer.Status())
-	})
-	api.Use(auth.AuthMiddleware())
+	apiv1 := router.Group("/api/v1")
+
+	// ---- PUBLIC ROUTES ,  NO AUTHENTICATION
 	{
-		rest.RegisterUserRoutes(api, userService)
-		rest.RegisterHallRoutes(api, hallService, roleService, banService, inviteService, floorService, roomService, messageService)
-		rest.RegisterMessageRoutes(api, messageService)
-		rest.RegisterInviteRoutes(api, inviteService)
+		rest.RegisterAuthRoutes(apiv1, userService)
+		rest.RegisterInvitePublicRoutes(apiv1, inviteService)
 	}
 
-	wsRouter := router.Group("/ws")
-	wsRouter.Use(auth.AuthMiddleware())
+	// For endpoint with authentication required
+	protectedv1 := apiv1.Group("", auth.AuthMiddleware())
 	{
-		rest.RegisterWebSocketRoutes(wsRouter, &hub, messageService, hallService, roomService, userService)
+		rest.RegisterUserRoutes(protectedv1, userService)
+		rest.RegisterHallRoutes(protectedv1, hallService, roleService, banService, inviteService, floorService, roomService, messageService)
+		rest.RegisterMessageRoutes(protectedv1, messageService)
+		rest.RegisterInvitePrivateRoutes(protectedv1, inviteService)
+	}
+
+	wsHandler := router.Group("/ws", auth.AuthMiddleware())
+	{
+		rest.RegisterWebSocketRoutes(wsHandler, &hub, messageService, hallService, roomService, userService)
 	}
 
 	startGracefully(router, cfg, &hub)
