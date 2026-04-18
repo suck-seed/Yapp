@@ -17,6 +17,17 @@ func NewAuthHandler(userService services.IUserService) *AuthHandler {
 	return &AuthHandler{userService}
 }
 
+// Signup godoc
+// @Summary      Register a new account
+// @Description  Creates a new user account and returns the created user.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        body  body      dto.SignupUserReq          true  "Signup payload"
+// @Success      201   {object}  map[string]interface{}  "Account created"
+// @Failure      400   {object}  map[string]interface{}  "Invalid input"
+// @Failure      409   {object}  map[string]interface{}  "Username / e-mail already taken"
+// @Router       /auth/signup [post]
 func (h *AuthHandler) Signup(c *gin.Context) {
 	u := &dto.SignupUserReq{}
 	if err := c.ShouldBindJSON(u); err != nil {
@@ -35,6 +46,17 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 	})
 }
 
+// Signin godoc
+// @Summary      Sign in
+// @Description  Authenticates a user and sets an HttpOnly `jwt` cookie on success.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        body  body      dto.SigninUserReq          true  "Signin payload"
+// @Success      200   {object}  map[string]interface{}  "Signed in — jwt cookie is set"
+// @Failure      400   {object}  map[string]interface{}  "Invalid input"
+// @Failure      401   {object}  map[string]interface{}  "Wrong credentials"
+// @Router       /auth/signin [post]
 func (h *AuthHandler) Signin(c *gin.Context) {
 	userSignIn := &dto.SigninUserReq{}
 	if err := c.ShouldBindJSON(userSignIn); err != nil {
@@ -74,6 +96,14 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 	})
 }
 
+// Signout godoc
+// @Summary      Sign out
+// @Description  Clears the `jwt` cookie, effectively ending the session.
+// @Tags         auth
+// @Produce      json
+// @Security     CookieAuth
+// @Success      200  {object}  map[string]interface{}  "Signed out"
+// @Router       /auth/signout [post]
 func (h *AuthHandler) Signout(c *gin.Context) {
 
 	isHTTPS := c.GetHeader("X-Forwarded-Proto") == "https"

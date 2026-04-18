@@ -17,13 +17,21 @@ import (
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/services"
 	"github.com/suck-seed/yapp/internal/ws"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func StartServer(cfg config.AppConfig) {
+
+	// Engine instance with the Logger and Recovery middleware already attached.
 	router := gin.Default()
 
 	router.Use(auth.CSRFCookieMiddleware())
 	router.Use(cfg.CORS)
+
+	// --- Swagger UI -------
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// health check
 	router.GET("/health", func(c *gin.Context) {

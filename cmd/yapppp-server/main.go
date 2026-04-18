@@ -1,3 +1,22 @@
+// Package main is the entry point for the Yapp API server.
+//
+// @title           Yapp API
+// @version         1.0
+// @description     Real-time chat + voice application API (REST & WebSocket).
+// @termsOfService  http://swagger.io/terms/
+//
+// @contact.name   Yapp API Support
+// @contact.email  sandeshburner@gmail.com
+//
+// @license.name  MIT
+//
+// @host      localhost:8080
+// @BasePath  /api/v1
+//
+// @securityDefinitions.apikey  CookieAuth
+// @in                          cookie
+// @name                        jwt
+// @description                 JWT token stored in the `jwt` HttpOnly cookie. Set automatically on sign-in.
 package main
 
 import (
@@ -10,9 +29,6 @@ import (
 )
 
 func main() {
-
-	// setting gin SETMODE
-	// gin.SetMode(gin.DebugMode)
 
 	//	get config
 	cfg, err := config.SetupEnvironment()
