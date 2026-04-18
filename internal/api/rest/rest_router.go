@@ -146,8 +146,8 @@ func RegisterInviteRoutes(r *gin.RouterGroup, inviteService services.IInviteServ
 
 	invites := r.Group("/invites")
 	{
-		invites.GET("/:code", inviteHandler.GetInviteLinkInfo)                               // public
-		invites.POST("/:code/accept", auth.AuthMiddleware(), inviteHandler.AcceptInviteLink) // authenticated
+		invites.GET("/:code", inviteHandler.GetInviteLinkInfo)        // public
+		invites.POST("/:code/accept", inviteHandler.AcceptInviteLink) // authenticated
 	}
 }
 

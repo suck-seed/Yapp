@@ -87,8 +87,6 @@ func StartServer(cfg config.AppConfig) {
 	{
 		rest.RegisterUserRoutes(api, userService)
 		rest.RegisterHallRoutes(api, hallService, roleService, banService, inviteService, floorService, roomService, messageService)
-		// rest.RegisterFloorRoutes(api, floorService)
-		// rest.RegisterRoomRoutes(api, roomService)
 		rest.RegisterMessageRoutes(api, messageService)
 		rest.RegisterInviteRoutes(api, inviteService)
 	}

@@ -10,7 +10,8 @@
 //
 // @license.name  MIT
 //
-// @host      localhost:8080
+// @host      yappserver.onrender.com
+// @Schemes   https
 // @BasePath  /api/v1
 //
 // @securityDefinitions.apikey  CookieAuth
@@ -26,6 +27,8 @@ import (
 	"github.com/suck-seed/yapp/config"
 	"github.com/suck-seed/yapp/internal/api"
 	"github.com/suck-seed/yapp/internal/database"
+
+	_ "github.com/suck-seed/yapp/docs" // ← this must be present
 )
 
 func main() {
