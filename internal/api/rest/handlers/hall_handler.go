@@ -900,20 +900,6 @@ func (h *HallHandler) UpdateRolesPermissions(c *gin.Context) {
 	})
 }
 
-// INVITES MANAGEMENT
-
-func (h *HallHandler) GetCurrentInviteLinks(c *gin.Context) {
-
-}
-
-func (h *HallHandler) CreateNewInviteLink(c *gin.Context) {
-
-}
-
-func (h *HallHandler) InvokeInviteLink(c *gin.Context) {
-
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SETTINGS — JOIN REQUESTS
 // ─────────────────────────────────────────────────────────────────────────────

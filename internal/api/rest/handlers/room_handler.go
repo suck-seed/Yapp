@@ -19,8 +19,20 @@ func NewRoomHandler(roomService services.IRoomService) *RoomHandler {
 	return &RoomHandler{roomService}
 }
 
-// ── POST /halls/:hallID/rooms ─────────────────────────────────────────────────
-
+// CreateRoom godoc
+// @Summary      Create a room
+// @Description  Adds a new text or audio room to the hall. Requires ManageChannels permission.
+// @Tags         rooms
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string             true  "Hall ID (UUID)"
+// @Param        body    body      dto.CreateRoomReq  true  "Room details"
+// @Success      201     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Failure      403     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/rooms [post]
 func (h *RoomHandler) CreateRoom(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -52,8 +64,17 @@ func (h *RoomHandler) CreateRoom(c *gin.Context) {
 	})
 }
 
-// ── GET /halls/:hallID/rooms ──────────────────────────────────────────────────
-
+// GetHallRooms godoc
+// @Summary      List rooms in a hall
+// @Description  Returns all rooms the authenticated user can see within the hall.
+// @Tags         rooms
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string  true  "Hall ID (UUID)"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/rooms [get]
 func (h *RoomHandler) GetHallRooms(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -79,8 +100,19 @@ func (h *RoomHandler) GetHallRooms(c *gin.Context) {
 	})
 }
 
-// ── GET /halls/:hallID/rooms/:id ──────────────────────────────────────────────
-
+// GetRoom godoc
+// @Summary      Get a single room
+// @Description  Returns details for one room.
+// @Tags         rooms
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string  true  "Hall ID (UUID)"
+// @Param        roomID  path      string  true  "Room ID (UUID)"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Failure      404     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/rooms/{roomID} [get]
 func (h *RoomHandler) GetRoom(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -112,8 +144,21 @@ func (h *RoomHandler) GetRoom(c *gin.Context) {
 	})
 }
 
-// ── PATCH /halls/:hallID/rooms/:id ────────────────────────────────────────────
-
+// UpdateRoom godoc
+// @Summary      Update a room
+// @Description  Partially updates a room's name, type, floor, or privacy. Requires ManageChannels permission.
+// @Tags         rooms
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string             true  "Hall ID (UUID)"
+// @Param        roomID  path      string             true  "Room ID (UUID)"
+// @Param        body    body      dto.UpdateRoomReq  true  "Fields to update"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Failure      403     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/rooms/{roomID} [patch]
 func (h *RoomHandler) UpdateRoom(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -151,8 +196,19 @@ func (h *RoomHandler) UpdateRoom(c *gin.Context) {
 	})
 }
 
-// ── DELETE /halls/:hallID/rooms/:id ───────────────────────────────────────────
-
+// DeleteRoom godoc
+// @Summary      Delete a room
+// @Description  Permanently deletes a room and all its messages. Requires ManageChannels permission.
+// @Tags         rooms
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string  true  "Hall ID (UUID)"
+// @Param        roomID  path      string  true  "Room ID (UUID)"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Failure      403     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/rooms/{roomID} [delete]
 func (h *RoomHandler) DeleteRoom(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -183,8 +239,21 @@ func (h *RoomHandler) DeleteRoom(c *gin.Context) {
 	})
 }
 
-// ── PUT /halls/:hallID/rooms/:id/move ─────────────────────────────────────────
-
+// MoveRoom godoc
+// @Summary      Reorder a room
+// @Description  Moves a room to a different position or floor. Set `after_id` to null to place it at the top.
+// @Tags         rooms
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string           true  "Hall ID (UUID)"
+// @Param        roomID  path      string           true  "Room ID (UUID)"
+// @Param        body    body      dto.MoveRoomReq  true  "Target position"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Failure      403     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/rooms/{roomID}/move [put]
 func (h *RoomHandler) MoveRoom(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
