@@ -1,16 +1,26 @@
+# syntax=docker/dockerfile:1.7
+
 # ---------- build stage ----------
 FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache git ca-certificates
+#RUN apk add --no-cache git ca-certificates
+RUN apk add --no-cache ca-certificates
 
 COPY go.mod go.sum ./
-RUN go mod download
+
+# LETS DOCKER REUSE MODULE CACHE IF go.mod and go.sum havent changed
+#RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/bin/yapp ./cmd/yapppp-server
+#RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/bin/yapp ./cmd/yapppp-server
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+	go build -trimpath -ldflags="-s -w" -o /app/bin/yapp ./cmd/yapppp-server
 
 # ---------- runtime stage ----------
 FROM alpine:3.20
