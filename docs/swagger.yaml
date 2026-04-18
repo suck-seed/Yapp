@@ -1,0 +1,2443 @@
+basePath: /api/v1
+definitions:
+  dto.BanUserReq:
+    properties:
+      reason:
+        maxLength: 500
+        minLength: 1
+        type: string
+      user_id:
+        type: string
+    required:
+    - reason
+    - user_id
+    type: object
+  dto.CreateFloorReq:
+    properties:
+      hall_id:
+        type: string
+      is_private:
+        type: boolean
+      name:
+        type: string
+    required:
+    - hall_id
+    - is_private
+    - name
+    type: object
+  dto.CreateHallReq:
+    properties:
+      banner_color:
+        type: string
+      description:
+        maxLength: 500
+        type: string
+      icon_thumbnail_url:
+        type: string
+      icon_url:
+        type: string
+      is_private:
+        type: boolean
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  dto.CreateHallRoleReq:
+    properties:
+      color:
+        type: string
+      icon_url:
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  dto.CreateInviteLinkReq:
+    properties:
+      expire_after:
+        allOf:
+        - $ref: '#/definitions/dto.ExpireAfterOption'
+        description: required
+      max_uses:
+        description: nil = no limit; else must be in ValidMaxUses
+        type: integer
+      role_id:
+        description: nil = no role assigned
+        type: string
+    type: object
+  dto.CreateRoomReq:
+    properties:
+      floor_id:
+        type: string
+      hall_id:
+        type: string
+      is_private:
+        type: boolean
+      name:
+        maxLength: 64
+        minLength: 1
+        type: string
+      room_type:
+        enum:
+        - text
+        - audio
+        type: string
+    required:
+    - hall_id
+    - name
+    - room_type
+    type: object
+  dto.ExpireAfterOption:
+    enum:
+    - 30min
+    - 1hr
+    - 6hr
+    - 12hr
+    - 1day
+    - 7days
+    - never
+    type: string
+    x-enum-varnames:
+    - Expire30Min
+    - Expire1Hr
+    - Expire6Hr
+    - Expire12Hr
+    - Expire1Day
+    - Expire7Days
+    - ExpireNever
+  dto.HallProfileUpdateReq:
+    properties:
+      banner_color:
+        type: string
+      description:
+        maxLength: 500
+        type: string
+      is_private:
+        type: boolean
+      name:
+        maxLength: 100
+        minLength: 1
+        type: string
+    type: object
+  dto.MoveFloorReq:
+    properties:
+      after_id:
+        type: string
+      hall_id:
+        type: string
+    required:
+    - hall_id
+    type: object
+  dto.MoveRoomReq:
+    properties:
+      after_id:
+        description: nil = place at top
+        type: string
+      hall_id:
+        type: string
+      new_floor_id:
+        description: nil = top-level
+        type: string
+    required:
+    - hall_id
+    type: object
+  dto.SigninUserReq:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.SignupUserReq:
+    properties:
+      display_name:
+        description: PhoneNumber *string `json:"phone_number" binding:"omitempty"`
+        maxLength: 64
+        minLength: 1
+        type: string
+      email:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      username:
+        maxLength: 32
+        minLength: 3
+        type: string
+    required:
+    - display_name
+    - email
+    - password
+    - username
+    type: object
+  dto.UpdateFloorReq:
+    properties:
+      is_private:
+        type: boolean
+      name:
+        description: Both fields are optional — at least one must be present (enforced
+          in service)
+        type: string
+    type: object
+  dto.UpdateHallMemberNicknameReq:
+    properties:
+      nickname:
+        description: Nickname is required in the JSON body; send "" to clear. Omitted
+          or null returns "no field to update".
+        maxLength: 64
+        type: string
+    type: object
+  dto.UpdateHallMemberRoleReq:
+    properties:
+      role_id:
+        type: string
+    required:
+    - role_id
+    type: object
+  dto.UpdateHallRoleReq:
+    properties:
+      color:
+        type: string
+      icon_url:
+        type: string
+      name:
+        type: string
+    type: object
+  dto.UpdateMessageReq:
+    properties:
+      content:
+        maxLength: 8000
+        minLength: 1
+        type: string
+    required:
+    - content
+    type: object
+  dto.UpdateRolePermissionReq:
+    properties:
+      ban_members:
+        type: boolean
+      change_nickname:
+        type: boolean
+      kick_members:
+        type: boolean
+      manage_channels:
+        type: boolean
+      manage_invites:
+        type: boolean
+      manage_nicknames:
+        type: boolean
+      manage_requests:
+        type: boolean
+      manage_roles:
+        type: boolean
+      manage_servers:
+        type: boolean
+      text_attach_files:
+        type: boolean
+      text_manage_messages:
+        type: boolean
+      text_mention_roles:
+        type: boolean
+      text_read_history:
+        type: boolean
+      text_send_messages:
+        description: Text
+        type: boolean
+      text_send_voice:
+        type: boolean
+      view_channels:
+        description: |-
+          Using pointer to differentiate between not-send through the request and false values
+          General Permissions
+        type: boolean
+      voice_connect:
+        description: Voice
+        type: boolean
+      voice_mute_members:
+        type: boolean
+      voice_speak:
+        type: boolean
+      voice_video:
+        type: boolean
+    type: object
+  dto.UpdateRoomReq:
+    properties:
+      is_private:
+        type: boolean
+      name:
+        maxLength: 64
+        minLength: 1
+        type: string
+    type: object
+host: yappserver.onrender.com
+info:
+  contact:
+    email: sandeshburner@gmail.com
+    name: Yapp API Support
+  description: Real-time chat + voice application API (REST & WebSocket).
+  license:
+    name: MIT
+  termsOfService: http://swagger.io/terms/
+  title: Yapp API
+  version: "1.0"
+paths:
+  /auth/signin:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user and sets an HttpOnly `jwt` cookie on success.
+      parameters:
+      - description: Signin payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SigninUserReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Signed in — jwt cookie is set
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Wrong credentials
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Sign in
+      tags:
+      - auth
+  /auth/signout:
+    post:
+      description: Clears the `jwt` cookie, effectively ending the session.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Signed out
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Sign out
+      tags:
+      - auth
+  /auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account and returns the created user.
+      parameters:
+      - description: Signup payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SignupUserReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Account created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Username / e-mail already taken
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Register a new account
+      tags:
+      - auth
+  /halls:
+    get:
+      description: Returns all halls that the authenticated user is a member of.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: List halls for the current user
+      tags:
+      - halls
+    post:
+      consumes:
+      - application/json
+      description: Creates a new hall owned by the authenticated user.
+      parameters:
+      - description: Hall details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateHallReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Create a hall
+      tags:
+      - halls
+  /halls/{hallID}:
+    delete:
+      description: Permanently deletes the hall. Only the owner may perform this action.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Delete a hall
+      tags:
+      - halls
+    get:
+      description: Returns basic info for a single hall.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Get a hall
+      tags:
+      - halls
+  /halls/{hallID}/floors:
+    get:
+      description: Returns every floor that belongs to the specified hall.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: List all floors in a hall
+      tags:
+      - floors
+    post:
+      consumes:
+      - application/json
+      description: Adds a new floor (category) to the given hall.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Floor details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateFloorReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Create a floor
+      tags:
+      - floors
+  /halls/{hallID}/floors/{floorID}:
+    get:
+      description: Returns the floor identified by {id} inside the given hall.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Floor ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Get a single floor
+      tags:
+      - floors
+  /halls/{hallID}/floors/{id}:
+    delete:
+      description: Permanently removes a floor and all rooms within it.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Floor ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Delete a floor
+      tags:
+      - floors
+    patch:
+      consumes:
+      - application/json
+      description: Partially updates a floor's name or privacy setting.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Floor ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update (all optional)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateFloorReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Update a floor
+      tags:
+      - floors
+  /halls/{hallID}/floors/{id}/move:
+    put:
+      consumes:
+      - application/json
+      description: Moves a floor to a new position. Set `after_id` to null to place
+        it at the top.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Floor ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Target position
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.MoveFloorReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Reorder a floor
+      tags:
+      - floors
+  /halls/{hallID}/join:
+    post:
+      description: For public halls the user joins immediately; for private halls
+        a join-request is created.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: joined or requested
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: banned
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Join or request to join a hall
+      tags:
+      - halls
+  /halls/{hallID}/rooms:
+    get:
+      description: Returns all rooms the authenticated user can see within the hall.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: List rooms in a hall
+      tags:
+      - rooms
+    post:
+      consumes:
+      - application/json
+      description: Adds a new text or audio room to the hall. Requires ManageChannels
+        permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Room details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateRoomReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Create a room
+      tags:
+      - rooms
+  /halls/{hallID}/rooms/{roomID}:
+    delete:
+      description: Permanently deletes a room and all its messages. Requires ManageChannels
+        permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Room ID (UUID)
+        in: path
+        name: roomID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Delete a room
+      tags:
+      - rooms
+    get:
+      description: Returns details for one room.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Room ID (UUID)
+        in: path
+        name: roomID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Get a single room
+      tags:
+      - rooms
+    patch:
+      consumes:
+      - application/json
+      description: Partially updates a room's name, type, floor, or privacy. Requires
+        ManageChannels permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Room ID (UUID)
+        in: path
+        name: roomID
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateRoomReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Update a room
+      tags:
+      - rooms
+  /halls/{hallID}/rooms/{roomID}/move:
+    put:
+      consumes:
+      - application/json
+      description: Moves a room to a different position or floor. Set `after_id` to
+        null to place it at the top.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Room ID (UUID)
+        in: path
+        name: roomID
+        required: true
+        type: string
+      - description: Target position
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.MoveRoomReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Reorder a room
+      tags:
+      - rooms
+  /halls/{hallID}/settings/bans:
+    get:
+      description: Returns all active bans for the hall. Requires BanMembers permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: List banned users
+      tags:
+      - hall-settings
+    post:
+      consumes:
+      - application/json
+      description: Kicks and permanently bans a user from the hall. Requires BanMembers
+        permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Ban payload (user + reason)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.BanUserReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Ban a user
+      tags:
+      - hall-settings
+  /halls/{hallID}/settings/bans/{banID}:
+    delete:
+      description: Lifts an existing ban so the user may rejoin. Requires BanMembers
+        permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Ban ID (UUID)
+        in: path
+        name: banID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Unban a user
+      tags:
+      - hall-settings
+  /halls/{hallID}/settings/invites:
+    get:
+      description: Returns all active invite links for the hall. Requires ManageInvites
+        permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: List invite links for a hall
+      tags:
+      - invites
+    post:
+      consumes:
+      - application/json
+      description: Generates a new invite link with optional expiry and max-use limits.
+        Requires ManageInvites permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Invite options
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateInviteLinkReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Create an invite link
+      tags:
+      - invites
+  /halls/{hallID}/settings/invites/{inviteID}:
+    delete:
+      description: Permanently deletes an invite link so it can no longer be used.
+        Requires ManageInvites permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Invite ID (UUID)
+        in: path
+        name: inviteID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Revoke an invite link
+      tags:
+      - invites
+  /halls/{hallID}/settings/members:
+    get:
+      description: Returns all members of a hall with their roles and nicknames.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: List hall members
+      tags:
+      - hall-settings
+  /halls/{hallID}/settings/members/{memberID}:
+    get:
+      description: Returns a single member's details within a hall.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Member ID (UUID)
+        in: path
+        name: memberID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Get a hall member
+      tags:
+      - hall-settings
+  /halls/{hallID}/settings/members/{memberID}/kick:
+    delete:
+      description: Removes a member from the hall without banning them. Requires KickMembers
+        permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Member ID (UUID)
+        in: path
+        name: memberID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Kick a member from the hall
+      tags:
+      - hall-settings
+  /halls/{hallID}/settings/members/{memberID}/nickname:
+    patch:
+      consumes:
+      - application/json
+      description: Sets or clears a member's display nickname within the hall.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Member ID (UUID)
+        in: path
+        name: memberID
+        required: true
+        type: string
+      - description: Nickname payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateHallMemberNicknameReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Change a member's nickname
+      tags:
+      - hall-settings
+  /halls/{hallID}/settings/members/{memberID}/role:
+    patch:
+      consumes:
+      - application/json
+      description: Assigns a different role to a hall member. Requires ManageRoles
+        permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Member ID (UUID)
+        in: path
+        name: memberID
+        required: true
+        type: string
+      - description: New role
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateHallMemberRoleReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Change a member's role
+      tags:
+      - hall-settings
+  /halls/{hallID}/settings/profile:
+    get:
+      description: Returns the full editable profile for the hall (name, icon, banner,
+        description).
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Get hall profile / settings
+      tags:
+      - hall-settings
+    patch:
+      consumes:
+      - application/json
+      description: Updates the hall name, icon, banner colour, or description.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Profile fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.HallProfileUpdateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Update hall profile
+      tags:
+      - hall-settings
+  /halls/{hallID}/settings/requests:
+    get:
+      description: Returns all outstanding join requests for a private hall.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: List pending join requests
+      tags:
+      - hall-settings
+  /halls/{hallID}/settings/requests/{requestID}:
+    delete:
+      description: Rejects and removes a pending join request. Requires ManageRequests
+        permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Request ID (UUID)
+        in: path
+        name: requestID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Decline a join request
+      tags:
+      - hall-settings
+  /halls/{hallID}/settings/requests/{requestID}/accept:
+    patch:
+      description: Approves a pending join request and adds the user to the hall.
+        Requires ManageRequests permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Request ID (UUID)
+        in: path
+        name: requestID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Accept a join request
+      tags:
+      - hall-settings
+  /halls/{hallID}/settings/roles:
+    get:
+      description: Returns all roles defined for the hall.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: List roles in a hall
+      tags:
+      - hall-settings
+    post:
+      consumes:
+      - application/json
+      description: Creates a new role in the hall. Requires ManageRoles permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Role details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateHallRoleReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Create a role
+      tags:
+      - hall-settings
+  /halls/{hallID}/settings/roles/{roleID}:
+    delete:
+      description: Permanently removes a role from the hall. Requires ManageRoles
+        permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Role ID (UUID)
+        in: path
+        name: roleID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Delete a role
+      tags:
+      - hall-settings
+    get:
+      description: Returns a specific role by ID.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Role ID (UUID)
+        in: path
+        name: roleID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Get a single role
+      tags:
+      - hall-settings
+    patch:
+      consumes:
+      - application/json
+      description: Renames a role or changes its colour / icon. Requires ManageRoles
+        permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Role ID (UUID)
+        in: path
+        name: roleID
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateHallRoleReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Update a role
+      tags:
+      - hall-settings
+  /halls/{hallID}/settings/roles/{roleID}/permissions:
+    get:
+      description: Returns the full permission set for a specific role.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Role ID (UUID)
+        in: path
+        name: roleID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Get role permissions
+      tags:
+      - hall-settings
+    patch:
+      consumes:
+      - application/json
+      description: Overwrites the permission flags for a role. Requires ManageRoles
+        permission.
+      parameters:
+      - description: Hall ID (UUID)
+        in: path
+        name: hallID
+        required: true
+        type: string
+      - description: Role ID (UUID)
+        in: path
+        name: roleID
+        required: true
+        type: string
+      - description: Permission flags
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateRolePermissionReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Update role permissions
+      tags:
+      - hall-settings
+  /invites/{code}:
+    get:
+      description: Returns hall preview info for an invite code without requiring
+        authentication.
+      parameters:
+      - description: Invite code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Invalid or expired code
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get invite info (public)
+      tags:
+      - invites
+  /invites/{code}/accept:
+    post:
+      description: Joins the hall associated with the given invite code. Consumes
+        one use if the link has a max-use limit.
+      parameters:
+      - description: Invite code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Code expired, exhausted, or already a member
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Accept an invite link
+      tags:
+      - invites
+  /rooms/{roomID}/messages:
+    get:
+      description: Returns a paginated list of messages. Use `before`, `after`, or
+        `around` (message UUID) to paginate. Maximum 100 per request.
+      parameters:
+      - description: Room ID (UUID)
+        in: path
+        name: roomID
+        required: true
+        type: string
+      - description: Number of messages (1-100, default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Return messages older than this message ID
+        in: query
+        name: before
+        type: string
+      - description: Return messages newer than this message ID
+        in: query
+        name: after
+        type: string
+      - description: Return messages around this message ID
+        in: query
+        name: around
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Fetch messages in a room
+      tags:
+      - messages
+  /rooms/{roomID}/messages/{messageID}:
+    delete:
+      description: Soft-deletes a message. The author or a member with ManageMessages
+        permission may delete.
+      parameters:
+      - description: Room ID (UUID)
+        in: path
+        name: roomID
+        required: true
+        type: string
+      - description: Message ID (UUID)
+        in: path
+        name: messageID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Delete a message
+      tags:
+      - messages
+    get:
+      description: Returns one message by ID.
+      parameters:
+      - description: Room ID (UUID)
+        in: path
+        name: roomID
+        required: true
+        type: string
+      - description: Message ID (UUID)
+        in: path
+        name: messageID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Get a single message
+      tags:
+      - messages
+    patch:
+      consumes:
+      - application/json
+      description: Updates the content of a message. Only the original author may
+        edit.
+      parameters:
+      - description: Room ID (UUID)
+        in: path
+        name: roomID
+        required: true
+        type: string
+      - description: Message ID (UUID)
+        in: path
+        name: messageID
+        required: true
+        type: string
+      - description: New content
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateMessageReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Edit a message
+      tags:
+      - messages
+  /rooms/{roomID}/messages/{messageID}/reactions/{emoji}:
+    delete:
+      description: Removes the caller's emoji reaction from a message.
+      parameters:
+      - description: Room ID (UUID)
+        in: path
+        name: roomID
+        required: true
+        type: string
+      - description: Message ID (UUID)
+        in: path
+        name: messageID
+        required: true
+        type: string
+      - description: URL-encoded emoji character
+        in: path
+        name: emoji
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Remove a reaction
+      tags:
+      - messages
+    put:
+      description: Adds an emoji reaction to a message. Idempotent — adding the same
+        emoji twice is a no-op.
+      parameters:
+      - description: Room ID (UUID)
+        in: path
+        name: roomID
+        required: true
+        type: string
+      - description: Message ID (UUID)
+        in: path
+        name: messageID
+        required: true
+        type: string
+      - description: "URL-encoded emoji character, e.g. %F0%9F%98%8C for \U0001F60C"
+        in: path
+        name: emoji
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Add a reaction
+      tags:
+      - messages
+  /ws/clients/{room_id}:
+    get:
+      description: Returns the user IDs of every WebSocket client currently connected
+        to the room. Useful for @-mention autocomplete.
+      parameters:
+      - description: Room ID (UUID)
+        in: path
+        name: room_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: List connected clients in a room
+      tags:
+      - websocket
+  /ws/rooms/{room_id}:
+    get:
+      description: Upgrades the HTTP connection to WebSocket and subscribes the caller
+        to the room's message stream.
+      parameters:
+      - description: Room ID (UUID)
+        in: path
+        name: room_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "101":
+          description: Switching Protocols — WebSocket handshake successful
+        "400":
+          description: Bad room / hall ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Not a hall/room member
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Room or hall not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Join a room via WebSocket
+      tags:
+      - websocket
+schemes:
+- https
+securityDefinitions:
+  CookieAuth:
+    description: JWT token stored in the `jwt` HttpOnly cookie. Set automatically
+      on sign-in.
+    in: cookie
+    name: jwt
+    type: apiKey
+swagger: "2.0"
