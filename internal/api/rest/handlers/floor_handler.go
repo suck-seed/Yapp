@@ -19,8 +19,20 @@ func NewFloorHandler(floorService services.IFloorService) *FloorHandler {
 	return &FloorHandler{floorService}
 }
 
-// ── POST /halls/:hallID/floors ────────────────────────────────────────────────
-
+// CreateFloor godoc
+// @Summary      Create a floor
+// @Description  Adds a new floor (category) to the given hall.
+// @Tags         floors
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string               true  "Hall ID (UUID)"
+// @Param        body    body      dto.CreateFloorReq   true  "Floor details"
+// @Success      201     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Failure      403     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/floors [post]
 func (h *FloorHandler) CreateFloor(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -54,8 +66,17 @@ func (h *FloorHandler) CreateFloor(c *gin.Context) {
 	})
 }
 
-// ── GET /halls/:hallID/floors ─────────────────────────────────────────────────
-
+// GetFloors godoc
+// @Summary      List all floors in a hall
+// @Description  Returns every floor that belongs to the specified hall.
+// @Tags         floors
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string  true  "Hall ID (UUID)"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/floors [get]
 func (h *FloorHandler) GetFloors(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -83,8 +104,19 @@ func (h *FloorHandler) GetFloors(c *gin.Context) {
 	})
 }
 
-// ── GET /halls/:hallID/floors/:id ─────────────────────────────────────────────
-
+// GetFloor godoc
+// @Summary      Get a single floor
+// @Description  Returns the floor identified by {id} inside the given hall.
+// @Tags         floors
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string  true  "Hall ID (UUID)"
+// @Param        id path      string  true  "Floor ID (UUID)"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Failure      404     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/floors/{floorID} [get]
 func (h *FloorHandler) GetFloor(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -118,8 +150,21 @@ func (h *FloorHandler) GetFloor(c *gin.Context) {
 	})
 }
 
-// ── PATCH /halls/:hallID/floors/:id ──────────────────────────────────────────
-
+// UpdateFloor godoc
+// @Summary      Update a floor
+// @Description  Partially updates a floor's name or privacy setting.
+// @Tags         floors
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string               true  "Hall ID (UUID)"
+// @Param        id      path      string               true  "Floor ID (UUID)"
+// @Param        body    body      dto.UpdateFloorReq   true  "Fields to update (all optional)"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Failure      403     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/floors/{id} [patch]
 func (h *FloorHandler) UpdateFloor(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -159,8 +204,19 @@ func (h *FloorHandler) UpdateFloor(c *gin.Context) {
 	})
 }
 
-// ── DELETE /halls/:hallID/floors/:id ─────────────────────────────────────────
-
+// DeleteFloor godoc
+// @Summary      Delete a floor
+// @Description  Permanently removes a floor and all rooms within it.
+// @Tags         floors
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string  true  "Hall ID (UUID)"
+// @Param        id      path      string  true  "Floor ID (UUID)"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Failure      403     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/floors/{id} [delete]
 func (h *FloorHandler) DeleteFloor(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -193,8 +249,21 @@ func (h *FloorHandler) DeleteFloor(c *gin.Context) {
 	})
 }
 
-// ── PUT /halls/:hallID/floors/:id/move ────────────────────────────────────────
-
+// MoveFloor godoc
+// @Summary      Reorder a floor
+// @Description  Moves a floor to a new position. Set `after_id` to null to place it at the top.
+// @Tags         floors
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string             true  "Hall ID (UUID)"
+// @Param        id      path      string             true  "Floor ID (UUID)"
+// @Param        body    body      dto.MoveFloorReq   true  "Target position"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Failure      403     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/floors/{id}/move [put]
 func (h *FloorHandler) MoveFloor(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {

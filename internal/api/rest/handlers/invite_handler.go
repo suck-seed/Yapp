@@ -20,7 +20,18 @@ func NewInviteHandler(inviteService services.IInviteService) *InviteHandler {
 	return &InviteHandler{inviteService}
 }
 
-// GET /halls/:hallID/settings/invites
+// ListInviteLinks godoc
+// @Summary      List invite links for a hall
+// @Description  Returns all active invite links for the hall. Requires ManageInvites permission.
+// @Tags         invites
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string  true  "Hall ID (UUID)"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Failure      403     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/settings/invites [get]
 func (h *InviteHandler) ListInviteLinks(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -46,7 +57,20 @@ func (h *InviteHandler) ListInviteLinks(c *gin.Context) {
 	})
 }
 
-// POST /halls/:hallID/settings/invites
+// CreateInviteLink godoc
+// @Summary      Create an invite link
+// @Description  Generates a new invite link with optional expiry and max-use limits. Requires ManageInvites permission.
+// @Tags         invites
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string                    true  "Hall ID (UUID)"
+// @Param        body    body      dto.CreateInviteLinkReq   true  "Invite options"
+// @Success      201     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Failure      403     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/settings/invites [post]
 func (h *InviteHandler) CreateInviteLink(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -79,7 +103,19 @@ func (h *InviteHandler) CreateInviteLink(c *gin.Context) {
 	})
 }
 
-// DELETE /halls/:hallID/settings/invites/:inviteID
+// RevokeInviteLink godoc
+// @Summary      Revoke an invite link
+// @Description  Permanently deletes an invite link so it can no longer be used. Requires ManageInvites permission.
+// @Tags         invites
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID    path      string  true  "Hall ID (UUID)"
+// @Param        inviteID  path      string  true  "Invite ID (UUID)"
+// @Success      200       {object}  map[string]interface{}
+// @Failure      400       {object}  map[string]interface{}
+// @Failure      401       {object}  map[string]interface{}
+// @Failure      403       {object}  map[string]interface{}
+// @Router       /halls/{hallID}/settings/invites/{inviteID} [delete]
 func (h *InviteHandler) RevokeInviteLink(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
@@ -110,8 +146,19 @@ func (h *InviteHandler) RevokeInviteLink(c *gin.Context) {
 	})
 }
 
-// GET /invites/:code  — public, no auth required
+// GetInviteLinkInfo godoc
+// @Summary      Get invite info (public)
+// @Description  Returns hall preview info for an invite code without requiring authentication.
+// @Tags         invites
+// @Produce      json
+// @Param        code  path      string  true  "Invite code"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      404   {object}  map[string]interface{}  "Invalid or expired code"
+// @Router       /invites/{code} [get]
 func (h *InviteHandler) GetInviteLinkInfo(c *gin.Context) {
+
+	// GET /invites/:code  — public, no auth required
+
 	code := c.Param("code")
 	res, err := h.inviteService.GetInviteLinkInfo(c.Request.Context(), code)
 	if err != nil {
@@ -125,7 +172,17 @@ func (h *InviteHandler) GetInviteLinkInfo(c *gin.Context) {
 	})
 }
 
-// POST /invites/:code/accept  — requires auth
+// AcceptInviteLink godoc
+// @Summary      Accept an invite link
+// @Description  Joins the hall associated with the given invite code. Consumes one use if the link has a max-use limit.
+// @Tags         invites
+// @Produce      json
+// @Security     CookieAuth
+// @Param        code  path      string  true  "Invite code"
+// @Success      202   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}  "Code expired, exhausted, or already a member"
+// @Failure      401   {object}  map[string]interface{}
+// @Router       /invites/{code}/accept [post]
 func (h *InviteHandler) AcceptInviteLink(c *gin.Context) {
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
