@@ -17,6 +17,7 @@ type IHallRepository interface {
 	// core cud
 	CreateHall(ctx context.Context, db database.DBRunner, hall *models.Hall) (*models.Hall, error)                         // C
 	CreateHallMember(ctx context.Context, db database.DBRunner, hallMember *models.HallMember) (*models.HallMember, error) // C
+	DeleteHall(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error)                          // D
 
 	// list operation
 	GetUserHallIDs(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]uuid.UUID, error) // R
@@ -127,6 +128,33 @@ func (r *hallRepository) CreateHallMember(ctx context.Context, db database.DBRun
 	}
 
 	return saved, nil
+}
+
+func (r *hallRepository) DeleteHall(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error) {
+	query := `
+		DELETE FROM halls
+		WHERE id = $1
+		RETURNING id, name, is_private, icon_url, icon_thumbnail_url, banner_color, description, created_at, updated_at, owner_id
+	`
+
+	hall := &models.Hall{}
+	err := db.QueryRow(ctx, query, hallID).Scan(
+		&hall.ID,
+		&hall.Name,
+		&hall.IsPrivate,
+		&hall.IconURL,
+		&hall.IconThumbnailURL,
+		&hall.BannerColor,
+		&hall.Description,
+		&hall.CreatedAt,
+		&hall.UpdatedAt,
+		&hall.OwnerID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return hall, nil
 }
 
 func (r *hallRepository) GetUserHallIDs(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]uuid.UUID, error) {

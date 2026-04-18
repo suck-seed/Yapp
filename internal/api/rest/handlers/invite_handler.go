@@ -39,7 +39,7 @@ func (h *InviteHandler) ListInviteLinks(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Current Invite Links",
 		"data":    res,
@@ -103,7 +103,7 @@ func (h *InviteHandler) RevokeInviteLink(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Invite link revoked sucessfully",
 		"data":    res,
@@ -118,7 +118,7 @@ func (h *InviteHandler) GetInviteLinkInfo(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Invite Links fetched successfully",
 		"data":    res,
@@ -140,7 +140,7 @@ func (h *InviteHandler) AcceptInviteLink(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{
+	c.JSON(http.StatusAccepted, gin.H{
 		"success": true,
 		"message": "Invite accepted successfully",
 		"data":    res,

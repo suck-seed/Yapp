@@ -95,7 +95,8 @@ var (
 	// RESOURCE DELETION ERRORS
 	// =========================
 	ErrorCannotDeleteHall      = &AppError{Code: http.StatusUnauthorized, Message: "Only Hall owner can delete hall"}
-	ErrorCannotDeleteRoleInUse = &AppError{Code: http.StatusConflict, Message: "Cannot delete a role that is still assigned to hall members"}
+	ErrorCannotDeleteRoleInUse = &AppError{Code: http.StatusUnauthorized, Message: "Cannot delete a role that is still assigned to hall members"}
+	ErrorDeletingHall          = &AppError{Code: http.StatusUnauthorized, Message: "Error occured while deleting the hall"}
 
 	// =========================
 	// NOT FOUND ERRORS

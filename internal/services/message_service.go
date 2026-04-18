@@ -19,7 +19,7 @@ import (
 
 type IMessageService interface {
 	CreateMessage(c context.Context, req *dto.CreateMessageReq) (*dto.CreateMessageRes, error)
-	FetchMessages(c context.Context, userInfo *auth.UserInfo, roomID uuid.UUID, params *dto.FetchMessagesParams) (*dto.MessageListResponse, error)
+	FetchMessages(c context.Context, userInfo *auth.UserInfo, roomID uuid.UUID, params *dto.FetchMessagesQuery) (*dto.MessageListResponse, error)
 	GetMessage(c context.Context, userInfo *auth.UserInfo, roomID uuid.UUID, messageID uuid.UUID) (*dto.MessageDetailed, error)
 	UpdateMessage(c context.Context, userInfo *auth.UserInfo, roomID uuid.UUID, messageID uuid.UUID, req *dto.UpdateMessageReq) (*dto.MessageDetailed, error)
 	DeleteMessage(c context.Context, userInfo *auth.UserInfo, roomID uuid.UUID, messageID uuid.UUID) error
@@ -234,7 +234,7 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 
 // ── FetchMessages ─────────────────────────────────────────────────────────────
 
-func (s *messageService) FetchMessages(c context.Context, userInfo *auth.UserInfo, roomID uuid.UUID, params *dto.FetchMessagesParams) (*dto.MessageListResponse, error) {
+func (s *messageService) FetchMessages(c context.Context, userInfo *auth.UserInfo, roomID uuid.UUID, params *dto.FetchMessagesQuery) (*dto.MessageListResponse, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 

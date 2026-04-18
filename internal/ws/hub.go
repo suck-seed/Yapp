@@ -167,6 +167,8 @@ func (h *Hub) unregisterClient(client *Client) {
 func (h *Hub) processTextMessage(msg *dto.InboundMessage) {
 
 	outboundingMsg, err := h.PersistFunc(context.Background(), msg)
+
+	// handle any error occured during message creation
 	if err != nil {
 		errMsg := &dto.OutboundMessage{
 			Type:     dto.MessageTypeError,

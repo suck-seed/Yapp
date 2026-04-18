@@ -35,15 +35,15 @@ func (h *MessageHandler) FetchMessages(c *gin.Context) {
 		return
 	}
 
-	params := &dto.FetchMessagesParams{}
+	query := &dto.FetchMessagesQuery{}
 
 	limitStr := c.DefaultQuery("limit", "50")
-	params.Limit, err = strconv.Atoi(limitStr)
-	if err != nil || params.Limit <= 0 {
-		params.Limit = 50
+	query.Limit, err = strconv.Atoi(limitStr)
+	if err != nil || query.Limit <= 0 {
+		query.Limit = 50
 	}
-	if params.Limit > 100 {
-		params.Limit = 100
+	if query.Limit > 100 {
+		query.Limit = 100
 	}
 
 	if beforeStr := c.Query("before"); beforeStr != "" {
@@ -52,7 +52,7 @@ func (h *MessageHandler) FetchMessages(c *gin.Context) {
 			utils.WriteError(c, utils.ErrorInvalidInput)
 			return
 		}
-		params.Before = &id
+		query.Before = &id
 	}
 
 	if afterStr := c.Query("after"); afterStr != "" {
@@ -61,7 +61,7 @@ func (h *MessageHandler) FetchMessages(c *gin.Context) {
 			utils.WriteError(c, utils.ErrorInvalidInput)
 			return
 		}
-		params.After = &id
+		query.After = &id
 	}
 
 	if aroundStr := c.Query("around"); aroundStr != "" {
@@ -70,10 +70,10 @@ func (h *MessageHandler) FetchMessages(c *gin.Context) {
 			utils.WriteError(c, utils.ErrorInvalidInput)
 			return
 		}
-		params.Around = &id
+		query.Around = &id
 	}
 
-	res, err := h.IMessageService.FetchMessages(c.Request.Context(), userInfo, roomID, params)
+	res, err := h.IMessageService.FetchMessages(c.Request.Context(), userInfo, roomID, query)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
