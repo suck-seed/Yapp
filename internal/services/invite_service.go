@@ -240,7 +240,7 @@ func (s *inviteService) RevokeInviteLink(ctx context.Context, userInfo *auth.Use
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			return nil, utils.ErrorRequestTimeout
 		}
-		return nil, utils.ErrorInternal
+		return nil, err
 	}
 	if !canManage {
 		return nil, utils.ErrorUserCannotManageInvites
@@ -324,16 +324,16 @@ func (s *inviteService) GetInviteLinkInfo(ctx context.Context, code string) (*dt
 	}
 
 	return &dto.InviteInfoRes{
-		Code:      inv.Code,
-		HallID:    inv.HallID,
-		HallName:  hall.Name,
-		HallImage: *hall.IconThumbnailURL,
-		RoleID:    inv.RoleID,
-		RoleName:  roleName,
-		MaxUses:   inv.MaxUses,
-		UsedCount: inv.UsedCount,
-		ExpiresAt: inv.ExpiresAt,
-		IsValid:   inv.IsValid(),
+		Code:             inv.Code,
+		HallID:           inv.HallID,
+		HallName:         hall.Name,
+		IconThumbnailURL: hall.IconThumbnailURL,
+		RoleID:           inv.RoleID,
+		RoleName:         &roleName,
+		MaxUses:          inv.MaxUses,
+		UsedCount:        inv.UsedCount,
+		ExpiresAt:        inv.ExpiresAt,
+		IsValid:          inv.IsValid(),
 	}, nil
 }
 
@@ -373,7 +373,7 @@ func (s *inviteService) AcceptInviteLink(ctx context.Context, userInfo *auth.Use
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			return nil, utils.ErrorRequestTimeout
 		}
-		return nil, utils.ErrorTest1
+		return nil, utils.ErrorFetchingHallMembers
 	}
 	if isMember {
 		return nil, utils.ErrorAlreadyHallMember
@@ -397,12 +397,33 @@ func (s *inviteService) AcceptInviteLink(ctx context.Context, userInfo *auth.Use
 		return nil, utils.ErrorTest3
 	}
 
-	member, err := s.IHallRepository.CreateHallMember(ctx, runner, &models.HallMember{
+	// If invite assigned role is nil, we fetch the default role for the current hall and pass it in
+	var assignedRoleID uuid.UUID
+
+	if updated.RoleID == nil {
+		role, err := s.IRoleRepository.GetHallDefaultRole(ctx, runner, updated.HallID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, utils.ErrorRoleNotFound
+			}
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingRole
+		}
+		assignedRoleID = role.ID
+	} else {
+		assignedRoleID = *updated.RoleID
+	}
+
+	hallMember := &models.HallMember{
 		ID:     memberID,
 		HallID: updated.HallID,
 		UserID: userInfo.ID,
-		RoleID: *updated.RoleID, // nil if no role was set on the invite, repo handles it
-	})
+		RoleID: assignedRoleID,
+	}
+
+	member, err := s.IHallRepository.CreateHallMember(ctx, runner, hallMember)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			return nil, utils.ErrorRequestTimeout

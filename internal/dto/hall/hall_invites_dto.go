@@ -60,16 +60,16 @@ type InviteLinkRes struct {
 // InviteInfoRes is the public-facing response when a user opens an invite link.
 // No omitempty — every field is always present.
 type InviteInfoRes struct {
-	Code      string     `json:"code"`
-	HallID    uuid.UUID  `json:"hall_id"`
-	HallName  string     `json:"hall_name"`
-	HallImage string     `json:"hall_image"`
-	RoleID    *uuid.UUID `json:"role_id"`
-	RoleName  string     `json:"role_name"` // empty string when no role, not omitted
-	MaxUses   *int       `json:"max_uses"`
-	UsedCount int        `json:"used_count"`
-	ExpiresAt *time.Time `json:"expires_at"`
-	IsValid   bool       `json:"is_valid"`
+	Code             string     `json:"code"`
+	HallID           uuid.UUID  `json:"hall_id"`
+	HallName         string     `json:"hall_name"`
+	IconThumbnailURL *string    `json:"icon_thumbnail_url"`
+	RoleID           *uuid.UUID `json:"role_id"`
+	RoleName         *string    `json:"role_name"` // empty string when no role, not omitted
+	MaxUses          *int       `json:"max_uses"`
+	UsedCount        int        `json:"used_count"`
+	ExpiresAt        *time.Time `json:"expires_at"`
+	IsValid          bool       `json:"is_valid"`
 }
 
 // AcceptInviteLinkRes is returned after a successful join via invite.
