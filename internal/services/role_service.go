@@ -180,6 +180,8 @@ func (s *roleService) CreateHallRole(ctx context.Context, userInfo *auth.UserInf
 		iconPtr = i
 	}
 
+	// validate is_admin and is_default settings
+
 	roleID, err := uuid.NewV7()
 	if err != nil {
 		return nil, utils.ErrorInternal
@@ -391,7 +393,7 @@ func (s *roleService) canCreateHallRole(ctx context.Context, runner database.DBR
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			return false, utils.ErrorRequestTimeout
 		}
-		return false, utils.ErrorInternal
+		return false, utils.ErrorFetchingHallMembers
 	}
 
 	memberRole, err := s.IRoleRepository.GetRole(ctx, runner, member.RoleID)

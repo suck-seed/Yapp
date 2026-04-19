@@ -132,10 +132,11 @@ func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req
 		BannerColor:      canonBannerColor,
 		Description:      canonDescription,
 		OwnerID:          userInfo.ID,
+		IsPrivate:        req.IsPrivate,
 	}
 
 	// pass to repo
-	hall, err := s.IHallRepository.CreateHall(ctx, runner, newHall)
+	hallCRES, err := s.IHallRepository.CreateHall(ctx, runner, newHall)
 	if err != nil {
 		return nil, utils.ErrorCreatingHall
 	}
@@ -149,7 +150,7 @@ func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req
 	// package a role struct
 	creatorRole := &models.Role{
 		ID:      roleId,
-		HallID:  hall.ID,
+		HallID:  hallCRES.ID,
 		Name:    HALLCREATORROLENAME,
 		IsAdmin: true,
 	}
@@ -184,7 +185,7 @@ func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req
 
 	defaultRole := &models.Role{
 		ID:        defaultRoleID,
-		HallID:    hall.ID,
+		HallID:    hallCRES.ID,
 		Name:      HALLDEFAULTROLENAME,
 		IsDefault: true,
 		IsAdmin:   false,
@@ -224,7 +225,7 @@ func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req
 	// package a hall-member struct
 	newHallMember := &models.HallMember{
 		ID:     hallMemberID,
-		HallID: hall.ID,
+		HallID: hallCRES.ID,
 		UserID: userInfo.ID,
 		RoleID: creatorRoleCRES.ID,
 	}
@@ -241,15 +242,16 @@ func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req
 	}
 
 	return &dto.CreateHallRes{
-		ID:               hall.ID,
-		Name:             hall.Name,
-		IconURL:          hall.IconURL,
-		IconThumbnailURL: hall.IconThumbnailURL,
-		BannerColor:      hall.BannerColor,
-		Description:      hall.Description,
-		CreatedAt:        hall.CreatedAt,
-		UpdatedAt:        hall.UpdatedAt,
-		OwnerID:          hall.OwnerID,
+		ID:               hallCRES.ID,
+		Name:             hallCRES.Name,
+		IconURL:          hallCRES.IconURL,
+		IconThumbnailURL: hallCRES.IconThumbnailURL,
+		BannerColor:      hallCRES.BannerColor,
+		Description:      hallCRES.Description,
+		CreatedAt:        hallCRES.CreatedAt,
+		UpdatedAt:        hallCRES.UpdatedAt,
+		OwnerID:          hallCRES.OwnerID,
+		IsPrivate:        hallCRES.IsPrivate,
 	}, nil
 }
 func (s *hallService) JoinHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*dto.JoinHallRes, error) {
