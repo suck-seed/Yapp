@@ -82,14 +82,15 @@ var (
 	// =========================
 	// RESOURCE FETCHING ERRORS
 	// =========================
-	ErrorFetchingRoom       = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Room Information"}
-	ErrorFetchingUser       = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching User Information"}
-	ErrorFetchingMessages   = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Messages Information"}
-	ErrorFetchingHall       = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Hall Information"}
-	ErrorFetchingFloor      = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Floor Information"}
-	ErrorFetchingBan        = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Ban Information"}
-	ErrorFetchingRole       = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Role Information"}
-	ErrorFetchingPermission = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Permissions Information"}
+	ErrorFetchingRoom        = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Room Information"}
+	ErrorFetchingUser        = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching User Information"}
+	ErrorFetchingMessages    = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Messages Information"}
+	ErrorFetchingHall        = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Hall Information"}
+	ErrorFetchingHallMembers = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Hall Members"}
+	ErrorFetchingFloor       = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Floor Information"}
+	ErrorFetchingBan         = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Ban Information"}
+	ErrorFetchingRole        = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Role Information"}
+	ErrorFetchingPermission  = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Permissions Information"}
 
 	// ========================= RESOURCE UPDATING ERRORS
 	// =========================

@@ -194,10 +194,11 @@ func (h *InviteHandler) AcceptInviteLink(c *gin.Context) {
 
 	res, err := h.inviteService.AcceptInviteLink(c.Request.Context(), userInfo, code)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.WriteError(c, err)
 		return
 	}
 	c.JSON(http.StatusAccepted, gin.H{
+		"code":    http.StatusCreated,
 		"success": true,
 		"message": "Invite accepted successfully",
 		"data":    res,
