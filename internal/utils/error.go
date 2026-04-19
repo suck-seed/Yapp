@@ -54,20 +54,21 @@ var (
 	// =========================
 	// REQUEST VALIDATION ERRORS
 	// =========================
-	ErrorInvalidInput             = &AppError{Code: http.StatusBadRequest, Message: "Invalid Data"}
-	ErrorInvalidUserName          = &AppError{Code: http.StatusBadRequest, Message: "Invalid Username"}
-	ErrorInvalidHallName          = &AppError{Code: http.StatusBadRequest, Message: "Invalid Hall Name"}
-	ErrorInvalidFloorName         = &AppError{Code: http.StatusBadRequest, Message: "Invalid Floor Name"}
-	ErrorInvalidEmail             = &AppError{Code: http.StatusBadRequest, Message: "Invalid Email"}
-	ErrorInvalidPhoneNumber       = &AppError{Code: http.StatusBadRequest, Message: "Invalid Phone Number"}
-	ErrorInvalidDisplayName       = &AppError{Code: http.StatusBadRequest, Message: "Invalid Display Name"}
-	ErrorInvalidPassword          = &AppError{Code: http.StatusBadRequest, Message: "Invalid Password Format"}
-	ErrorPasswordWhiteSpace       = &AppError{Code: http.StatusBadRequest, Message: "Password has whitespace"}
-	ErrorInvalidIDFormart         = &AppError{Code: http.StatusBadRequest, Message: "Error, Invalid ID format"}
-	ErrorInvalidRoomType          = &AppError{Code: http.StatusBadRequest, Message: "Invalid Room Type"}
-	ErrorInvalidBannerColor       = &AppError{Code: http.StatusBadRequest, Message: "Invalid banner color"}
-	ErrorInvalidCursorCombination = &AppError{Code: http.StatusBadRequest, Message: "Invalid cursor combination, Only 1 cursor is to be sent !"}
-	ErrorInvalidCursorLimit       = &AppError{Code: http.StatusBadRequest, Message: "Invalid cursor Limit, Has to be > 0 !"}
+	ErrorInvalidInput                    = &AppError{Code: http.StatusBadRequest, Message: "Invalid Data"}
+	ErrorCannotBeBothDefaultAndAdminRole = &AppError{Code: http.StatusBadRequest, Message: "A role cannot be both default and admin"}
+	ErrorInvalidUserName                 = &AppError{Code: http.StatusBadRequest, Message: "Invalid Username"}
+	ErrorInvalidHallName                 = &AppError{Code: http.StatusBadRequest, Message: "Invalid Hall Name"}
+	ErrorInvalidFloorName                = &AppError{Code: http.StatusBadRequest, Message: "Invalid Floor Name"}
+	ErrorInvalidEmail                    = &AppError{Code: http.StatusBadRequest, Message: "Invalid Email"}
+	ErrorInvalidPhoneNumber              = &AppError{Code: http.StatusBadRequest, Message: "Invalid Phone Number"}
+	ErrorInvalidDisplayName              = &AppError{Code: http.StatusBadRequest, Message: "Invalid Display Name"}
+	ErrorInvalidPassword                 = &AppError{Code: http.StatusBadRequest, Message: "Invalid Password Format"}
+	ErrorPasswordWhiteSpace              = &AppError{Code: http.StatusBadRequest, Message: "Password has whitespace"}
+	ErrorInvalidIDFormart                = &AppError{Code: http.StatusBadRequest, Message: "Error, Invalid ID format"}
+	ErrorInvalidRoomType                 = &AppError{Code: http.StatusBadRequest, Message: "Invalid Room Type"}
+	ErrorInvalidBannerColor              = &AppError{Code: http.StatusBadRequest, Message: "Invalid banner color"}
+	ErrorInvalidCursorCombination        = &AppError{Code: http.StatusBadRequest, Message: "Invalid cursor combination, Only 1 cursor is to be sent !"}
+	ErrorInvalidCursorLimit              = &AppError{Code: http.StatusBadRequest, Message: "Invalid cursor Limit, Has to be > 0 !"}
 
 	// =========================
 	// RESOURCE CREATION ERRORS
@@ -138,6 +139,9 @@ var (
 	ErrorCannotBanHallOwner         = &AppError{Code: http.StatusBadRequest, Message: "Cannot ban the hall owner"}
 	ErrorCannotKickYourself         = &AppError{Code: http.StatusBadRequest, Message: "Cannot remove yourself from the hall"}
 	ErrorCannotBanYourself          = &AppError{Code: http.StatusBadRequest, Message: "Cannot ban yourself"}
+	ErrorDefaultRoleAlreadyExists   = &AppError{Code: http.StatusBadRequest, Message: "Default role already exists"}
+	ErrorAdminRoleAlreadyExists     = &AppError{Code: http.StatusBadRequest, Message: "Admin role already exists"}
+	ErrorOwnerRoleAlreadyExists     = &AppError{Code: http.StatusBadRequest, Message: "Owner role already exists"}
 
 	// =========================
 	// PERMISSION ERRORS
@@ -154,7 +158,13 @@ var (
 	ErrorUnauthorizedToUpdateHall          = &AppError{Code: http.StatusUnauthorized, Message: "Not Authorized to update hall"}
 	ErrorCannotUpdateDefaultRolePermission = &AppError{Code: http.StatusUnauthorized, Message: "Default Role's Permissions cannot be updated"}
 	ErrorCannotUpdateAdminRolePermission   = &AppError{Code: http.StatusUnauthorized, Message: "Admin Role's Permissions cannot be updated"}
-	ErrorCannotModifyProtectedHallRole     = &AppError{Code: http.StatusUnauthorized, Message: "Cannot modify or delete the default or admin hall role"}
+	ErrorCannotUpdateHallCreatorsRole      = &AppError{Code: http.StatusUnauthorized, Message: "Cannot update the hall creator's role"}
+	ErrorCannotDeleteHallCreatorsRole      = &AppError{Code: http.StatusUnauthorized, Message: "Cannot delete the hall creator's role"}
+	ErrorCannotDeleteDefaultRole           = &AppError{Code: http.StatusUnauthorized, Message: "Cannot delete the hall default's role"}
+	ErrorNotEnoughPrivlageToDeleteAdmin    = &AppError{Code: http.StatusUnauthorized, Message: "User's role does not have privlate to delete admin role"}
+	ErrorCannotModifyAdminRole             = &AppError{Code: http.StatusUnauthorized, Message: "User's role does not have privlage to update admin role"}
+	ErrorCannotCreateAdminRole             = &AppError{Code: http.StatusUnauthorized, Message: "User's role does not have privlage to create admin role"}
+	ErrorCannotUpdateAdminRole             = &AppError{Code: http.StatusUnauthorized, Message: "User's role does not have privlage to update admin role"}
 
 	// =========================
 	// INVITE ERRORS

@@ -23,8 +23,9 @@ type IRoleRepository interface {
 	UpdateRolePermissions(ctx context.Context, db database.DBRunner, permissions *models.RolePermission) (*models.RolePermission, error)
 	DeleteRolePermissions(ctx context.Context, db database.DBRunner, roleID uuid.UUID) (*models.RolePermission, error)
 
-	// -------------------------------------- USER PERMISSION IN HALL CHECK
+	// -------------------------------------- USER PERMISSION/ROLE IN HALL CHECK
 	GetUserPermissionsInHall(ctx context.Context, db database.DBRunner, hallID, userID uuid.UUID) (*models.RolePermission, error)
+	GetUsersRoleInHall(ctx context.Context, db database.DBRunner, hallID, userID uuid.UUID) (*models.Role, error)
 
 	// ------------------------------------- BULK OPERATION
 	GetMultipleRolePermissions(ctx context.Context, db database.DBRunner, roleIDs []uuid.UUID) (map[uuid.UUID]*models.RolePermission, error)
@@ -476,6 +477,45 @@ func (r *roleRepository) GetUserPermissionsInHall(ctx context.Context, db databa
 	}
 
 	return permissions, nil
+}
+func (r *roleRepository) GetUsersRoleInHall(ctx context.Context, db database.DBRunner, hallID, userID uuid.UUID) (*models.Role, error) {
+	query := `
+		SELECT
+			r.id,
+			r.hall_id,
+			r.name,
+			r.color,
+			r.icon_url,
+			r.is_default,
+			r.is_admin,
+			r.created_at,
+			r.updated_at
+		FROM hall_members hm
+		JOIN roles r
+			ON hm.role_id = r.id
+		   AND r.hall_id = hm.hall_id
+		WHERE hm.hall_id = $1
+		  AND hm.user_id = $2
+		LIMIT 1
+	`
+
+	role := &models.Role{}
+	err := db.QueryRow(ctx, query, hallID, userID).Scan(
+		&role.ID,
+		&role.HallID,
+		&role.Name,
+		&role.Color,
+		&role.IconURL,
+		&role.IsDefault,
+		&role.IsAdmin,
+		&role.CreatedAt,
+		&role.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return role, nil
 }
 
 // ------------------------------------- BULK OPERATION

@@ -145,12 +145,38 @@ func (s *roleService) CreateHallRole(ctx context.Context, userInfo *auth.UserInf
 	runner := database.NewTxWrapper(tx)
 	defer runner.Rollback(ctx)
 
-	can, err := s.canCreateHallRole(ctx, runner, userInfo.ID, hallID)
+	canCreateHallRole, err := s.CanManageRoles(ctx, runner, userInfo.ID, hallID)
 	if err != nil {
 		return nil, err
 	}
-	if !can {
+	if !canCreateHallRole {
 		return nil, utils.ErrorUserCannotCreateHallRoles
+	}
+
+	ownerID, err := s.IHallRepository.GetHallOwnerID(ctx, runner, hallID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorHallNotFound
+		}
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHall
+	}
+	isRequestingUserOwner := ownerID == userInfo.ID
+
+	var requesterRole *models.Role
+	if !isRequestingUserOwner {
+		requesterRole, err = s.IRoleRepository.GetUsersRoleInHall(ctx, runner, hallID, userInfo.ID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, utils.ErrorUserDoesntBelongHall
+			}
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingRole
+		}
 	}
 
 	nameIn := req.Name
@@ -181,6 +207,59 @@ func (s *roleService) CreateHallRole(ctx context.Context, userInfo *auth.UserInf
 	}
 
 	// validate is_admin and is_default settings
+	isRoleBeingCreatedDefault := false
+	if req.IsDefault != nil {
+		isRoleBeingCreatedDefault = *req.IsDefault
+	}
+
+	isRoleBeingCreatedAdmin := false
+	if req.IsAdmin != nil {
+		isRoleBeingCreatedAdmin = *req.IsAdmin
+	}
+
+	// both cannot be true
+	if isRoleBeingCreatedDefault && isRoleBeingCreatedAdmin {
+		return nil, utils.ErrorCannotBeBothDefaultAndAdminRole
+	}
+
+	// only owner and admin can create admin role
+	// role being created is admin and requesting user isnt owner
+	if isRoleBeingCreatedAdmin && !isRequestingUserOwner {
+
+		// further check if requesting user's role isAdmin
+		if requesterRole == nil || !requesterRole.IsAdmin {
+			// requester user's role isnt admin
+			return nil, utils.ErrorCannotCreateAdminRole
+		}
+	}
+
+	// only one default role per hall
+	if isRoleBeingCreatedDefault {
+		existingDefault, err := s.IRoleRepository.GetHallDefaultRole(ctx, runner, hallID)
+		if err == nil && existingDefault != nil {
+			return nil, utils.ErrorDefaultRoleAlreadyExists
+		}
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingRole
+		}
+	}
+
+	// only one admin role per hall
+	if isRoleBeingCreatedAdmin {
+		existingAdmin, err := s.IRoleRepository.GetHallAdminRole(ctx, runner, hallID)
+		if err == nil && existingAdmin != nil {
+			return nil, utils.ErrorAdminRoleAlreadyExists
+		}
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingRole
+		}
+	}
 
 	roleID, err := uuid.NewV7()
 	if err != nil {
@@ -193,8 +272,8 @@ func (s *roleService) CreateHallRole(ctx context.Context, userInfo *auth.UserInf
 		Name:      *sanName,
 		Color:     colorPtr,
 		IconURL:   iconPtr,
-		IsDefault: false,
-		IsAdmin:   false,
+		IsDefault: isRoleBeingCreatedDefault,
+		IsAdmin:   isRoleBeingCreatedAdmin,
 	}
 
 	saved, err := s.IRoleRepository.CreateRole(ctx, runner, newRole)
@@ -209,7 +288,15 @@ func (s *roleService) CreateHallRole(ctx context.Context, userInfo *auth.UserInf
 		return nil, utils.ErrorCreatingHallRole
 	}
 
-	perms := defaultRolePermissions(saved.ID)
+	var perms *models.RolePermission
+	// if admin -> admin Role Permissions -> all true
+	if saved.IsAdmin {
+		perms = adminRolePermissions(saved.ID)
+	} else {
+		// default role permissions for all other roles
+		perms = defaultRolePermissions(saved.ID)
+	}
+
 	if _, err := s.IRoleRepository.CreateRolePermissions(ctx, runner, perms); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			return nil, utils.ErrorRequestTimeout
@@ -228,7 +315,11 @@ func (s *roleService) UpdateHallRole(ctx context.Context, userInfo *auth.UserInf
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
-	if req.Name == nil && req.Color == nil && req.IconURL == nil {
+	if req.Name == nil &&
+		req.Color == nil &&
+		req.IconURL == nil &&
+		req.IsDefault == nil &&
+		req.IsAdmin == nil {
 		return nil, utils.ErrorNoFieldsToUpdate
 	}
 
@@ -247,7 +338,7 @@ func (s *roleService) UpdateHallRole(ctx context.Context, userInfo *auth.UserInf
 		return nil, utils.ErrorUserCannotManageRoles
 	}
 
-	role, err := s.IRoleRepository.GetRole(ctx, runner, roleID)
+	oldRoleCRES, err := s.IRoleRepository.GetRole(ctx, runner, roleID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorRoleNotFound
@@ -257,14 +348,67 @@ func (s *roleService) UpdateHallRole(ctx context.Context, userInfo *auth.UserInf
 		}
 		return nil, utils.ErrorFetchingRole
 	}
-	if role.HallID != hallID {
+
+	// does updating role belongs to current hallID scope
+	if oldRoleCRES.HallID != hallID {
 		return nil, utils.ErrorRoleDoesntBelongInThisHall
 	}
-	if role.IsDefault || role.IsAdmin {
-		return nil, utils.ErrorCannotModifyProtectedHallRole
+
+	// Validate Role and Permissions Hierarchy
+	ownerID, err := s.IHallRepository.GetHallOwnerID(ctx, runner, hallID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		// filtering NoRows -> hall always has an owner
+
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHall
+	}
+	isRequestingUserOwner := ownerID == userInfo.ID
+
+	var requesterRole *models.Role
+	if !isRequestingUserOwner {
+		requesterRole, err = s.IRoleRepository.GetUsersRoleInHall(ctx, runner, hallID, userInfo.ID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, utils.ErrorUserDoesntBelongHall
+			}
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingRole
+		}
 	}
 
-	updated := *role
+	// Fetch Owner role
+	ownerRole, err := s.IRoleRepository.GetHallOwnerRole(ctx, runner, hallID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingRole
+	}
+
+	// making sure nobody can edit owner role
+	if ownerRole != nil && roleID == ownerRole.ID {
+		return nil, utils.ErrorCannotUpdateHallCreatorsRole
+	}
+
+	// only owner and admin can create admin role
+	// role being created is admin and requesting user isnt owner
+	if oldRoleCRES.IsAdmin && !isRequestingUserOwner {
+
+		// further check if requesting user's role isAdmin
+		if requesterRole == nil || !requesterRole.IsAdmin {
+			// requester user's role isnt admin
+			return nil, utils.ErrorCannotUpdateAdminRole
+		}
+	}
+
+	// Sanatize
+	updated := *oldRoleCRES
+	// updating role is the instance of role being updated in db
+	// now, update part which are sent from frontend
 	if req.Name != nil {
 		san, err := utils.SanitizeText(req.Name)
 		if err != nil {
@@ -290,7 +434,67 @@ func (s *roleService) UpdateHallRole(ctx context.Context, userInfo *auth.UserInf
 		updated.IconURL = i
 	}
 
-	saved, err := s.IRoleRepository.UpdateRole(ctx, runner, &updated)
+	// Check Validity of the bools
+	if req.IsDefault != nil {
+		updated.IsDefault = *req.IsDefault
+	}
+
+	if req.IsAdmin != nil {
+		updated.IsAdmin = *req.IsAdmin
+	}
+
+	// cannot be both
+	if updated.IsDefault && updated.IsAdmin {
+		return nil, utils.ErrorInvalidInput
+	}
+
+	// only owner and admin can update a role to admin
+	// Checks Here
+	// 1. IsAdmin from request isnt nil
+	// 2. request contains IsAdmin
+	// 3. Updating role isnt already admin
+	if req.IsAdmin != nil && *req.IsAdmin && !oldRoleCRES.IsAdmin && !isRequestingUserOwner {
+
+		// Checking for possiblity of requesting user's role being admin
+		if requesterRole == nil || !requesterRole.IsAdmin {
+			return nil, utils.ErrorCannotModifyAdminRole
+		}
+
+	}
+
+	// make sure only 1 default role
+	if updated.IsDefault && !oldRoleCRES.IsDefault {
+		existingDefault, err := s.IRoleRepository.GetHallDefaultRole(ctx, runner, hallID)
+
+		// if existing default isnt nil, default role already exists
+		if err == nil && existingDefault != nil && existingDefault.ID != roleID {
+			return nil, utils.ErrorDefaultRoleAlreadyExists
+		}
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingRole
+		}
+
+	}
+
+	// only one admin role
+	// is updated says IsAdmin & already existing version isnt admin
+	if updated.IsAdmin && !oldRoleCRES.IsAdmin {
+		existingAdmin, err := s.IRoleRepository.GetHallAdminRole(ctx, runner, hallID)
+		if err == nil && existingAdmin != nil && existingAdmin.ID != roleID {
+			return nil, utils.ErrorAdminRoleAlreadyExists
+		}
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingRole
+		}
+	}
+
+	updatedRoleCRES, err := s.IRoleRepository.UpdateRole(ctx, runner, &updated)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorRoleNotFound
@@ -305,11 +509,27 @@ func (s *roleService) UpdateHallRole(ctx context.Context, userInfo *auth.UserInf
 		return nil, utils.ErrorInternal
 	}
 
+	// if prompted to admin, enable all permissions
+	// if old db version says !IsAdmin, but updated says IsAdmin
+	if !oldRoleCRES.IsAdmin && updatedRoleCRES.IsAdmin {
+		adminPerms := adminRolePermissions(updatedRoleCRES.ID)
+		if _, err := s.IRoleRepository.UpdateRolePermissions(ctx, runner, adminPerms); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, utils.ErrorPermissionsNotFound
+			}
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorUpdatingPermissions
+		}
+
+	}
+
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
 
-	return hallRoleToDTO(saved), nil
+	return hallRoleToDTO(updatedRoleCRES), nil
 }
 
 func (s *roleService) DeleteHallRole(ctx context.Context, userInfo *auth.UserInfo, hallID, roleID uuid.UUID) (*dto.HallRoleRes, error) {
@@ -331,7 +551,7 @@ func (s *roleService) DeleteHallRole(ctx context.Context, userInfo *auth.UserInf
 		return nil, utils.ErrorUserCannotManageRoles
 	}
 
-	role, err := s.IRoleRepository.GetRole(ctx, runner, roleID)
+	oldRoleCRES, err := s.IRoleRepository.GetRole(ctx, runner, roleID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorRoleNotFound
@@ -341,14 +561,62 @@ func (s *roleService) DeleteHallRole(ctx context.Context, userInfo *auth.UserInf
 		}
 		return nil, utils.ErrorFetchingRole
 	}
-	if role.HallID != hallID {
+	if oldRoleCRES.HallID != hallID {
 		return nil, utils.ErrorRoleDoesntBelongInThisHall
 	}
-	if role.IsDefault || role.IsAdmin {
-		return nil, utils.ErrorCannotModifyProtectedHallRole
+
+	ownerID, err := s.IHallRepository.GetHallOwnerID(ctx, runner, hallID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorHallNotFound
+		}
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHall
+	}
+	isRequestingUserHallOwner := ownerID == userInfo.ID
+
+	var requesterRole *models.Role
+	if !isRequestingUserHallOwner {
+		requesterRole, err = s.IRoleRepository.GetUsersRoleInHall(ctx, runner, hallID, userInfo.ID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, utils.ErrorUserDoesntBelongHall
+			}
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingRole
+		}
 	}
 
-	deleted, err := s.IRoleRepository.DeleteRole(ctx, runner, roleID)
+	ownerRole, err := s.IRoleRepository.GetHallOwnerRole(ctx, runner, hallID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingRole
+	}
+
+	// Cannot delete owner role
+	if ownerRole != nil && ownerRole.ID == roleID {
+		return nil, utils.ErrorCannotDeleteHallCreatorsRole
+	}
+
+	// Cannot delete default role
+	if oldRoleCRES.IsDefault {
+		return nil, utils.ErrorCannotDeleteDefaultRole
+	}
+
+	// Only admin or owner can delete admin role
+	if oldRoleCRES.IsAdmin && !isRequestingUserHallOwner {
+		if requesterRole == nil || !requesterRole.IsAdmin {
+			return nil, utils.ErrorNotEnoughPrivlageToDeleteAdmin
+		}
+	}
+
+	deletedRoleCRES, err := s.IRoleRepository.DeleteRole(ctx, runner, roleID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorRoleNotFound
@@ -367,50 +635,7 @@ func (s *roleService) DeleteHallRole(ctx context.Context, userInfo *auth.UserInf
 		return nil, utils.ErrorInternal
 	}
 
-	return hallRoleToDTO(deleted), nil
-}
-
-func (s *roleService) canCreateHallRole(ctx context.Context, runner database.DBRunner, userID, hallID uuid.UUID) (bool, error) {
-	ownerID, err := s.IHallRepository.GetHallOwnerID(ctx, runner, hallID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorHallNotFound
-		}
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return false, utils.ErrorRequestTimeout
-		}
-		return false, utils.ErrorFetchingHall
-	}
-	if ownerID == userID {
-		return true, nil
-	}
-
-	member, err := s.IHallRepository.GetHallMemberByUserID(ctx, runner, hallID, userID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorUserDoesntBelongHall
-		}
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return false, utils.ErrorRequestTimeout
-		}
-		return false, utils.ErrorFetchingHallMembers
-	}
-
-	memberRole, err := s.IRoleRepository.GetRole(ctx, runner, member.RoleID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, utils.ErrorRoleNotFound
-		}
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return false, utils.ErrorRequestTimeout
-		}
-		return false, utils.ErrorFetchingRole
-	}
-	if memberRole.IsAdmin {
-		return true, nil
-	}
-
-	return s.CanManageRoles(ctx, runner, userID, hallID)
+	return hallRoleToDTO(deletedRoleCRES), nil
 }
 
 func hallRoleToDTO(r *models.Role) *dto.HallRoleRes {
@@ -826,7 +1051,7 @@ func (s *roleService) applyPermissionUpdates(current *models.RolePermission, upd
 	if updates.ManageInvites != nil {
 		updated.ManageInvites = *updates.ManageInvites
 	}
-	if updates.ManageInvites != nil {
+	if updates.ManageRequests != nil {
 		updated.ManageRequests = *updates.ManageRequests
 	}
 	if updates.ChangeNickname != nil {
