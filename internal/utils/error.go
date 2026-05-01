@@ -219,6 +219,14 @@ var (
 	ErrorJoinRequestAlreadyExists      = &AppError{Code: http.StatusConflict, Message: "A pending join request already exists for this hall"}
 	ErrorCannotRequestPublicHall       = &AppError{Code: http.StatusBadRequest, Message: "Join requests are only allowed for private halls"}
 	ErrorJoinRequestDoesntBelongToHall = &AppError{Code: http.StatusBadRequest, Message: "Join Request does not belong to this hall"}
+
+	// FRIENDSHIP
+	ErrorFriendAlreadyExists               = &AppError{Code: http.StatusBadRequest, Message: "Users are already friends"}
+	ErrorFriendNotFound                    = &AppError{Code: http.StatusNotFound, Message: "Friend relationship not found"}
+	ErrorFriendRequestAlreadyExists        = &AppError{Code: http.StatusBadRequest, Message: "Friend request already exists"}
+	ErrorFriendRequestNotFound             = &AppError{Code: http.StatusNotFound, Message: "Friend request not found"}
+	ErrorAppLinkNotFound                   = &AppError{Code: http.StatusNotFound, Message: "App link not found"}
+	ErrorUnauthorizedToHandleFriendRequest = &AppError{Code: http.StatusNotFound, Message: "Cannot handle other user's Friend Requests"}
 )
 
 // Writing Errors from handlers to client

@@ -27,26 +27,29 @@ func RegisterUserRoutes(r *gin.RouterGroup, userService services.IUserService) {
 	// make instance of userHandler
 	userHandler := handlers.NewUserHandler(userService)
 
-	// for public
 	userGroup := r.Group("/users")
 	{
 		userGroup.GET("/", userHandler.Ping)
-		userGroup.GET("/:user_id")
-		userGroup.GET("/:user_id/mutual")
-		userGroup.POST("/")
+		userGroup.GET("/:user_id", userHandler.GetUserByID)
+		userGroup.GET("/:user_id/mutual", auth.AuthMiddleware(), userHandler.GetMutualFriends)
 	}
 
-	// private (me operation)
 	meGroup := r.Group("/me")
+	meGroup.Use(auth.AuthMiddleware())
 	{
-		// get my profile
 		meGroup.GET("/", userHandler.GetUserMe)
-		// update my profile (display, phone, avatar, friend_policy)
 		meGroup.PATCH("/", userHandler.UpdateUserMe)
-		// soft delete my profile
-		meGroup.DELETE("/")
-		meGroup.PATCH("/username")
-		meGroup.PATCH("/email")
+		meGroup.DELETE("/", userHandler.DeleteMe)
+		meGroup.PATCH("/username", userHandler.UpdateUsername)
+		meGroup.PATCH("/email", userHandler.UpdateEmail)
+
+		meGroup.GET("/friends", userHandler.GetMyFriends)
+		meGroup.POST("/friends/requests", userHandler.SendFriendRequest)
+		meGroup.PATCH("/friends/requests/:request_id", userHandler.RespondFriendRequest)
+		meGroup.DELETE("/friends/:user_id", userHandler.Unfriend)
+
+		meGroup.PUT("/app-links", userHandler.UpsertMyAppLink)
+		meGroup.DELETE("/app-links/:provider", userHandler.DeleteMyAppLink)
 	}
 
 }
