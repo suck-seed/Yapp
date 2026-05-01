@@ -71,7 +71,8 @@ func StartServer(cfg config.AppConfig) {
 	inviteService := services.NewInviteService(inviteRepository, hallRepository, roleRepository, permissionCheckerService, cfg.PostgresPool)
 
 	presistFunction := ws.MakePresistFunction(messageService, userService)
-	hub := ws.NewHub(presistFunction)
+	readRecieptFunction := ws.MakeReadReceiptFunction(messageService)
+	hub := ws.NewHub(presistFunction, readRecieptFunction)
 	go hub.Run()
 
 	// Routes

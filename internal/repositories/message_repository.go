@@ -34,6 +34,10 @@ type IMessageRepository interface {
 	// Reactions
 	AddReaction(ctx context.Context, db database.DBRunner, reactionID uuid.UUID, messageID uuid.UUID, userID uuid.UUID, emoji string) error
 	RemoveReaction(ctx context.Context, db database.DBRunner, messageID uuid.UUID, userID uuid.UUID, emoji string) (bool, error)
+
+	// Message Reads
+	MarkMessageRead(ctx context.Context, db database.DBRunner, roomID uuid.UUID, userID uuid.UUID, messageID uuid.UUID) (*models.MessageRead, error)
+	GetMessageRead(ctx context.Context, db database.DBRunner, roomID uuid.UUID, userID uuid.UUID) (*models.MessageRead, error)
 }
 
 type messageRepository struct{}
@@ -571,4 +575,74 @@ func (r *messageRepository) UpdateMessage(ctx context.Context, db database.DBRun
 
 func (r *messageRepository) DeleteMessage(ctx context.Context, db database.DBRunner, message *models.Message) error {
 	return nil
+}
+
+// --- MESSAGE READ --------------------------------------------------------------
+// internal/repositories/message_repository.go
+
+func (r *messageRepository) MarkMessageRead(
+	ctx context.Context,
+	db database.DBRunner,
+	roomID uuid.UUID,
+	userID uuid.UUID,
+	messageID uuid.UUID,
+) (*models.MessageRead, error) {
+	query := `
+		INSERT INTO message_reads (room_id, user_id, message_id, read_at)
+		VALUES ($1, $2, $3, now())
+		ON CONFLICT (room_id, user_id)
+		DO UPDATE SET
+			message_id = EXCLUDED.message_id,
+			read_at = now(),
+			updated_at = now()
+		WHERE (
+			SELECT sent_at FROM messages WHERE id = EXCLUDED.message_id
+		) >= (
+			SELECT sent_at FROM messages WHERE id = message_reads.message_id
+		)
+		RETURNING room_id, user_id, message_id, read_at, created_at, updated_at
+	`
+
+	out := &models.MessageRead{}
+	err := db.QueryRow(ctx, query, roomID, userID, messageID).Scan(
+		&out.RoomID,
+		&out.UserID,
+		&out.MessageID,
+		&out.ReadAt,
+		&out.CreatedAt,
+		&out.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+func (r *messageRepository) GetMessageRead(
+	ctx context.Context,
+	db database.DBRunner,
+	roomID uuid.UUID,
+	userID uuid.UUID,
+) (*models.MessageRead, error) {
+	query := `
+		SELECT room_id, user_id, message_id, read_at, created_at, updated_at
+		FROM message_reads
+		WHERE room_id = $1 AND user_id = $2
+	`
+
+	out := &models.MessageRead{}
+	err := db.QueryRow(ctx, query, roomID, userID).Scan(
+		&out.RoomID,
+		&out.UserID,
+		&out.MessageID,
+		&out.ReadAt,
+		&out.CreatedAt,
+		&out.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }

@@ -24,20 +24,22 @@ type Hub struct {
 	Outbound chan *dto.OutboundMessage
 
 	// Persistence callback
-	PersistFunc PersistFunction
+	PersistFunc     PersistFunction
+	ReadReceiptFunc ReadReceiptFunction
 
 	mu sync.RWMutex
 }
 
 // Creates a New Presistent working Hub
-func NewHub(p PersistFunction) Hub {
+func NewHub(p PersistFunction, r ReadReceiptFunction) Hub {
 	return Hub{
-		Rooms:       make(map[uuid.UUID]*Room),
-		Register:    make(chan *Client, 1024),
-		Unregister:  make(chan *Client, 1024),
-		Inbound:     make(chan *dto.InboundMessage, 1024),
-		Outbound:    make(chan *dto.OutboundMessage, 1024),
-		PersistFunc: p,
+		Rooms:           make(map[uuid.UUID]*Room),
+		Register:        make(chan *Client, 1024),
+		Unregister:      make(chan *Client, 1024),
+		Inbound:         make(chan *dto.InboundMessage, 1024),
+		Outbound:        make(chan *dto.OutboundMessage, 1024),
+		PersistFunc:     p,
+		ReadReceiptFunc: r,
 	}
 }
 
@@ -201,7 +203,7 @@ func (h *Hub) processTypingIndicator(msg *dto.InboundMessage) {
 		RoomID:     msg.RoomID,
 		AuthorID:   msg.UserID,
 		SentAt:     time.Now(),
-		TypingUser: msg.UserID,
+		TypingUser: &msg.UserID,
 	}
 
 	select {
@@ -232,6 +234,40 @@ func (h *Hub) processTypingIndicator(msg *dto.InboundMessage) {
 }
 
 func (h *Hub) processReadReciept(msg *dto.InboundMessage) {
+	if msg.MessageID == nil {
+		errMsg := &dto.OutboundMessage{
+			Type:     dto.MessageTypeError,
+			RoomID:   msg.RoomID,
+			AuthorID: msg.UserID,
+			Error:    "message_id is required for read receipt",
+			SentAt:   time.Now(),
+		}
+		h.sendToUser(msg.UserID, msg.RoomID, errMsg)
+		return
+	}
+
+	out, err := h.ReadReceiptFunc(context.Background(), msg)
+	if err != nil {
+		errMsg := &dto.OutboundMessage{
+			Type:     dto.MessageTypeError,
+			RoomID:   msg.RoomID,
+			AuthorID: msg.UserID,
+			Error:    err.Error(),
+			SentAt:   time.Now(),
+		}
+		h.sendToUser(msg.UserID, msg.RoomID, errMsg)
+		return
+	}
+
+	if out == nil {
+		return
+	}
+
+	select {
+	case h.Outbound <- out:
+	default:
+		log.Printf("Could not broadcast read receipt for user %s", msg.UserID)
+	}
 
 }
 

@@ -69,3 +69,10 @@ type MessageListResponse struct {
 	Messages []*MessageDetailed `json:"messages"`
 	HasMore  bool               `json:"has_more"`
 }
+
+type MessageReadRes struct {
+	RoomID    uuid.UUID `json:"room_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	MessageID uuid.UUID `json:"message_id"`
+	ReadAt    time.Time `json:"read_at"`
+}
