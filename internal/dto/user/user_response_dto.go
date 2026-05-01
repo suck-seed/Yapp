@@ -27,6 +27,11 @@ type UserPublic struct {
 	DisplayName        string    `json:"display_name"`
 	AvatarURL          *string   `json:"avatar_url"`
 	AvatarThumbnailURL *string   `json:"avatar_thumbnail_url"`
+	Description        *string   `json:"description"`
+	AppLinks           []AppLink `json:"app_links"`
+	FriendCount        int       `json:"friend_count"`
+	MutualFriendCount  int       `json:"mutual_friend_count,omitempty"`
+	IsFriend           bool      `json:"is_friend"`
 }
 
 type UserMe struct {
@@ -39,38 +44,44 @@ type UserMe struct {
 	AvatarThumbnailURL *string   `json:"avatar_thumbnail_url"`
 	Description        *string   `json:"description"`
 	FriendPolicy       string    `json:"friend_policy"`
-	Active             bool      `json:"active"`
-	//LastSeen     *time.Time          `json:"last_seen,omitempty"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	AppLinks           []AppLink `json:"app_links"`
+	CreatedAt          string    `json:"created_at"`
+	UpdatedAt          string    `json:"updated_at"`
 }
 
-// For app links on response
 type AppLink struct {
-	Provider Provider `json:"provider"`
-	URL      string   `json:"url"`
-	Show     bool     `json:"show_on_profile"`
+	Provider models.AppProvider `json:"provider"`
+	URL      string             `json:"url"`
+	Show     bool               `json:"show_on_profile"`
 }
 
-// Auth token
-type AuthToken struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int64  `json:"expires_in"`
-	TokenType    string `json:"token_type"` // e.g., "Bearer"
+type FriendRequestRes struct {
+	ID        uuid.UUID  `json:"id"`
+	Sender    UserPublic `json:"sender"`
+	Receiver  UserPublic `json:"receiver"`
+	CreatedAt time.Time  `json:"created_at"`
 }
 
-type AuthResponse struct {
-	User  UserMe    `json:"user"`
-	Token AuthToken `json:"token"`
+type MutualFriendRes struct {
+	Users []*UserPublic `json:"users"`
+	Total int           `json:"total"`
 }
 
-type UsernameAvailabilityResponse struct {
-	Username  string `json:"username"`
-	Available bool   `json:"available"`
+type FriendListRes struct {
+	Users []*UserPublic `json:"users"`
+	Total int           `json:"total"`
 }
 
-// Func to convert model.User to public and private
+type UpsertAppLinkRes struct {
+	ID            uuid.UUID          `json:"id"`
+	UserID        uuid.UUID          `json:"user_id"`
+	Provider      models.AppProvider `json:"provider"`
+	URL           string             `json:"url"`
+	ShowOnProfile bool               `json:"show_on_profile"`
+	CreatedAt     time.Time          `json:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at"`
+}
+
 func ToUserPublic(u models.User) UserPublic {
 	return UserPublic{
 		ID:                 u.ID,
@@ -78,11 +89,14 @@ func ToUserPublic(u models.User) UserPublic {
 		DisplayName:        u.DisplayName,
 		AvatarURL:          u.AvatarURL,
 		AvatarThumbnailURL: u.AvatarThumbnailURL,
+		Description:        u.Description,
+		AppLinks:           []AppLink{},
+		FriendCount:        0,
+		IsFriend:           false,
 	}
 }
 
 func ToUserMe(u models.User) UserMe {
-
 	return UserMe{
 		ID:                 u.ID,
 		Username:           u.Username,
@@ -93,9 +107,8 @@ func ToUserMe(u models.User) UserMe {
 		AvatarThumbnailURL: u.AvatarThumbnailURL,
 		Description:        u.Description,
 		FriendPolicy:       string(u.FriendPolicy),
-		Active:             u.Active,
-		// LastSeen:     u.LastSeen,
-		CreatedAt: u.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
+		AppLinks:           []AppLink{},
+		CreatedAt:          u.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:          u.UpdatedAt.Format(time.RFC3339),
 	}
 }

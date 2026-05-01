@@ -9,8 +9,8 @@ CREATE TABLE users (
     avatar_url text,
     avatar_thumbnail_url text,
     friend_policy friend_policy DEFAULT 'everyone',
-    active boolean NOT NULL DEFAULT false, -- consider derived via Redis; keep for compatibility
-    last_seen timestamptz,
+    -- active boolean NOT NULL DEFAULT false, -- consider derived via Redis; keep for compatibility
+    -- last_seen timestamptz,
 
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()

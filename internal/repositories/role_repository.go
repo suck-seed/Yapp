@@ -11,7 +11,6 @@ import (
 
 type IRoleRepository interface {
 	// ---------------------------------------- ROLE
-	// Role CUD
 	CreateRole(ctx context.Context, db database.DBRunner, hallRole *models.Role) (*models.Role, error)
 	GetRole(ctx context.Context, db database.DBRunner, roleID uuid.UUID) (*models.Role, error)
 	GetAllRole(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.Role, error)
@@ -19,20 +18,22 @@ type IRoleRepository interface {
 	DeleteRole(ctx context.Context, db database.DBRunner, roleID uuid.UUID) (*models.Role, error)
 
 	// --------------------------------------- PERMISSION
-	// Permission CUD
 	CreateRolePermissions(ctx context.Context, db database.DBRunner, permissions *models.RolePermission) (*models.RolePermission, error)
 	GetRolePermissions(ctx context.Context, db database.DBRunner, roleID uuid.UUID) (*models.RolePermission, error)
 	UpdateRolePermissions(ctx context.Context, db database.DBRunner, permissions *models.RolePermission) (*models.RolePermission, error)
 	DeleteRolePermissions(ctx context.Context, db database.DBRunner, roleID uuid.UUID) (*models.RolePermission, error)
 
-	// -------------------------------------- USER PERMISSIOIN IN HALL CHECK
+	// -------------------------------------- USER PERMISSION/ROLE IN HALL CHECK
 	GetUserPermissionsInHall(ctx context.Context, db database.DBRunner, hallID, userID uuid.UUID) (*models.RolePermission, error)
+	GetUsersRoleInHall(ctx context.Context, db database.DBRunner, hallID, userID uuid.UUID) (*models.Role, error)
 
 	// ------------------------------------- BULK OPERATION
 	GetMultipleRolePermissions(ctx context.Context, db database.DBRunner, roleIDs []uuid.UUID) (map[uuid.UUID]*models.RolePermission, error)
 
 	// ------------------------------------- CHECKING OPERATION
 	GetHallDefaultRole(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Role, error)
+	GetHallAdminRole(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Role, error)
+	GetHallOwnerRole(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Role, error)
 	DoesRoleExist(ctx context.Context, db database.DBRunner, roleID uuid.UUID, hallID uuid.UUID) (bool, error)
 
 	// ------ PERMISSION CHECKER (GENERIC)
@@ -477,6 +478,45 @@ func (r *roleRepository) GetUserPermissionsInHall(ctx context.Context, db databa
 
 	return permissions, nil
 }
+func (r *roleRepository) GetUsersRoleInHall(ctx context.Context, db database.DBRunner, hallID, userID uuid.UUID) (*models.Role, error) {
+	query := `
+		SELECT
+			r.id,
+			r.hall_id,
+			r.name,
+			r.color,
+			r.icon_url,
+			r.is_default,
+			r.is_admin,
+			r.created_at,
+			r.updated_at
+		FROM hall_members hm
+		JOIN roles r
+			ON hm.role_id = r.id
+		   AND r.hall_id = hm.hall_id
+		WHERE hm.hall_id = $1
+		  AND hm.user_id = $2
+		LIMIT 1
+	`
+
+	role := &models.Role{}
+	err := db.QueryRow(ctx, query, hallID, userID).Scan(
+		&role.ID,
+		&role.HallID,
+		&role.Name,
+		&role.Color,
+		&role.IconURL,
+		&role.IsDefault,
+		&role.IsAdmin,
+		&role.CreatedAt,
+		&role.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return role, nil
+}
 
 // ------------------------------------- BULK OPERATION
 func (r *roleRepository) GetMultipleRolePermissions(ctx context.Context, db database.DBRunner, roleIDs []uuid.UUID) (map[uuid.UUID]*models.RolePermission, error) {
@@ -537,6 +577,63 @@ func (r *roleRepository) GetHallDefaultRole(ctx context.Context, db database.DBR
 		SELECT id, hall_id, name, color, icon_url, is_default, is_admin, created_at, updated_at
 		FROM roles
 		WHERE hall_id = $1 AND is_default = true
+		LIMIT 1
+	`
+
+	role := &models.Role{}
+	err := db.QueryRow(ctx, query, hallID).Scan(
+		&role.ID,
+		&role.HallID,
+		&role.Name,
+		&role.Color,
+		&role.IconURL,
+		&role.IsDefault,
+		&role.IsAdmin,
+		&role.CreatedAt,
+		&role.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return role, nil
+}
+
+func (r *roleRepository) GetHallAdminRole(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Role, error) {
+	query := `
+		SELECT id, hall_id, name, color, icon_url, is_default, is_admin, created_at, updated_at
+		FROM roles
+		WHERE hall_id = $1 AND is_admin = true
+		LIMIT 1
+	`
+
+	role := &models.Role{}
+	err := db.QueryRow(ctx, query, hallID).Scan(
+		&role.ID,
+		&role.HallID,
+		&role.Name,
+		&role.Color,
+		&role.IconURL,
+		&role.IsDefault,
+		&role.IsAdmin,
+		&role.CreatedAt,
+		&role.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return role, nil
+}
+
+func (r *roleRepository) GetHallOwnerRole(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Role, error) {
+	query := `
+		SELECT r.id, r.hall_id, r.name, r.color, r.icon_url, r.is_default, r.is_admin, r.created_at, r.updated_at
+		FROM roles r
+		JOIN hall_members hm ON hm.role_id = r.id
+		JOIN halls h ON h.id = hm.hall_id
+		WHERE h.id = $1
+		  AND hm.user_id = h.owner_id
 		LIMIT 1
 	`
 

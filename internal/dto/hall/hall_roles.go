@@ -8,16 +8,20 @@ import (
 
 // CreateHallRoleReq — POST /halls/:hallID/settings/roles
 type CreateHallRoleReq struct {
-	Name    string  `json:"name" binding:"required"`
-	Color   *string `json:"color"`
-	IconURL *string `json:"icon_url"`
+	Name      string  `json:"name" binding:"required"`
+	Color     *string `json:"color"`
+	IconURL   *string `json:"icon_url"`
+	IsDefault *bool   `json:"is_default"`
+	IsAdmin   *bool   `json:"is_admin"`
 }
 
 // UpdateHallRoleReq — PATCH /halls/:hallID/settings/roles/:roleID
 type UpdateHallRoleReq struct {
-	Name    *string `json:"name"`
-	Color   *string `json:"color"`
-	IconURL *string `json:"icon_url"`
+	Name      *string `json:"name"`
+	Color     *string `json:"color"`
+	IconURL   *string `json:"icon_url"`
+	IsDefault *bool   `json:"is_default"`
+	IsAdmin   *bool   `json:"is_admin"`
 }
 
 // HallRoleRes — role listing and CRUD responses

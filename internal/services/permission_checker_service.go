@@ -75,11 +75,28 @@ func (s *permissionCheckerService) checkPermission(ctx context.Context, runner d
 		return true, nil
 	}
 
+	// giving access to admins
+	userRole, err := s.IRoleRepository.GetUsersRoleInHall(ctx, runner, hallID, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, utils.ErrorUserDoesntBelongHall
+		}
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return false, utils.ErrorRequestTimeout
+		}
+		return false, utils.ErrorFetchingRole
+	}
+
+	if userRole.IsAdmin {
+		return true, nil
+	}
+
 	// Validating column
 	if _, ok := constants.ValidPermissionColumns[permColumn]; !ok {
 		return false, utils.ErrorPermissionsNotFound
 	}
 
+	// for any other role, check
 	allowded, err := s.IRoleRepository.CheckUserPermission(ctx, runner, hallID, userID, permColumn)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

@@ -1,4 +1,4 @@
-CREATE TABLE user_devices (
+CREATE TABLE user_metadatas (
     id uuid PRIMARY KEY,
     user_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     device_id text NOT NULL,
