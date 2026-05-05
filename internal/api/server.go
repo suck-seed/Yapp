@@ -58,11 +58,13 @@ func StartServer(cfg config.AppConfig) {
 	roomRepository := repositories.NewRoomRepository()
 	messageRepository := repositories.NewMessageRepository()
 	inviteRepository := repositories.NewInviteRepository()
+	presenceRepository := repositories.NewPresenceRepository(cfg.RedisClient)
 
 	permissionCheckerService := services.NewPermissionCheckerService(roleRepository, userRepository, hallRepository, banRepository, cfg.PostgresPool)
+	presenceService := services.NewPresenceService(presenceRepository)
 
 	userService := services.NewUserService(userRepository, cfg.PostgresPool)
-	hallService := services.NewHallService(hallRepository, userRepository, roleRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
+	hallService := services.NewHallService(hallRepository, userRepository, roleRepository, banRepository, permissionCheckerService, presenceService, cfg.PostgresPool)
 	floorService := services.NewFloorService(hallRepository, floorRepository, roomRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
 	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
 	roleService := services.NewRoleService(roleRepository, userRepository, hallRepository, banRepository, permissionCheckerService, cfg.PostgresPool)

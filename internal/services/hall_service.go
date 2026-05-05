@@ -59,6 +59,9 @@ type hallService struct {
 	// Permission checker service
 	IPermissionCheckerService
 
+	// Presnece checker service
+	IPresenceService
+
 	pool *pgxpool.Pool
 
 	timeout time.Duration
@@ -71,6 +74,7 @@ func NewHallService(
 	roleRepo repositories.IRoleRepository,
 	banRepo repositories.IBanRepsitory,
 	permissionChecker IPermissionCheckerService,
+	presenceService IPresenceService,
 	pool *pgxpool.Pool,
 
 ) IHallService {
@@ -80,6 +84,7 @@ func NewHallService(
 		roleRepo,
 		banRepo,
 		permissionChecker,
+		presenceService,
 		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
@@ -719,6 +724,10 @@ func (s *hallService) GetHallMembers(c context.Context, userInfo *auth.UserInfo,
 
 	out := make([]*dto.HallMemberRes, 0, len(rows))
 	for _, m := range rows {
+
+		// Fetch the presence of individual hall members
+		presence, _ := s.GetUserPresence(ctx, m.UserID)
+
 		out = append(out, &dto.HallMemberRes{
 			ID:        m.ID,
 			HallID:    m.HallID,
@@ -727,6 +736,9 @@ func (s *hallService) GetHallMembers(c context.Context, userInfo *auth.UserInfo,
 			Nickname:  m.Nickname,
 			JoinedAt:  m.JoinedAt,
 			UpdatedAt: m.UpdatedAt,
+
+			// patch user presnce
+			Presence: presence,
 		})
 	}
 
@@ -766,6 +778,9 @@ func (s *hallService) GetHallMember(c context.Context, userInfo *auth.UserInfo, 
 		return nil, utils.ErrorInternal
 	}
 
+	// fetch user's presence information
+	presence, _ := s.GetUserPresence(ctx, member.UserID)
+
 	return &dto.HallMemberRes{
 		ID:        member.ID,
 		HallID:    member.HallID,
@@ -774,6 +789,9 @@ func (s *hallService) GetHallMember(c context.Context, userInfo *auth.UserInfo, 
 		Nickname:  member.Nickname,
 		JoinedAt:  member.JoinedAt,
 		UpdatedAt: member.UpdatedAt,
+
+		// patch user presence
+		Presence: presence,
 	}, nil
 }
 

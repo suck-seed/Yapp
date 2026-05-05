@@ -26,7 +26,7 @@ type AppConfig struct {
 	ServerPort   string
 	CORS         gin.HandlerFunc
 	PostgresPool *pgxpool.Pool
-	RedisDb      *redis.Client
+	RedisClient  *redis.Client
 }
 
 // SetupEnvironment : Loads ENV variables and returns the configurations

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	dto "github.com/suck-seed/yapp/internal/dto/user"
 )
 
 // -------------------- GET MEMBERS
@@ -16,6 +17,9 @@ type HallMemberRes struct {
 	Nickname  *string   `json:"nickname"`
 	JoinedAt  time.Time `json:"joined_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+
+	// Presence of Specific Hall HallMember
+	Presence *dto.UserPresenceRes `json:"presence"`
 }
 
 type GetHallMembersRes struct {
