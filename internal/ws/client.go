@@ -12,6 +12,8 @@ import (
 
 // Represents a Websocket connection
 type Client struct {
+	ID string
+
 	// Connection essentials
 	Conn *websocket.Conn
 	Send chan *dto.OutboundMessage
@@ -19,6 +21,7 @@ type Client struct {
 	// Identity - only what's needed for routing
 	UserID uuid.UUID
 	RoomID uuid.UUID
+	HallID uuid.UUID
 
 	// Connection metadata
 	ConnectedAt time.Time

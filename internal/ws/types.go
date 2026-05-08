@@ -30,7 +30,8 @@ const (
 
 // Room represents a chat room in memory
 type Room struct {
-	ID uuid.UUID `json:"id"`
+	ID     uuid.UUID `json:"id"`
+	HallID uuid.UUID `json:"hall_id"`
 
 	Clients   map[uuid.UUID]*Client     `json:"-"`
 	Broadcast chan *dto.OutboundMessage `json:"-"`

@@ -25,6 +25,9 @@ type IMessageService interface {
 	DeleteMessage(c context.Context, userInfo *auth.UserInfo, roomID uuid.UUID, messageID uuid.UUID) error
 	AddReaction(c context.Context, userInfo *auth.UserInfo, roomID uuid.UUID, messageID uuid.UUID, emoji string) (*dto.ReactionRes, error)
 	RemoveReaction(c context.Context, userInfo *auth.UserInfo, roomID uuid.UUID, messageID uuid.UUID, emoji string) error
+
+	// Message read
+	MarkMessageRead(c context.Context, userInfo *auth.UserInfo, roomID uuid.UUID, messageID uuid.UUID) (*dto.MessageReadRes, error)
 }
 
 type messageService struct {
@@ -548,4 +551,68 @@ func (s *messageService) RemoveReaction(c context.Context, userInfo *auth.UserIn
 	}
 
 	return runner.Commit(ctx)
+}
+
+// -- Message Read -----------------------------------------------------------
+
+func (s *messageService) MarkMessageRead(
+	c context.Context,
+	userInfo *auth.UserInfo,
+	roomID uuid.UUID,
+	messageID uuid.UUID,
+) (*dto.MessageReadRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
+
+	if _, err := s.resolveRoomWithPrivateCheck(ctx, runner, roomID, userInfo.ID); err != nil {
+		return nil, err
+	}
+
+	message, err := s.IMessageRepository.GetMessageByID(ctx, runner, messageID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorMessageNotFound
+		}
+		if isDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingMessages
+	}
+
+	if message.RoomID != roomID {
+		return nil, utils.ErrorMessageNotFound
+	}
+
+	read, err := s.IMessageRepository.MarkMessageRead(ctx, runner, roomID, userInfo.ID, messageID)
+	if err != nil {
+		if isDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+
+		// If user tried to mark an older message as read, return current latest read.
+		current, currentErr := s.IMessageRepository.GetMessageRead(ctx, runner, roomID, userInfo.ID)
+		if currentErr == nil {
+			read = current
+		} else {
+			return nil, utils.ErrorInternal
+		}
+	}
+
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	return &dto.MessageReadRes{
+		RoomID:    read.RoomID,
+		UserID:    read.UserID,
+		MessageID: read.MessageID,
+		ReadAt:    read.ReadAt,
+	}, nil
 }

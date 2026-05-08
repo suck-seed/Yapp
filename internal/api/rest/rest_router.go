@@ -219,3 +219,14 @@ func RegisterMessageRoutes(r *gin.RouterGroup, messageService services.IMessageS
 	}
 
 }
+
+func RegisterPresenceRoutes(r *gin.RouterGroup, presenceService services.IPresenceService) {
+	presenceHandler := handlers.NewPresenceHandler(presenceService)
+
+	presenceGroup := r.Group("/presence")
+	{
+		presenceGroup.GET("/me", presenceHandler.GetMyPresence)
+		presenceGroup.PATCH("/me", presenceHandler.UpdateMyPresence)
+		presenceGroup.GET("/users", presenceHandler.GetManyPresence) // ?ids=id1,id2,id3
+	}
+}

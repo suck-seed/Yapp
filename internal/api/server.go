@@ -50,6 +50,7 @@ func StartServer(cfg config.AppConfig) {
 	})
 
 	// Dependency Injection
+	// Repository Initialization
 	userRepository := repositories.NewUserRepository()
 	hallRepository := repositories.NewHallRepository()
 	roleRepository := repositories.NewRoleRepository()
@@ -58,11 +59,15 @@ func StartServer(cfg config.AppConfig) {
 	roomRepository := repositories.NewRoomRepository()
 	messageRepository := repositories.NewMessageRepository()
 	inviteRepository := repositories.NewInviteRepository()
+	presenceRepository := repositories.NewPresenceRepository(cfg.RedisClient)
 
+	// Checker services
 	permissionCheckerService := services.NewPermissionCheckerService(roleRepository, userRepository, hallRepository, banRepository, cfg.PostgresPool)
+	presenceService := services.NewPresenceService(presenceRepository)
 
+	// Usual Services
 	userService := services.NewUserService(userRepository, cfg.PostgresPool)
-	hallService := services.NewHallService(hallRepository, userRepository, roleRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
+	hallService := services.NewHallService(hallRepository, userRepository, roleRepository, banRepository, permissionCheckerService, presenceService, cfg.PostgresPool)
 	floorService := services.NewFloorService(hallRepository, floorRepository, roomRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
 	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
 	roleService := services.NewRoleService(roleRepository, userRepository, hallRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
@@ -71,7 +76,8 @@ func StartServer(cfg config.AppConfig) {
 	inviteService := services.NewInviteService(inviteRepository, hallRepository, roleRepository, permissionCheckerService, cfg.PostgresPool)
 
 	presistFunction := ws.MakePresistFunction(messageService, userService)
-	hub := ws.NewHub(presistFunction)
+	readRecieptFunction := ws.MakeReadReceiptFunction(messageService)
+	hub := ws.NewHub(presistFunction, readRecieptFunction, presenceService)
 	go hub.Run()
 
 	// Routes

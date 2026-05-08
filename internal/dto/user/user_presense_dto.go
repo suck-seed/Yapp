@@ -1,22 +1,27 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	"time"
 
-type GetUserPresenceRes struct {
-	UserID   uuid.UUID `json:"user_id"`
-	IsOnline bool      `json:"is_online"`
+	"github.com/google/uuid"
+	"github.com/suck-seed/yapp/internal/models"
+)
+
+type UpdatePresenceReq struct {
+	Status models.PresenceStatus `json:"status" binding:"required"`
 }
 
-type BatchUserPresenceReq struct {
+type UserPresenceRes struct {
+	UserID     uuid.UUID             `json:"user_id"`
+	Status     models.PresenceStatus `json:"status"`
+	LastSeenAt *time.Time            `json:"last_seen_at,omitempty"`
+	UpdatedAt  time.Time             `json:"updated_at"`
+}
+
+type GetManyPresenceReq struct {
 	UserIDs []uuid.UUID `json:"user_ids" binding:"required"`
 }
 
-type BatchUserPresenceItem struct {
-	UserID   uuid.UUID `json:"user_id"`
-	IsOnline bool      `json:"is_online"`
-}
-
-type BatchUserPresenceRes struct {
-	Users []*BatchUserPresenceItem `json:"users"`
-	Total int                      `json:"total"`
+type GetManyPresenceRes struct {
+	Presences []*UserPresenceRes `json:"presences"`
 }
