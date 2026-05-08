@@ -27,23 +27,25 @@ type AppConfig struct {
 	CORS         gin.HandlerFunc
 	PostgresPool *pgxpool.Pool
 	RedisClient  *redis.Client
+	RabbitMQURL  string
+	NodeID       string
 }
 
 // SetupEnvironment : Loads ENV variables and returns the configurations
 func SetupEnvironment() (config AppConfig, err error) {
 
-	// Load Env Variables
-	err = loadEnvVariables()
-	if err != nil {
-		return AppConfig{}, err
-	}
-
-	// setting up SETMODE
+	// setting up gin mode
 	if envMode := os.Getenv("APP_ENV"); envMode == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	if endMode := os.Getenv("APP_ENV"); endMode == "development" {
 		gin.SetMode(gin.DebugMode)
+	}
+
+	// loading environment variables
+	err = loadEnvVariables()
+	if err != nil {
+		return AppConfig{}, err
 	}
 
 	// load postgres instance
@@ -52,9 +54,16 @@ func SetupEnvironment() (config AppConfig, err error) {
 		return AppConfig{}, err
 	}
 
+	// loading redis instance
+	rdb, err := database.RedisDBConnection()
+	if err != nil {
+		return AppConfig{}, err
+	}
+
 	return AppConfig{
 		ServerPort:   os.Getenv("PORT"),
 		CORS:         buildCORS(),
 		PostgresPool: pgPool,
+		RedisClient:  rdb,
 	}, nil
 }
