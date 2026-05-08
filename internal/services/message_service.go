@@ -554,7 +554,6 @@ func (s *messageService) RemoveReaction(c context.Context, userInfo *auth.UserIn
 }
 
 // -- Message Read -----------------------------------------------------------
-// internal/services/message_service.go
 
 func (s *messageService) MarkMessageRead(
 	c context.Context,

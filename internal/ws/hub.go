@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	dto "github.com/suck-seed/yapp/internal/dto/message"
+	"github.com/suck-seed/yapp/internal/services"
 )
 
 type Hub struct {
@@ -27,11 +28,18 @@ type Hub struct {
 	PersistFunc     PersistFunction
 	ReadReceiptFunc ReadReceiptFunction
 
+	// Presence Service
+	PresenceService services.IPresenceService
+
 	mu sync.RWMutex
 }
 
 // Creates a New Presistent working Hub
-func NewHub(p PersistFunction, r ReadReceiptFunction) Hub {
+func NewHub(
+	p PersistFunction,
+	readFunc ReadReceiptFunction,
+	presenceService services.IPresenceService,
+) Hub {
 	return Hub{
 		Rooms:           make(map[uuid.UUID]*Room),
 		Register:        make(chan *Client, 1024),
@@ -39,7 +47,8 @@ func NewHub(p PersistFunction, r ReadReceiptFunction) Hub {
 		Inbound:         make(chan *dto.InboundMessage, 1024),
 		Outbound:        make(chan *dto.OutboundMessage, 1024),
 		PersistFunc:     p,
-		ReadReceiptFunc: r,
+		ReadReceiptFunc: readFunc,
+		PresenceService: presenceService,
 	}
 }
 
@@ -74,6 +83,9 @@ func (h *Hub) handleInboundMessage() {
 		case dto.MessageTypeTyping:
 			h.processTypingIndicator(inboundMessage)
 
+		case dto.MessageTypeStopTyping:
+			h.processStopTypingIndicator(inboundMessage)
+
 		case dto.MessageTypeRead:
 			h.processReadReciept(inboundMessage)
 
@@ -103,6 +115,7 @@ func (h *Hub) registerClient(client *Client) {
 	if !exists {
 		room = &Room{
 			ID:      client.RoomID,
+			HallID:  client.HallID,
 			Clients: make(map[uuid.UUID]*Client),
 		}
 
@@ -110,6 +123,8 @@ func (h *Hub) registerClient(client *Client) {
 	}
 
 	room.Clients[client.UserID] = client
+
+	// Handle user presnece
 
 	// Notift room of user joining via broadcast channel
 	joinMsg := &dto.OutboundMessage{
@@ -198,39 +213,42 @@ func (h *Hub) processTextMessage(msg *dto.InboundMessage) {
 
 func (h *Hub) processTypingIndicator(msg *dto.InboundMessage) {
 
+	_ = h.PresenceService.SetTyping(context.Background(), msg.RoomID, msg.UserID)
+
+	typingUser := msg.UserID
+
 	typingMsg := &dto.OutboundMessage{
 		Type:       dto.MessageTypeTyping,
 		RoomID:     msg.RoomID,
 		AuthorID:   msg.UserID,
 		SentAt:     time.Now(),
-		TypingUser: &msg.UserID,
+		TypingUser: &typingUser,
 	}
 
 	select {
 	case h.Outbound <- typingMsg:
-
 	default:
-		// no need to have anything, typing message can be dropped
 	}
 
-	go func() {
-		time.Sleep(5 * time.Second)
-		stopTyping := &dto.OutboundMessage{
-			Type:     dto.MessageTypeStopTyping,
-			RoomID:   msg.RoomID,
-			AuthorID: msg.UserID,
-			SentAt:   time.Now(),
-			// Typing User is nil, thus stopped typing
-		}
+}
 
-		select {
-		case h.Outbound <- stopTyping:
+func (h *Hub) processStopTypingIndicator(msg *dto.InboundMessage) {
+	_ = h.PresenceService.StopTyping(context.Background(), msg.RoomID, msg.UserID)
 
-		default:
+	typingUser := msg.UserID
 
-		}
-	}()
+	stopTypingMsg := &dto.OutboundMessage{
+		Type:       dto.MessageTypeStopTyping,
+		RoomID:     msg.RoomID,
+		AuthorID:   msg.UserID,
+		SentAt:     time.Now(),
+		TypingUser: &typingUser,
+	}
 
+	select {
+	case h.Outbound <- stopTypingMsg:
+	default:
+	}
 }
 
 func (h *Hub) processReadReciept(msg *dto.InboundMessage) {
@@ -336,6 +354,8 @@ func (h *Hub) deliverToRoom(roomId uuid.UUID, msg *dto.OutboundMessage) {
 }
 
 func (h *Hub) sendToUser(userID uuid.UUID, roomID uuid.UUID, msg *dto.OutboundMessage) {
+
+	// Read lock to main idemptoancy
 	h.mu.RLock()
 	room, exists := h.Rooms[roomID]
 	if !exists {

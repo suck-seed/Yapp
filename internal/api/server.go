@@ -50,6 +50,7 @@ func StartServer(cfg config.AppConfig) {
 	})
 
 	// Dependency Injection
+	// Repository Initialization
 	userRepository := repositories.NewUserRepository()
 	hallRepository := repositories.NewHallRepository()
 	roleRepository := repositories.NewRoleRepository()
@@ -60,9 +61,11 @@ func StartServer(cfg config.AppConfig) {
 	inviteRepository := repositories.NewInviteRepository()
 	presenceRepository := repositories.NewPresenceRepository(cfg.RedisClient)
 
+	// Checker services
 	permissionCheckerService := services.NewPermissionCheckerService(roleRepository, userRepository, hallRepository, banRepository, cfg.PostgresPool)
 	presenceService := services.NewPresenceService(presenceRepository)
 
+	// Usual Services
 	userService := services.NewUserService(userRepository, cfg.PostgresPool)
 	hallService := services.NewHallService(hallRepository, userRepository, roleRepository, banRepository, permissionCheckerService, presenceService, cfg.PostgresPool)
 	floorService := services.NewFloorService(hallRepository, floorRepository, roomRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
@@ -74,7 +77,7 @@ func StartServer(cfg config.AppConfig) {
 
 	presistFunction := ws.MakePresistFunction(messageService, userService)
 	readRecieptFunction := ws.MakeReadReceiptFunction(messageService)
-	hub := ws.NewHub(presistFunction, readRecieptFunction)
+	hub := ws.NewHub(presistFunction, readRecieptFunction, presenceService)
 	go hub.Run()
 
 	// Routes
