@@ -171,7 +171,14 @@ func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
 	// register client
 	const sendBuf = 1024
 
+	clientID, err := uuid.NewUUID()
+	if err != nil {
+		utils.WriteError(c, utils.ErrorFailedUpgrade)
+		return
+	}
+
 	client := &Client{
+		ID:          clientID,
 		Conn:        conn,
 		Send:        make(chan *dto.OutboundMessage, sendBuf),
 		UserID:      user.ID,

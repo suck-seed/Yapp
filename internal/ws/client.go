@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"log"
 	"sync"
 	"time"
@@ -12,7 +13,7 @@ import (
 
 // Represents a Websocket connection
 type Client struct {
-	ID string
+	ID uuid.UUID
 
 	// Connection essentials
 	Conn *websocket.Conn
@@ -50,7 +51,13 @@ func (c *Client) readPump(hub *Hub) {
 	c.Conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.Conn.SetPongHandler(func(string) error {
 
+		c.LastPing = time.Now()
 		c.Conn.SetReadDeadline(time.Now().Add(pongWait))
+
+		if hub.PresenceService != nil {
+			_ = hub.PresenceService.RefreshConnection(context.Background(), c.UserID, c.ID)
+		}
+
 		return nil
 
 	})
@@ -71,6 +78,10 @@ func (c *Client) readPump(hub *Hub) {
 		// We added these values on client in JoinRoom Func
 		inboundMessage.UserID = c.UserID
 		inboundMessage.RoomID = c.RoomID
+
+		if hub.PresenceService != nil {
+			_ = hub.PresenceService.RefreshConnection(context.Background(), c.UserID, c.ID)
+		}
 
 		hub.Inbound <- inboundMessage
 	}

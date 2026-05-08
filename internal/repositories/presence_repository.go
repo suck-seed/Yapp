@@ -12,9 +12,9 @@ import (
 )
 
 type IPresenceRepository interface {
-	MarkConnected(ctx context.Context, userID uuid.UUID, connectionID string, ttl time.Duration) (*models.UserPresence, error)
-	RefreshConnection(ctx context.Context, userID uuid.UUID, connectionID string, ttl time.Duration) error
-	MarkDisconnected(ctx context.Context, userID uuid.UUID, connectionID string) (*models.UserPresence, error)
+	MarkConnected(ctx context.Context, userID uuid.UUID, connectionID uuid.UUID, ttl time.Duration) (*models.UserPresence, error)
+	RefreshConnection(ctx context.Context, userID uuid.UUID, connectionID uuid.UUID, ttl time.Duration) error
+	MarkDisconnected(ctx context.Context, userID uuid.UUID, connectionID uuid.UUID) (*models.UserPresence, error)
 
 	SetManualStatus(ctx context.Context, userID uuid.UUID, status models.PresenceStatus, ttl time.Duration) (*models.UserPresence, error)
 	GetUserPresence(ctx context.Context, userID uuid.UUID) (*models.UserPresence, error)
@@ -53,7 +53,7 @@ func typingUserKey(roomID uuid.UUID, userID uuid.UUID) string {
 	return fmt.Sprintf("typing:room:%s:user:%s", roomID.String(), userID.String())
 }
 
-func (r *presenceRepository) MarkConnected(ctx context.Context, userID uuid.UUID, connectionID string, ttl time.Duration) (*models.UserPresence, error) {
+func (r *presenceRepository) MarkConnected(ctx context.Context, userID uuid.UUID, connectionID uuid.UUID, ttl time.Duration) (*models.UserPresence, error) {
 	now := time.Now().UTC()
 
 	current, _ := r.GetUserPresence(ctx, userID)
@@ -85,7 +85,7 @@ func (r *presenceRepository) MarkConnected(ctx context.Context, userID uuid.UUID
 	return r.GetUserPresence(ctx, userID)
 }
 
-func (r *presenceRepository) RefreshConnection(ctx context.Context, userID uuid.UUID, connectionID string, ttl time.Duration) error {
+func (r *presenceRepository) RefreshConnection(ctx context.Context, userID uuid.UUID, connectionID uuid.UUID, ttl time.Duration) error {
 	pipe := r.client.TxPipeline()
 
 	pipe.SAdd(ctx, presenceConnectionsKey(userID), connectionID)
@@ -96,7 +96,7 @@ func (r *presenceRepository) RefreshConnection(ctx context.Context, userID uuid.
 	return err
 }
 
-func (r *presenceRepository) MarkDisconnected(ctx context.Context, userID uuid.UUID, connectionID string) (*models.UserPresence, error) {
+func (r *presenceRepository) MarkDisconnected(ctx context.Context, userID uuid.UUID, connectionID uuid.UUID) (*models.UserPresence, error) {
 	now := time.Now().UTC()
 
 	if err := r.client.SRem(ctx, presenceConnectionsKey(userID), connectionID).Err(); err != nil {
