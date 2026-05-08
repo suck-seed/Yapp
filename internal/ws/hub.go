@@ -105,9 +105,7 @@ func (h *Hub) handleOutbound() {
 	}
 
 }
-
 func (h *Hub) registerClient(client *Client) {
-
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -122,11 +120,28 @@ func (h *Hub) registerClient(client *Client) {
 		h.Rooms[client.RoomID] = room
 	}
 
-	room.Clients[client.UserID] = client
+	room.Clients[client.ID] = client
 
-	// Handle user presnece
+	presence, err := h.PresenceService.MarkConnected(context.Background(), client.UserID, client.ID)
+	if err == nil && presence != nil {
+		userID := client.UserID
 
-	// Notift room of user joining via broadcast channel
+		presenceMsg := &dto.OutboundMessage{
+			Type:           dto.MessageTypePresence,
+			RoomID:         client.RoomID,
+			AuthorID:       client.UserID,
+			PresenceUserID: &userID,
+			PresenceStatus: string(presence.Status),
+			LastSeenAt:     presence.LastSeenAt,
+			SentAt:         time.Now(),
+		}
+
+		select {
+		case h.Outbound <- presenceMsg:
+		default:
+		}
+	}
+
 	joinMsg := &dto.OutboundMessage{
 		Type:     dto.MessageTypeJoin,
 		RoomID:   client.RoomID,
@@ -134,18 +149,14 @@ func (h *Hub) registerClient(client *Client) {
 		SentAt:   time.Now(),
 	}
 
-	// broadcast
 	select {
 	case h.Outbound <- joinMsg:
-
 	default:
 		log.Printf("Could not broadcast join message for user %s", client.UserID)
 	}
-
 }
 
 func (h *Hub) unregisterClient(client *Client) {
-
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -154,9 +165,30 @@ func (h *Hub) unregisterClient(client *Client) {
 		return
 	}
 
-	// if exists
-	delete(room.Clients, client.UserID)
+	delete(room.Clients, client.ID)
 	client.SafeClose()
+
+	_ = h.PresenceService.StopTyping(context.Background(), client.RoomID, client.UserID)
+
+	presence, err := h.PresenceService.MarkDisconnected(context.Background(), client.UserID, client.ID)
+	if err == nil && presence != nil {
+		userID := client.UserID
+
+		presenceMsg := &dto.OutboundMessage{
+			Type:           dto.MessageTypePresence,
+			RoomID:         client.RoomID,
+			AuthorID:       client.UserID,
+			PresenceUserID: &userID,
+			PresenceStatus: string(presence.Status),
+			LastSeenAt:     presence.LastSeenAt,
+			SentAt:         time.Now(),
+		}
+
+		select {
+		case h.Outbound <- presenceMsg:
+		default:
+		}
+	}
 
 	leavingMsg := &dto.OutboundMessage{
 		Type:     dto.MessageTypeLeave,
@@ -169,13 +201,10 @@ func (h *Hub) unregisterClient(client *Client) {
 	if len(room.Clients) == 0 {
 		delete(h.Rooms, client.RoomID)
 	} else {
-
 		select {
 		case h.Outbound <- leavingMsg:
-
 		default:
 			log.Printf("Could not broadcast leave message for user %s", client.UserID)
-
 		}
 	}
 }
@@ -327,28 +356,26 @@ func (h *Hub) deliverToRoom(roomId uuid.UUID, msg *dto.OutboundMessage) {
 	room.mu.RUnlock()
 
 	// remove any disconnected clients and empty Rooms
-	if len(disconnectedClients) > 0 {
+	if len(disconnectedClients) == 0 {
+		return
+	}
 
-		room.mu.Lock()
+	// If length of disconnected clients is > 0
+	room.mu.Lock()
 
-		if room, exists := h.Rooms[roomId]; exists {
+	for _, clientID := range disconnectedClients {
+		delete(room.Clients, clientID)
+	}
 
-			for _, userId := range disconnectedClients {
-				delete(room.Clients, userId)
-			}
+	isEmpty := len(room.Clients) == 0
+	room.mu.Unlock()
 
-			isEmpty := len(room.Clients) == 0
-			room.mu.Unlock()
-
-			// If no of clients in a room became while removing disconnected clients , remove room from mem
-			if isEmpty {
-				h.mu.Lock()
-				delete(h.Rooms, roomId)
-				h.mu.Unlock()
-				log.Printf("Cleaned up empty room %s", roomId)
-			}
-		}
-
+	// If no of clients in a room became while removing disconnected clients , remove room from mem
+	if isEmpty {
+		h.mu.Lock()
+		delete(h.Rooms, roomId)
+		h.mu.Unlock()
+		log.Printf("Cleaned up empty room %s", roomId)
 	}
 
 }
@@ -358,11 +385,13 @@ func (h *Hub) sendToUser(userID uuid.UUID, roomID uuid.UUID, msg *dto.OutboundMe
 	// Read lock to main idemptoancy
 	h.mu.RLock()
 	room, exists := h.Rooms[roomID]
+	h.mu.RUnlock()
+
 	if !exists {
-		h.mu.RUnlock()
 		return
 	}
 
+	h.mu.RLock()
 	client, exists := room.Clients[userID]
 	h.mu.RUnlock()
 

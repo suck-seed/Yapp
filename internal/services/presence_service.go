@@ -13,9 +13,9 @@ import (
 )
 
 type IPresenceService interface {
-	MarkConnected(ctx context.Context, userID uuid.UUID, connectionID string) (*dto.UserPresenceRes, error)
-	RefreshConnection(ctx context.Context, userID uuid.UUID, connectionID string) error
-	MarkDisconnected(ctx context.Context, userID uuid.UUID, connectionID string) (*dto.UserPresenceRes, error)
+	MarkConnected(ctx context.Context, userID uuid.UUID, connectionID uuid.UUID) (*dto.UserPresenceRes, error)
+	RefreshConnection(ctx context.Context, userID uuid.UUID, connectionID uuid.UUID) error
+	MarkDisconnected(ctx context.Context, userID uuid.UUID, connectionID uuid.UUID) (*dto.UserPresenceRes, error)
 
 	SetManualStatus(ctx context.Context, userID uuid.UUID, status models.PresenceStatus) (*dto.UserPresenceRes, error)
 	GetUserPresence(ctx context.Context, userID uuid.UUID) (*dto.UserPresenceRes, error)
@@ -62,7 +62,7 @@ func isValidPresenceStatus(status models.PresenceStatus) bool {
 	}
 }
 
-func (s *presenceService) MarkConnected(ctx context.Context, userID uuid.UUID, connectionID string) (*dto.UserPresenceRes, error) {
+func (s *presenceService) MarkConnected(ctx context.Context, userID uuid.UUID, connectionID uuid.UUID) (*dto.UserPresenceRes, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
@@ -74,7 +74,7 @@ func (s *presenceService) MarkConnected(ctx context.Context, userID uuid.UUID, c
 	return presenceToRes(p), nil
 }
 
-func (s *presenceService) RefreshConnection(ctx context.Context, userID uuid.UUID, connectionID string) error {
+func (s *presenceService) RefreshConnection(ctx context.Context, userID uuid.UUID, connectionID uuid.UUID) error {
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
@@ -85,7 +85,7 @@ func (s *presenceService) RefreshConnection(ctx context.Context, userID uuid.UUI
 	return nil
 }
 
-func (s *presenceService) MarkDisconnected(ctx context.Context, userID uuid.UUID, connectionID string) (*dto.UserPresenceRes, error) {
+func (s *presenceService) MarkDisconnected(ctx context.Context, userID uuid.UUID, connectionID uuid.UUID) (*dto.UserPresenceRes, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
