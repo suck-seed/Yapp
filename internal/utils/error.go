@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"context"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -92,6 +94,11 @@ var (
 	ErrorFetchingBan         = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Ban Information"}
 	ErrorFetchingRole        = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Role Information"}
 	ErrorFetchingPermission  = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Permissions Information"}
+
+	// =========================
+	// MOVING ISSUES
+	// =========================
+	ErrorMovingRoom = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while Moving Room"}
 
 	// ========================= RESOURCE UPDATING ERRORS
 	// =========================
@@ -248,4 +255,9 @@ func WriteError(c *gin.Context, err error) {
 		"error":   err.Error(),
 		"success": false,
 	})
+}
+
+// is Deadline error checker
+func IsDeadline(err error) bool {
+	return errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
 }

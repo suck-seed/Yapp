@@ -5,7 +5,6 @@ import (
 	"github.com/suck-seed/yapp/internal/api/rest/handlers"
 	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/services"
-	"github.com/suck-seed/yapp/internal/ws"
 )
 
 // TODO Make router for halls, messages
@@ -160,14 +159,6 @@ func RegisterInvitePrivateRoutes(r *gin.RouterGroup, inviteService services.IInv
 	{
 		invites.POST("/:code/accept", inviteHandler.AcceptInviteLink) // authenticated
 	}
-}
-
-func RegisterWebSocketRoutes(r *gin.RouterGroup, hub *ws.Hub, messageService services.IMessageService, hallService services.IHallService, roomService services.IRoomService, userService services.IUserService) {
-	wsHandler := ws.NewWebsocketHandler(hub, messageService, hallService, roomService, userService)
-
-	r.GET("/rooms/:room_id", wsHandler.JoinRoom)
-	r.GET("/clients/:room_id")
-
 }
 
 func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService) {

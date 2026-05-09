@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	dto "github.com/suck-seed/yapp/internal/dto/message"
 	"github.com/suck-seed/yapp/internal/services"
+	"github.com/suck-seed/yapp/internal/utils"
 )
 
 type Hub struct {
@@ -131,7 +132,7 @@ func (h *Hub) registerClient(client *Client) {
 			RoomID:         client.RoomID,
 			AuthorID:       client.UserID,
 			PresenceUserID: &userID,
-			PresenceStatus: string(presence.Status),
+			PresenceStatus: utils.StringToPointer(string(presence.Status)),
 			LastSeenAt:     presence.LastSeenAt,
 			SentAt:         time.Now(),
 		}
@@ -179,7 +180,7 @@ func (h *Hub) unregisterClient(client *Client) {
 			RoomID:         client.RoomID,
 			AuthorID:       client.UserID,
 			PresenceUserID: &userID,
-			PresenceStatus: string(presence.Status),
+			PresenceStatus: utils.StringToPointer(string(presence.Status)),
 			LastSeenAt:     presence.LastSeenAt,
 			SentAt:         time.Now(),
 		}
@@ -220,7 +221,7 @@ func (h *Hub) processTextMessage(msg *dto.InboundMessage) {
 			Type:     dto.MessageTypeError,
 			RoomID:   msg.RoomID,
 			AuthorID: msg.UserID,
-			Error:    err.Error(),
+			Error:    utils.StringToPointer(err.Error()),
 			SentAt:   time.Now(),
 		}
 
@@ -286,7 +287,7 @@ func (h *Hub) processReadReciept(msg *dto.InboundMessage) {
 			Type:     dto.MessageTypeError,
 			RoomID:   msg.RoomID,
 			AuthorID: msg.UserID,
-			Error:    "message_id is required for read receipt",
+			Error:    utils.StringToPointer("message_id is required for read receipt"),
 			SentAt:   time.Now(),
 		}
 		h.sendToUser(msg.UserID, msg.RoomID, errMsg)
@@ -299,7 +300,7 @@ func (h *Hub) processReadReciept(msg *dto.InboundMessage) {
 			Type:     dto.MessageTypeError,
 			RoomID:   msg.RoomID,
 			AuthorID: msg.UserID,
-			Error:    err.Error(),
+			Error:    utils.StringToPointer(err.Error()),
 			SentAt:   time.Now(),
 		}
 		h.sendToUser(msg.UserID, msg.RoomID, errMsg)

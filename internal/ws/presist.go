@@ -5,6 +5,7 @@ import (
 
 	dto "github.com/suck-seed/yapp/internal/dto/message"
 	"github.com/suck-seed/yapp/internal/services"
+	"github.com/suck-seed/yapp/internal/utils"
 )
 
 type PersistFunction func(ctx context.Context, in *dto.InboundMessage) (*dto.OutboundMessage, error)
@@ -46,7 +47,7 @@ func MakePresistFunction(messageService services.IMessageService, userService se
 			Mentions:         saved.Mentions,
 			Attachments:      saved.Attachments,
 
-			Error: "",
+			Error: utils.StringToPointer(""),
 		}, nil
 
 	}

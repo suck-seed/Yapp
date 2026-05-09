@@ -27,6 +27,7 @@ type IRoomService interface {
 	// internal
 	GetRoomByID(c context.Context, roomID uuid.UUID) (*models.Room, error)
 	IsUserRoomMember(c context.Context, roomID uuid.UUID, userID uuid.UUID) (bool, error)
+	GetAccessibleRoomsForUser(c context.Context, userInfo *auth.UserInfo) (map[uuid.UUID]uuid.UUID, error)
 }
 
 type roomService struct {
@@ -116,7 +117,7 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorHallNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingHall
@@ -126,7 +127,7 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 	if req.FloorID != nil {
 		floorExists, err := s.IFloorRepository.DoesFloorExistInHall(ctx, runner, *req.FloorID, hallID)
 		if err != nil || !floorExists {
-			if isDeadline(err) {
+			if utils.IsDeadline(err) {
 				return nil, utils.ErrorRequestTimeout
 			}
 			return nil, utils.ErrorFloorNotFound
@@ -140,7 +141,7 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 
 	maxPos, err := s.IRoomRepository.GetMaxPositionInContainer(ctx, runner, hallID, req.FloorID)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingRoom
@@ -168,7 +169,7 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 		UpdatedAt: time.Now(),
 	})
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorCreatingRoom
@@ -208,7 +209,7 @@ func (s *roomService) GetRoom(c context.Context, userInfo *auth.UserInfo, hallID
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorRoomNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingRoom
@@ -270,13 +271,13 @@ func (s *roomService) GetHallRooms(c context.Context, userInfo *auth.UserInfo, h
 	fr := <-floorsCh
 
 	if rr.err != nil {
-		if isDeadline(rr.err) {
+		if utils.IsDeadline(rr.err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingRoom
 	}
 	if fr.err != nil {
-		if isDeadline(fr.err) {
+		if utils.IsDeadline(fr.err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingFloor
@@ -355,7 +356,7 @@ func (s *roomService) UpdateRoom(c context.Context, userInfo *auth.UserInfo, hal
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorRoomNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingRoom
@@ -369,7 +370,7 @@ func (s *roomService) UpdateRoom(c context.Context, userInfo *auth.UserInfo, hal
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorRoomNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingRoom
@@ -405,7 +406,7 @@ func (s *roomService) DeleteRoom(c context.Context, userInfo *auth.UserInfo, hal
 		if errors.Is(err, pgx.ErrNoRows) {
 			return utils.ErrorRoomNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return utils.ErrorRequestTimeout
 		}
 		return utils.ErrorFetchingRoom
@@ -415,7 +416,7 @@ func (s *roomService) DeleteRoom(c context.Context, userInfo *auth.UserInfo, hal
 	}
 
 	if err := s.IRoomRepository.DeleteRoom(ctx, runner, roomID); err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return utils.ErrorRequestTimeout
 		}
 		return utils.ErrorInternal
@@ -447,7 +448,7 @@ func (s *roomService) MoveRoom(c context.Context, userInfo *auth.UserInfo, hallI
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorRoomNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingRoom
@@ -460,7 +461,7 @@ func (s *roomService) MoveRoom(c context.Context, userInfo *auth.UserInfo, hallI
 	if req.NewFloorID != nil {
 		floorExists, err := s.IFloorRepository.DoesFloorExistInHall(ctx, runner, *req.NewFloorID, hallID)
 		if err != nil || !floorExists {
-			if isDeadline(err) {
+			if utils.IsDeadline(err) {
 				return nil, utils.ErrorRequestTimeout
 			}
 			return nil, utils.ErrorFloorNotFound
@@ -469,7 +470,7 @@ func (s *roomService) MoveRoom(c context.Context, userInfo *auth.UserInfo, hallI
 
 	lower, upper, err := s.IRoomRepository.GetRoomPositionBounds(ctx, runner, hallID, req.NewFloorID, req.AfterID)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingRoom
@@ -479,10 +480,10 @@ func (s *roomService) MoveRoom(c context.Context, userInfo *auth.UserInfo, hallI
 
 	moved, err := s.IRoomRepository.MoveRoom(ctx, runner, roomID, req.NewFloorID, newPos)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
-		return nil, utils.ErrorInternal
+		return nil, utils.ErrorMovingRoom
 	}
 
 	if err := runner.Commit(ctx); err != nil {
@@ -504,8 +505,9 @@ func (s *roomService) GetRoomByID(c context.Context, roomID uuid.UUID) (*models.
 		return nil, utils.ErrorInternal
 	}
 	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
 
-	room, err := s.IRoomRepository.GetRoomByID(ctx, database.NewConnWrapper(conn), roomID)
+	room, err := s.IRoomRepository.GetRoomByID(ctx, runner, roomID)
 	if err != nil {
 		return nil, utils.ErrorFetchingRoom
 	}
@@ -521,6 +523,73 @@ func (s *roomService) IsUserRoomMember(c context.Context, roomID uuid.UUID, user
 		return false, utils.ErrorInternal
 	}
 	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
 
-	return s.IRoomRepository.IsUserRoomMember(ctx, database.NewConnWrapper(conn), roomID, userID)
+	return s.IRoomRepository.IsUserRoomMember(ctx, runner, roomID, userID)
+}
+
+func (s *roomService) GetAccessibleRoomsForUser(c context.Context, userInfo *auth.UserInfo) (map[uuid.UUID]uuid.UUID, error) {
+
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
+	// fetch all the hall the user is associated with
+	hallIDs, err := s.IHallRepository.GetUserHallIDs(ctx, runner, userInfo.ID)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	accessibleRooms := make(map[uuid.UUID]uuid.UUID)
+
+	// range through the hall
+	// fetch all the room associated with the hallID
+	for _, hallID := range hallIDs {
+
+		// fetch all roomID of current hall
+
+		// full room struct brings too much information
+		// useing []*RoomIDandPrivate which only contains RoomID and IsPrivate
+		roomInfo, err := s.IRoomRepository.GetRoomsIDandPrivateInfoByHallID(ctx, runner, hallID)
+		if err != nil {
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingRoom
+		}
+
+		// check if private
+		// if private, check if accessible
+		for _, rm := range roomInfo {
+			if rm.IsPrivate {
+
+				isRoomMember, err := s.IRoomRepository.IsUserRoomMember(ctx, runner, rm.RoomID, userInfo.ID)
+				if err != nil {
+					if utils.IsDeadline(err) {
+						return nil, utils.ErrorRequestTimeout
+					}
+					return nil, utils.ErrorFetchingRoom
+
+				}
+				if !isRoomMember {
+					// skip this room and do not make it accessible
+					continue
+				}
+
+				// map current RoomId -> hallID
+				accessibleRooms[rm.RoomID] = hallID
+
+			}
+
+		}
+
+	}
+
+	return accessibleRooms, nil
 }

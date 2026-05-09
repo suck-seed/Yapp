@@ -101,7 +101,7 @@ func StartServer(cfg config.AppConfig) {
 
 	wsHandler := router.Group("/ws", auth.AuthMiddleware())
 	{
-		rest.RegisterWebSocketRoutes(wsHandler, &hub, messageService, hallService, roomService, userService)
+		ws.RegisterWebSocketRoutes(wsHandler, &hub, messageService, hallService, roomService, userService)
 	}
 
 	startGracefully(router, cfg, &hub)

@@ -84,12 +84,6 @@ func (s *floorService) requireManageServers(ctx context.Context, runner database
 	return nil
 }
 
-// add this alongside the other helpers in floor_service.go, below floorToGetRes
-
-func isDeadline(err error) bool {
-	return errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
-}
-
 // ── CreateFloor ───────────────────────────────────────────────────────────────
 
 func (s *floorService) CreateFloor(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, req *dto.CreateFloorReq) (*dto.CreateFloorRes, error) {
@@ -117,7 +111,7 @@ func (s *floorService) CreateFloor(c context.Context, userInfo *auth.UserInfo, h
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorHallNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingHall
@@ -125,7 +119,7 @@ func (s *floorService) CreateFloor(c context.Context, userInfo *auth.UserInfo, h
 
 	maxPos, err := s.IFloorRepository.GetMaxPosition(ctx, runner, hallID)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingFloor
@@ -148,7 +142,7 @@ func (s *floorService) CreateFloor(c context.Context, userInfo *auth.UserInfo, h
 
 	created, err := s.IFloorRepository.CreateFloor(ctx, runner, floor)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorCreatingFloor
@@ -192,7 +186,7 @@ func (s *floorService) GetFloors(c context.Context, userInfo *auth.UserInfo, hal
 
 	floors, err := s.IFloorRepository.GetFloorsByHallID(ctx, runner, hallID)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingFloor
@@ -231,7 +225,7 @@ func (s *floorService) GetFloor(c context.Context, userInfo *auth.UserInfo, hall
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorFloorNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingFloor
@@ -286,7 +280,7 @@ func (s *floorService) UpdateFloor(c context.Context, userInfo *auth.UserInfo, h
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorFloorNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingFloor
@@ -330,7 +324,7 @@ func (s *floorService) DeleteFloor(c context.Context, userInfo *auth.UserInfo, h
 	}
 
 	if err := s.IFloorRepository.DeleteFloor(ctx, runner, floorID); err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return utils.ErrorRequestTimeout
 		}
 		return utils.ErrorInternal
@@ -362,7 +356,7 @@ func (s *floorService) MoveFloor(c context.Context, userInfo *auth.UserInfo, hal
 	// Verify floor belongs to this hall
 	exists, err := s.IFloorRepository.DoesFloorExistInHall(ctx, runner, floorID, hallID)
 	if err != nil || !exists {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFloorNotFound
@@ -370,7 +364,7 @@ func (s *floorService) MoveFloor(c context.Context, userInfo *auth.UserInfo, hal
 
 	lower, upper, err := s.IFloorRepository.GetFloorPositionBounds(ctx, runner, hallID, req.AfterID)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingFloor
@@ -380,7 +374,7 @@ func (s *floorService) MoveFloor(c context.Context, userInfo *auth.UserInfo, hal
 
 	updated, err := s.IFloorRepository.UpdateFloorPosition(ctx, runner, floorID, newPos)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingFloor

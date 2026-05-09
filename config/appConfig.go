@@ -34,18 +34,18 @@ type AppConfig struct {
 // SetupEnvironment : Loads ENV variables and returns the configurations
 func SetupEnvironment() (config AppConfig, err error) {
 
+	// loading environment variables
+	err = loadEnvVariables()
+	if err != nil {
+		return AppConfig{}, err
+	}
+
 	// setting up gin mode
 	if envMode := os.Getenv("APP_ENV"); envMode == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	if endMode := os.Getenv("APP_ENV"); endMode == "development" {
 		gin.SetMode(gin.DebugMode)
-	}
-
-	// loading environment variables
-	err = loadEnvVariables()
-	if err != nil {
-		return AppConfig{}, err
 	}
 
 	// load postgres instance

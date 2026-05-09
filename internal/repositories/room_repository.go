@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/suck-seed/yapp/internal/database"
+	dto "github.com/suck-seed/yapp/internal/dto/room"
 	"github.com/suck-seed/yapp/internal/models"
 )
 
@@ -17,6 +18,7 @@ type IRoomRepository interface {
 	DoesRoomExists(ctx context.Context, db database.DBRunner, roomID uuid.UUID) (bool, error)
 	// new
 	GetRoomsByHallID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.Room, error)
+	GetRoomsIDandPrivateInfoByHallID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*dto.RoomIDandPrivate, error)
 	UpdateRoom(ctx context.Context, db database.DBRunner, roomID uuid.UUID, name *string, isPrivate *bool) (*models.Room, error)
 	DeleteRoom(ctx context.Context, db database.DBRunner, roomID uuid.UUID) error
 	GetMaxPositionInContainer(ctx context.Context, db database.DBRunner, hallID uuid.UUID, floorID *uuid.UUID) (float64, error)
@@ -99,6 +101,34 @@ func (r *roomRepository) GetRoomsByHallID(ctx context.Context, db database.DBRun
 		rooms = append(rooms, rm)
 	}
 	return rooms, rows.Err()
+}
+
+func (r *roomRepository) GetRoomsIDandPrivateInfoByHallID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*dto.RoomIDandPrivate, error) {
+	query := `
+        SELECT id, is_private
+        FROM rooms
+        WHERE hall_id = $1
+        ORDER BY
+            floor_id IS NOT NULL,  -- NULLs (top-level) first
+            floor_id,
+            position ASC
+    `
+	rows, err := db.Query(ctx, query, hallID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var roomIDandPrivate []*dto.RoomIDandPrivate
+
+	for rows.Next() {
+		rm := &dto.RoomIDandPrivate{}
+		if err := rows.Scan(&rm.RoomID, &rm.IsPrivate); err != nil {
+			return nil, err
+		}
+		roomIDandPrivate = append(roomIDandPrivate, rm)
+	}
+	return nil, rows.Err()
 }
 
 func (r *roomRepository) UpdateRoom(ctx context.Context, db database.DBRunner, roomID uuid.UUID, name *string, isPrivate *bool) (*models.Room, error) {

@@ -41,7 +41,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// JoinRoom godoc
+// Connect godoc
 // @Summary      Join a room via WebSocket
 // @Description  Upgrades the HTTP connection to WebSocket and subscribes the caller to the room's message stream.
 //
@@ -71,7 +71,7 @@ var upgrader = websocket.Upgrader{
 // @Failure      403      {object}  map[string]interface{}  "Not a hall/room member"
 // @Failure      404      {object}  map[string]interface{}  "Room or hall not found"
 // @Router       /ws/rooms/{room_id} [get]
-func (h *WebsocketHandler) JoinRoom(c *gin.Context) {
+func (h *WebsocketHandler) Connect(c *gin.Context) {
 	// cant trust user with sending their userID, so we fetch it from context
 
 	userInfo, err := auth.CurrentUserFromGinContext(c)

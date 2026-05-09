@@ -32,6 +32,8 @@ const (
 type InboundMessage struct {
 	Type MessageType `json:"type"`
 
+	// In new /ws gateway design, frontend must explicitly send RoomID
+	RoomID          uuid.UUID        `json:"room_id" binding:"required"`
 	Content         *string          `json:"content,omitempty" binding:"min=1,max=8000"`
 	SentAt          time.Time        `json:"sent_at" binding:"required"`
 	MentionEveryone *bool            `json:"mention_everyone,omitempty"`
@@ -41,42 +43,46 @@ type InboundMessage struct {
 	// For read receipt
 	MessageID *uuid.UUID `json:"message_id,omitempty"`
 
-	// These are set by server, not client, BUT KEEP THEM HERE for simplicity
-	UserID uuid.UUID `json:"-"`
-	RoomID uuid.UUID `json:"-"`
+	// Server-owned fields. Never accept these from frontend.
+	UserID   uuid.UUID `json:"-"`
+	ClientID uuid.UUID `json:"-"`
 }
 
 type OutboundMessage struct {
+
+	// To keep the outbounding json minimal as possible
+	// Some field are * and omitted if field are empty
+
 	Type MessageType `json:"type"`
 
 	ID       uuid.UUID `json:"id"`
 	RoomID   uuid.UUID `json:"room_id"`
-	AuthorID uuid.UUID `json:"author_id"`
+	HallID   uuid.UUID `json:"hall_id"`
+	AuthorID uuid.UUID `json:"author_id"` // UserID for denoting the user who created the message
 
-	Content          *string             `json:"content"`
+	Content          *string             `json:"content,omitempty"`
 	SentAt           time.Time           `json:"sent_at"`
 	MentionsEveryone bool                `json:"mentions_everyone"`
 	Mentions         []UserBasic         `json:"mentions"`
 	Attachments      []models.Attachment `json:"attachments"`
 
-	EditedAt  *time.Time `json:"edited_at"`
-	DeletedAt *time.Time `json:"deleted_at"`
+	EditedAt  *time.Time `json:"edited_at,omitempty"`  // opt
+	DeletedAt *time.Time `json:"deleted_at,omitempty"` // opt
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 
 	// Typing
-	TypingUser *uuid.UUID `json:"typing_user,omitempty"`
+	TypingUser *uuid.UUID `json:"typing_user,omitempty"` // opt
 
 	// Read receipt
-	MessageID *uuid.UUID `json:"message_id,omitempty"`
-	ReadBy    *uuid.UUID `json:"read_by,omitempty"`
-	ReadAt    *time.Time `json:"read_at,omitempty"`
+	MessageID *uuid.UUID `json:"message_id,omitempty"` // opt
+	ReadBy    *uuid.UUID `json:"read_by,omitempty"`    // opt
+	ReadAt    *time.Time `json:"read_at,omitempty"`    // opt
 
-	// Presence
+	// Pressence
 	PresenceUserID *uuid.UUID `json:"presence_user_id,omitempty"`
-	PresenceStatus string     `json:"presence_status,omitempty"`
+	PresenceStatus *string    `json:"presence_status,omitempty"`
 	LastSeenAt     *time.Time `json:"last_seen_at,omitempty"`
 
-	Error string `json:"error"` // for error messages
-
+	Error *string `json:"error,omitempty"` // opt
 }
