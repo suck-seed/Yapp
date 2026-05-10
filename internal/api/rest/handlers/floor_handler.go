@@ -302,3 +302,109 @@ func (h *FloorHandler) MoveFloor(c *gin.Context) {
 		"data":    res,
 	})
 }
+
+// AddFloorMember godoc
+// @Summary      Add a member to a private floor
+// @Description  Gives a hall member access to a private floor and syncs all synced rooms inside it.
+// @Tags         floors
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID    path      string  true  "Hall ID (UUID)"
+// @Param        id        path      string  true  "Floor ID (UUID)"
+// @Param        memberID  path      string  true  "Hall Member ID (UUID)"
+// @Success      200       {object}  map[string]interface{}
+// @Failure      400       {object}  map[string]interface{}
+// @Failure      401       {object}  map[string]interface{}
+// @Failure      403       {object}  map[string]interface{}
+// @Router       /halls/{hallID}/floors/{id}/members/{memberID} [put]
+func (h *FloorHandler) AddFloorMember(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	floorID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	memberID, err := uuid.Parse(c.Param("memberID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IFloorService.AddFloorMember(c.Request.Context(), userInfo, hallID, floorID, memberID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "Floor member added successfully",
+		"success": true,
+		"data":    res,
+	})
+}
+
+// RemoveFloorMember godoc
+// @Summary      Remove a member from a private floor
+// @Description  Removes a hall member's access from a private floor and syncs all synced rooms inside it.
+// @Tags         floors
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID    path      string  true  "Hall ID (UUID)"
+// @Param        id        path      string  true  "Floor ID (UUID)"
+// @Param        memberID  path      string  true  "Hall Member ID (UUID)"
+// @Success      200       {object}  map[string]interface{}
+// @Failure      400       {object}  map[string]interface{}
+// @Failure      401       {object}  map[string]interface{}
+// @Failure      403       {object}  map[string]interface{}
+// @Router       /halls/{hallID}/floors/{id}/members/{memberID} [delete]
+func (h *FloorHandler) RemoveFloorMember(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	floorID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	memberID, err := uuid.Parse(c.Param("memberID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IFloorService.RemoveFloorMember(c.Request.Context(), userInfo, hallID, floorID, memberID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "Floor member removed successfully",
+		"success": true,
+		"data":    res,
+	})
+}

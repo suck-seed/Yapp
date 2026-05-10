@@ -172,6 +172,10 @@ func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService
 		floorGroup.GET("/:id", floorHandler.GetFloor)
 		floorGroup.DELETE("/:id", floorHandler.DeleteFloor)
 		floorGroup.PUT("/:id/move", floorHandler.MoveFloor)
+
+		// Private floor member access
+		floorGroup.PUT("/:id/members/:memberID", floorHandler.AddFloorMember)
+		floorGroup.DELETE("/:id/members/:memberID", floorHandler.RemoveFloorMember)
 	}
 
 }
@@ -186,6 +190,10 @@ func RegisterRoomRoutes(r *gin.RouterGroup, roomService services.IRoomService, m
 		roomGroup.PATCH("/:roomID", roomHandler.UpdateRoom)
 		roomGroup.DELETE("/:roomID", roomHandler.DeleteRoom)
 		roomGroup.PUT("/:roomID/move", roomHandler.MoveRoom)
+
+		// Private room member access
+		roomGroup.PUT("/:roomID/members/:memberID", roomHandler.AddRoomMember)
+		roomGroup.DELETE("/:roomID/members/:memberID", roomHandler.RemoveRoomMember)
 
 		// Room scoped routes
 		roomScoped := roomGroup.Group("/:roomID")

@@ -8,15 +8,16 @@ import (
 
 // Shared response shape
 type RoomRes struct {
-	ID        uuid.UUID  `json:"id"`
-	HallID    uuid.UUID  `json:"hall_id"`
-	FloorID   *uuid.UUID `json:"floor_id"`
-	Name      string     `json:"name"`
-	RoomType  string     `json:"room_type"`
-	Position  float64    `json:"position"`
-	IsPrivate bool       `json:"is_private"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
+	ID                   uuid.UUID  `json:"id"`
+	HallID               uuid.UUID  `json:"hall_id"`
+	FloorID              *uuid.UUID `json:"floor_id"`
+	Name                 string     `json:"name"`
+	RoomType             string     `json:"room_type"`
+	Position             float64    `json:"position"`
+	IsPrivate            bool       `json:"is_private"`
+	SyncWithFloorMembers bool       `json:"sync_with_floor_members"`
+	CreatedAt            time.Time  `json:"created_at"`
+	UpdatedAt            time.Time  `json:"updated_at"`
 }
 
 type CreateRoomReq struct {

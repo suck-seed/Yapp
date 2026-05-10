@@ -292,3 +292,109 @@ func (h *RoomHandler) MoveRoom(c *gin.Context) {
 		"data":    res,
 	})
 }
+
+// AddRoomMember godoc
+// @Summary      Add a member to a private room
+// @Description  Gives a hall member access to a private room. Requires ManageChannels permission.
+// @Tags         rooms
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID    path      string  true  "Hall ID (UUID)"
+// @Param        roomID    path      string  true  "Room ID (UUID)"
+// @Param        memberID  path      string  true  "Hall Member ID (UUID)"
+// @Success      200       {object}  map[string]interface{}
+// @Failure      400       {object}  map[string]interface{}
+// @Failure      401       {object}  map[string]interface{}
+// @Failure      403       {object}  map[string]interface{}
+// @Router       /halls/{hallID}/rooms/{roomID}/members/{memberID} [put]
+func (h *RoomHandler) AddRoomMember(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	roomID, err := uuid.Parse(c.Param("roomID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	memberID, err := uuid.Parse(c.Param("memberID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IRoomService.AddRoomMember(c.Request.Context(), userInfo, hallID, roomID, memberID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"success": true,
+		"message": "Room member added successfully",
+		"data":    res,
+	})
+}
+
+// RemoveRoomMember godoc
+// @Summary      Remove a member from a private room
+// @Description  Removes a hall member's access from a private room. Requires ManageChannels permission.
+// @Tags         rooms
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID    path      string  true  "Hall ID (UUID)"
+// @Param        roomID    path      string  true  "Room ID (UUID)"
+// @Param        memberID  path      string  true  "Hall Member ID (UUID)"
+// @Success      200       {object}  map[string]interface{}
+// @Failure      400       {object}  map[string]interface{}
+// @Failure      401       {object}  map[string]interface{}
+// @Failure      403       {object}  map[string]interface{}
+// @Router       /halls/{hallID}/rooms/{roomID}/members/{memberID} [delete]
+func (h *RoomHandler) RemoveRoomMember(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	roomID, err := uuid.Parse(c.Param("roomID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	memberID, err := uuid.Parse(c.Param("memberID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IRoomService.RemoveRoomMember(c.Request.Context(), userInfo, hallID, roomID, memberID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"success": true,
+		"message": "Room member removed successfully",
+		"data":    res,
+	})
+}
