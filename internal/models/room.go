@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	dto "github.com/suck-seed/yapp/internal/dto/room"
 )
 
 type RoomType string
@@ -30,4 +31,19 @@ type Room struct {
 type RoomMember struct {
 	RoomID   uuid.UUID `json:"room_id" db:"room_id"`
 	MemberID uuid.UUID `json:"member_id" db:"member_id"`
+}
+
+func roomToRes(r *Room) dto.RoomRes {
+	return dto.RoomRes{
+		ID:                   r.ID,
+		HallID:               r.HallID,
+		FloorID:              r.FloorID,
+		Name:                 r.Name,
+		RoomType:             r.RoomType,
+		Position:             r.Position,
+		IsPrivate:            r.IsPrivate,
+		SyncWithFloorMembers: r.SyncWithFloorMembers,
+		CreatedAt:            r.CreatedAt,
+		UpdatedAt:            r.UpdatedAt,
+	}
 }

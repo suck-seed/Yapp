@@ -195,6 +195,9 @@ func RegisterRoomRoutes(r *gin.RouterGroup, roomService services.IRoomService, m
 		roomGroup.PUT("/:roomID/members/:memberID", roomHandler.AddRoomMember)
 		roomGroup.DELETE("/:roomID/members/:memberID", roomHandler.RemoveRoomMember)
 
+		// sync room members to floor members
+		roomGroup.PUT("/:roomID/sync-floor-members", roomHandler.SyncRoomMembersToFloor)
+
 		// Room scoped routes
 		roomScoped := roomGroup.Group("/:roomID")
 		{

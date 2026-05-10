@@ -24,6 +24,10 @@ type IFloorService interface {
 	UpdateFloor(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, req *dto.UpdateFloorReq) (*dto.UpdateFloorRes, error)
 	DeleteFloor(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID) error
 	MoveFloor(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, req *dto.MoveFloorReq) (*dto.GetFloorRes, error)
+
+	// Floor member management
+	AddFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.FloorAccessMemberRes, error)
+	RemoveFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.FloorAccessMemberRes, error)
 }
 
 type floorService struct {
@@ -386,4 +390,152 @@ func (s *floorService) MoveFloor(c context.Context, userInfo *auth.UserInfo, hal
 
 	res := floorToGetRes(updated)
 	return &res, nil
+}
+
+// ── Floor Members ─────────────────────────────────────────────────────────────
+
+func (s *floorService) AddFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.FloorAccessMemberRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
+
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return nil, err
+	}
+
+	// Verify floor belongs to this hall
+	floor, err := s.IFloorRepository.GetFloorByID(ctx, runner, floorID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorFloorNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingFloor
+	}
+
+	if floor.HallID != hallID {
+		return nil, utils.ErrorFloorNotFound
+	}
+
+	// Got to be private for adding members
+	if !floor.IsPrivate {
+		return nil, utils.ErrorFloorIsNotPrivate
+	}
+
+	// Verify member belongs to this hall
+	if _, err := s.IHallRepository.GetHallMemberByID(ctx, runner, hallID, memberID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorMemberNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorInternal
+	}
+
+	if err := s.IFloorRepository.AddFloorMember(ctx, runner, floorID, memberID); err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorCreatingFloorMember
+	}
+
+	// Adding a member to a private floor will fetch/sync all rooms in that floor.
+	// Rooms manually edited through room member endpoints are not updated.
+	if err := s.IRoomRepository.SyncRoomsInFloorFromFloorMembers(ctx, runner, floorID); err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorCreatingRoomMember
+	}
+
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	return &dto.FloorAccessMemberRes{
+		FloorID:  floorID,
+		MemberID: memberID,
+	}, nil
+}
+
+func (s *floorService) RemoveFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.FloorAccessMemberRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
+
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return nil, err
+	}
+
+	// Verify floor belongs to this hall
+	floor, err := s.IFloorRepository.GetFloorByID(ctx, runner, floorID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorFloorNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingFloor
+	}
+
+	if floor.HallID != hallID {
+		return nil, utils.ErrorFloorNotFound
+	}
+
+	// Got to be private for removing members
+	if !floor.IsPrivate {
+		return nil, utils.ErrorFloorIsNotPrivate
+	}
+
+	// Verify member belongs to this hall
+	if _, err := s.IHallRepository.GetHallMemberByID(ctx, runner, hallID, memberID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorMemberNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorInternal
+	}
+
+	if err := s.IFloorRepository.RemoveFloorMember(ctx, runner, floorID, memberID); err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorDeletingFloorMember
+	}
+
+	// Removing a member from a private floor will sync all rooms in that floor.
+	// Rooms manually edited through room member endpoints are not updated.
+	if err := s.IRoomRepository.SyncRoomsInFloorFromFloorMembers(ctx, runner, floorID); err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorCreatingRoomMember
+	}
+
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	return &dto.FloorAccessMemberRes{
+		FloorID:  floorID,
+		MemberID: memberID,
+	}, nil
 }

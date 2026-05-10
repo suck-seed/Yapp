@@ -83,3 +83,10 @@ type MoveRoomReq struct {
 	// And mirror the room_member's list to floor's member list
 	SyncPrivate *bool `json:"sync_private" binding:"omitempty"`
 }
+
+// RoomAccessMemberRes is returned after adding/removing one hall member
+// from a private room access list.
+type RoomAccessMemberRes struct {
+	RoomID   uuid.UUID `json:"room_id"`
+	MemberID uuid.UUID `json:"member_id"`
+}

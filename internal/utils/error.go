@@ -242,6 +242,15 @@ var (
 	ErrorFriendRequestNotFound             = &AppError{Code: http.StatusNotFound, Message: "Friend request not found"}
 	ErrorAppLinkNotFound                   = &AppError{Code: http.StatusNotFound, Message: "App link not found"}
 	ErrorUnauthorizedToHandleFriendRequest = &AppError{Code: http.StatusNotFound, Message: "Cannot handle other user's Friend Requests"}
+
+	// Room / Floor Membership
+	ErrorFloorIsNotPrivate   = &AppError{Code: http.StatusBadRequest, Message: "Floor has to be private to add members"}
+	ErrorCreatingFloorMember = &AppError{Code: http.StatusBadRequest, Message: "Error occured while assigning member to floor"}
+	ErrorDeletingFloorMember = &AppError{Code: http.StatusBadRequest, Message: "Error occured while removing member from floor"}
+
+	ErrorRoomIsNotPrivate   = &AppError{Code: http.StatusBadRequest, Message: "Room has to be private to add members"}
+	ErrorDeletingRoomMember = &AppError{Code: http.StatusBadRequest, Message: "Error occured while removing member from room"}
+	ErrorRoomNotInFloor     = &AppError{Code: http.StatusBadRequest, Message: "Room does not exist in floor"}
 )
 
 // Writing Errors from handlers to client

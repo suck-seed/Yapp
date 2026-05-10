@@ -22,6 +22,10 @@ type IFloorRepository interface {
 	GetFloorPositionBounds(ctx context.Context, db database.DBRunner, hallID uuid.UUID, afterID *uuid.UUID) (lower float64, upper *float64, err error)
 	UpdateFloorPosition(ctx context.Context, db database.DBRunner, floorID uuid.UUID, position float64) (*models.Floor, error)
 
+	// Floor Members
+	AddFloorMember(ctx context.Context, db database.DBRunner, floorID uuid.UUID, memberID uuid.UUID) error
+	RemoveFloorMember(ctx context.Context, db database.DBRunner, floorID uuid.UUID, memberID uuid.UUID) error
+
 	// Helper functions
 	IsFloorPrivate(ctx context.Context, db database.DBRunner, floorID uuid.UUID) (bool, error)
 }
@@ -248,4 +252,28 @@ func (r *floorRepository) IsFloorPrivate(ctx context.Context, db database.DBRunn
 	}
 
 	return isPrivate, nil
+}
+
+// Floor member management
+
+func (r *floorRepository) AddFloorMember(ctx context.Context, db database.DBRunner, floorID uuid.UUID, memberID uuid.UUID) error {
+	query := `
+		INSERT INTO floor_members (floor_id, member_id)
+		VALUES ($1, $2)
+		ON CONFLICT (floor_id, member_id) DO NOTHING
+	`
+
+	_, err := db.Exec(ctx, query, floorID, memberID)
+	return err
+}
+
+func (r *floorRepository) RemoveFloorMember(ctx context.Context, db database.DBRunner, floorID uuid.UUID, memberID uuid.UUID) error {
+	query := `
+		DELETE FROM floor_members
+		WHERE floor_id = $1
+		  AND member_id = $2
+	`
+
+	_, err := db.Exec(ctx, query, floorID, memberID)
+	return err
 }

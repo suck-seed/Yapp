@@ -398,3 +398,36 @@ func (h *RoomHandler) RemoveRoomMember(c *gin.Context) {
 		"data":    res,
 	})
 }
+
+func (h *RoomHandler) SyncRoomMembersToFloor(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	roomID, err := uuid.Parse(c.Param("roomID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IRoomService.SyncRoomMembersToFloor(c.Request.Context(), userInfo, hallID, roomID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"success": true,
+		"message": "Room members synced with floor successfully",
+		"data":    res,
+	})
+}
