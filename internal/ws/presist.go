@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"time"
 
 	dto "github.com/suck-seed/yapp/internal/dto/message"
 	"github.com/suck-seed/yapp/internal/services"
@@ -13,6 +14,11 @@ type PersistFunction func(ctx context.Context, in *dto.InboundMessage) (*dto.Out
 // MakePresistFunction : Performs various actions and pushes it to db
 func MakePresistFunction(messageService services.IMessageService, userService services.IUserService) PersistFunction {
 	return func(ctx context.Context, in *dto.InboundMessage) (*dto.OutboundMessage, error) {
+
+		// Condition where client did not send sentAt
+		if in.SentAt.IsZero() {
+			in.SentAt = time.Now().UTC()
+		}
 
 		// send to messageService to handle
 		saved, err := messageService.CreateMessage(context.Background(), &dto.CreateMessageReq{
@@ -30,7 +36,7 @@ func MakePresistFunction(messageService services.IMessageService, userService se
 		}
 
 		return &dto.OutboundMessage{
-			Type: in.Type,
+			Type: dto.MessageTypeText,
 
 			ID:       saved.ID,
 			RoomID:   saved.RoomID,

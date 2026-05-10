@@ -134,6 +134,8 @@ var (
 	ErrorDeletingJoinRequest = &AppError{Code: http.StatusInternalServerError, Message: "Error occurred while deleting Join Request"}
 	ErrorJoinRequestNotFound = &AppError{Code: http.StatusNotFound, Message: "Join Request not found"}
 
+	ErrorConnectingWebsocket = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while connecting to websocket"}
+
 	// =========================
 	// RELATION / OWNERSHIP ERRORS
 	// =========================

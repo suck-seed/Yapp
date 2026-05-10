@@ -81,66 +81,19 @@ func (h *WebsocketHandler) Connect(c *gin.Context) {
 	}
 
 	// User Exists?
-	user, err := h.IUserService.GetUserById(c, userInfo.ID)
+	user, err := h.IUserService.GetUserById(c.Request.Context(), userInfo.ID)
 	if err != nil {
 		utils.WriteError(c, utils.ErrorUserNotFound)
 		return
 	}
 
-	// Parse room_id
-	roomIDStr := c.Param("room_id")
-	roomID, err := uuid.Parse(roomIDStr)
+	// room_id -> hall_id
+	// This is the core of your new specification: subscribe the app/device websocket to all rooms.
+	subscribedRooms, err := h.IRoomService.GetAccessibleRoomsForUser(c.Request.Context(), &auth.UserInfo{ID: user.ID})
 	if err != nil {
-		utils.WriteError(c, utils.ErrorInvalidRoomIDFormat)
+		utils.WriteError(c, utils.ErrorConnectingWebsocket)
 		return
 	}
-
-	// Room exists? && Fetch Room
-	room, err := h.IRoomService.GetRoomByID(c, roomID)
-	if err != nil {
-		utils.WriteError(c, utils.ErrorRoomNotFound)
-		return
-	}
-
-	// Hall exists?
-	hallExists, err := h.IHallService.DoesHallExist(c, room.HallID)
-	if err != nil {
-		utils.WriteError(c, err)
-		return
-	}
-	if !hallExists {
-		utils.WriteError(c, utils.ErrorHallNotFound)
-		return
-	}
-
-	// Hall Member ?
-	belongs, err := h.IHallService.IsUserHallMember(c, room.HallID, user.ID)
-	if err != nil {
-		utils.WriteError(c, err)
-		return
-	}
-	if !belongs {
-		utils.WriteError(c, utils.ErrorUserDoesntBelongHall)
-		return
-	}
-
-	// Room Member ? ( ON PRIVATE ROOMS )
-	if room.IsPrivate {
-
-		// check on room_member table
-		belongs, err := h.IRoomService.IsUserRoomMember(c, room.ID, user.ID)
-		if err != nil {
-			utils.WriteError(c, err)
-			return
-		}
-		if !belongs {
-			utils.WriteError(c, utils.ErrorUserDoesntBelongRoom)
-			return
-		}
-
-	}
-
-	// get all the info and validate themmm, ani ball upgrading them
 
 	// Upgrade HTTP to websocket
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -149,41 +102,28 @@ func (h *WebsocketHandler) Connect(c *gin.Context) {
 		return
 	}
 
-	// Do this during registiring not here, race condition aauxa
-	// if _, exists := h.hub.Rooms[room.RoomID]; !exists {
-
-	// 	// add in the collection of rooms in hub
-	// 	h.hub.Rooms[room.RoomID] = &Room{
-	// 		RoomID:    room.RoomID,
-	// 		HallID:    room.HallId,
-	// 		FloorID:   room.FloorId,
-	// 		Name:      room.Name,
-	// 		RoomType:  RoomType(room.RoomType),
-	// 		IsPrivate: room.IsPrivate,
-	// 		CreatedAt: room.CreatedAt,
-	// 		UpdatedAt: room.UpdatedAt,
-
-	// 		// initialize a client list
-	// 		Clients: make(map[uuid.UUID]*Client),
-	// 	}
-	// }
-
 	// register client
-	const sendBuf = 1024
 
 	clientID, err := uuid.NewUUID()
 	if err != nil {
+		// close the connection already
+		_ = conn.Close()
 		utils.WriteError(c, utils.ErrorFailedUpgrade)
 		return
 	}
 
+	const sendBuf = 1024
 	client := &Client{
-		ID:          clientID,
-		Conn:        conn,
-		Send:        make(chan *dto.OutboundMessage, sendBuf),
-		UserID:      user.ID,
-		RoomID:      room.ID,
+		ID:     clientID,
+		Conn:   conn,
+		Send:   make(chan *dto.OutboundMessage, sendBuf),
+		UserID: user.ID,
+
+		// INCLUDE THISSS ASAP
+		SubscribedRooms: subscribedRooms,
+
 		ConnectedAt: time.Now(),
+		LastPing:    time.Now(),
 	}
 
 	h.hub.Register <- client
@@ -198,13 +138,12 @@ func (h *WebsocketHandler) Connect(c *gin.Context) {
 }
 
 type GetClientRes struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
+	ID string `json:"id"`
 }
 
 // GetClients godoc
 // @Summary      List connected clients in a room
-// @Description  Returns the user IDs of every WebSocket client currently connected to the room. Useful for @-mention autocomplete.
+// @Description  Returns unique user IDs currently connected/subscribed to the room. Useful for @-mention autocomplete or debugging.
 // @Tags         websocket
 // @Produce      json
 // @Security     CookieAuth
@@ -213,31 +152,27 @@ type GetClientRes struct {
 // @Failure      400      {object}  map[string]interface{}
 // @Router       /ws/clients/{room_id} [get]
 func (h *WebsocketHandler) GetClients(c *gin.Context) {
-
-	var clients []GetClientRes
-	roomIdString := c.Param("room_id")
-
-	roomId, err := uuid.Parse(roomIdString)
+	roomID, err := uuid.Parse(c.Param("room_id"))
 	if err != nil {
 		utils.WriteError(c, utils.ErrorInvalidRoomIDFormat)
 		return
 	}
 
-	if _, ok := h.hub.Rooms[roomId]; !ok {
-		clients = make([]GetClientRes, 0)
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"message": "Room clients retrieved successfully",
-			"data":    clients,
-		})
-		return
-	}
+	clients := make([]GetClientRes, 0)
+	seenUsers := make(map[uuid.UUID]bool)
 
-	for _, client := range h.hub.Rooms[roomId].Clients {
-		clients = append(clients, GetClientRes{
-			ID: client.UserID.String(),
-		})
+	h.hub.mu.RLock()
+	room, exists := h.hub.Rooms[roomID]
+	if exists {
+		for _, client := range room.Clients {
+			if seenUsers[client.UserID] {
+				continue
+			}
+			seenUsers[client.UserID] = true
+			clients = append(clients, GetClientRes{ID: client.UserID.String()})
+		}
 	}
+	h.hub.mu.RUnlock()
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

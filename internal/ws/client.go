@@ -11,18 +11,25 @@ import (
 	dto "github.com/suck-seed/yapp/internal/dto/message"
 )
 
-// Represents a Websocket connection
+// Client represents one WebSocket connection from one browser tab / mobile app / device.
 type Client struct {
+
+	// Represents the current browser ID or instance ID of a user
+	// Chrome -> Client 1st
+	// Firefox -> New client created for it
 	ID uuid.UUID
 
 	// Connection essentials
 	Conn *websocket.Conn
 	Send chan *dto.OutboundMessage
 
-	// Identity - only what's needed for routing
 	UserID uuid.UUID
-	RoomID uuid.UUID
-	HallID uuid.UUID
+
+	// Map RoomID -> HallID
+	// The gateway subscribes this one client connection
+	// to every room the user can access
+
+	SubscribedRooms map[uuid.UUID]uuid.UUID
 
 	// Connection metadata
 	ConnectedAt time.Time
@@ -40,44 +47,70 @@ const (
 	maxMessageSize = 512 << 10           // 512KB (set what you want)
 )
 
-// readPump : Continously Reads the upcoming json stream from the websocket connection and passes incoming/inboundMessage to Hub to be handled
+func (c *Client) IsSubscribedToRoom(roomID uuid.UUID) bool {
+	if c == nil || c.SubscribedRooms == nil {
+		return false
+	}
+	_, ok := c.SubscribedRooms[roomID]
+	return ok
+}
+
+func (c *Client) RoomIDs() []uuid.UUID {
+	ids := make([]uuid.UUID, 0, len(c.SubscribedRooms))
+	for roomID := range c.SubscribedRooms {
+		ids = append(ids, roomID)
+	}
+	return ids
+}
+
+// readPump continuously reads JSON events from this client.
+// The client must now send room_id in the JSON payload because /ws is a global gateway.
 func (c *Client) readPump(hub *Hub) {
 	defer func() {
 		hub.Unregister <- c
 		c.Conn.Close()
 	}()
 
-	// c.Conn.SetReadLimit(maxMessageSize)
-	c.Conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.Conn.SetReadLimit(maxMessageSize)
+	_ = c.Conn.SetReadDeadline(time.Now().Add(pongWait))
+
 	c.Conn.SetPongHandler(func(string) error {
 
 		c.LastPing = time.Now()
-		c.Conn.SetReadDeadline(time.Now().Add(pongWait))
+		_ = c.Conn.SetReadDeadline(time.Now().Add(pongWait))
 
 		if hub.PresenceService != nil {
 			_ = hub.PresenceService.RefreshConnection(context.Background(), c.UserID, c.ID)
 		}
-
 		return nil
-
 	})
 
 	for {
-
 		inboundMessage := &dto.InboundMessage{}
 
-		if err := c.Conn.ReadJSON(&inboundMessage); err != nil {
+		if err := c.Conn.ReadJSON(inboundMessage); err != nil {
 
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				log.Printf("websocket read error: %v", err)
 			}
 			break
 
 		}
 
-		// We added these values on client in JoinRoom Func
+		// Server-owned identity. Never trust these from frontend.
 		inboundMessage.UserID = c.UserID
-		inboundMessage.RoomID = c.RoomID
+		inboundMessage.ClientID = c.ID
+
+		// Validate if RoomID field is empty or not (should never be empty)
+		if inboundMessage.RoomID == uuid.Nil {
+			hub.sendErrorToClient(c.ID, uuid.Nil, c.UserID, "room_id is required")
+			continue
+		}
+
+		if !c.IsSubscribedToRoom(inboundMessage.RoomID) {
+			hub.sendErrorToClient(c.ID, inboundMessage.RoomID, c.UserID, "you are not subscribed to this room")
+			continue
+		}
 
 		if hub.PresenceService != nil {
 			_ = hub.PresenceService.RefreshConnection(context.Background(), c.UserID, c.ID)
@@ -99,9 +132,7 @@ func (c *Client) writePump() {
 	c.Conn.EnableWriteCompression(true)
 
 	for {
-
 		select {
-
 		case out, ok := <-c.Send:
 			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 
@@ -116,7 +147,7 @@ func (c *Client) writePump() {
 			}
 
 		case <-ticker.C:
-			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
+			_ = c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 
 			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 

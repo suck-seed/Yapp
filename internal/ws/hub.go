@@ -14,8 +14,14 @@ import (
 )
 
 type Hub struct {
-	// Room management
+	// room_id -> room subscription bucket
 	Rooms map[uuid.UUID]*Room
+
+	// client_id -> client
+	Clients map[uuid.UUID]*Client
+
+	// user_id -> client_id -> client
+	UserClients map[uuid.UUID]map[uuid.UUID]*Client
 
 	// Connection lifecycle
 	Register   chan *Client
@@ -32,6 +38,7 @@ type Hub struct {
 	// Presence Service
 	PresenceService services.IPresenceService
 
+	// One lock protects Rooms, Clients, and UserClients.
 	mu sync.RWMutex
 }
 
@@ -42,7 +49,9 @@ func NewHub(
 	presenceService services.IPresenceService,
 ) Hub {
 	return Hub{
-		Rooms:           make(map[uuid.UUID]*Room),
+		Rooms:           make(map[uuid.UUID]*Room),   // room_id -> room subscription bucket
+		Clients:         make(map[uuid.UUID]*Client), // client_id -> client
+		UserClients:     make(map[uuid.UUID]map[uuid.UUID]*Client),
 		Register:        make(chan *Client, 1024),
 		Unregister:      make(chan *Client, 1024),
 		Inbound:         make(chan *dto.InboundMessage, 1024),
@@ -75,23 +84,18 @@ func (h *Hub) handleInboundMessage() {
 	// passed from client/readPump()
 	// contains all info about the inbound message
 	for inboundMessage := range h.Inbound {
-
 		switch inboundMessage.Type {
-
 		case dto.MessageTypeText:
 			h.processTextMessage(inboundMessage)
-
 		case dto.MessageTypeTyping:
 			h.processTypingIndicator(inboundMessage)
-
 		case dto.MessageTypeStopTyping:
 			h.processStopTypingIndicator(inboundMessage)
-
 		case dto.MessageTypeRead:
 			h.processReadReciept(inboundMessage)
-
 		default:
-			log.Printf("Unknown message type %s", inboundMessage.Type)
+			log.Printf("unknown websocket message type %s", inboundMessage.Type)
+			h.sendErrorToClient(inboundMessage.ClientID, inboundMessage.RoomID, inboundMessage.UserID, "unknown websocket message type")
 		}
 
 	}
@@ -102,151 +106,169 @@ func (h *Hub) handleOutbound() {
 
 	for msg := range h.Outbound {
 		h.deliverToRoom(msg.RoomID, msg)
-
 	}
-
 }
+
 func (h *Hub) registerClient(client *Client) {
+
+	//  just in case if Client's Subscribe Room isnt made
+	if client.SubscribedRooms == nil {
+		client.SubscribedRooms = make(map[uuid.UUID]uuid.UUID)
+	}
+
 	h.mu.Lock()
-	defer h.mu.Unlock()
 
-	room, exists := h.Rooms[client.RoomID]
-	if !exists {
-		room = &Room{
-			ID:      client.RoomID,
-			HallID:  client.HallID,
-			Clients: make(map[uuid.UUID]*Client),
+	// If client with this UserID doesnt exist
+	if _, exists := h.UserClients[client.UserID]; !exists {
+
+		// Make a new UserClient
+		// With this new UserID as client.UserID
+		h.UserClients[client.UserID] = make(map[uuid.UUID]*Client)
+	}
+
+	// Then map the current client as one of the client of this user
+	h.UserClients[client.UserID][client.ID] = client
+
+	// userID ->->->-> ClientID1 ->->->-> Client1 (Chrome)
+	// 			\ ->->->-> ClientID2 ->->->-> Client2 (Firefox)
+
+	// Now create a suscribtion
+	for roomID, hallID := range client.SubscribedRooms {
+
+		// Check if the subscribed room of client
+		// exist or not in the hub.Rooms
+		room, exists := h.Rooms[roomID]
+
+		// if doesnt exist, create the room and add in h.Rooms
+		if !exists {
+
+			room := &Room{
+				ID:      roomID,
+				HallID:  hallID,
+				Clients: make(map[uuid.UUID]*Client),
+			}
+
+			h.Rooms[roomID] = room
 		}
 
-		h.Rooms[client.RoomID] = room
+		// Now assign this client in room;s client
+		room.Clients[client.ID] = client
+
 	}
+	h.mu.Unlock()
 
-	room.Clients[client.ID] = client
+	if h.PresenceService != nil {
 
-	presence, err := h.PresenceService.MarkConnected(context.Background(), client.UserID, client.ID)
-	if err == nil && presence != nil {
-		userID := client.UserID
+		presence, err := h.PresenceService.MarkConnected(context.Background(), client.UserID, client.ID)
 
-		presenceMsg := &dto.OutboundMessage{
-			Type:           dto.MessageTypePresence,
-			RoomID:         client.RoomID,
-			AuthorID:       client.UserID,
-			PresenceUserID: &userID,
-			PresenceStatus: utils.StringToPointer(string(presence.Status)),
-			LastSeenAt:     presence.LastSeenAt,
-			SentAt:         time.Now(),
-		}
-
-		select {
-		case h.Outbound <- presenceMsg:
-		default:
+		if err == nil && presence != nil {
+			h.broadcastPresenceToRooms(client.SubscribedRooms, client.UserID, string(presence.Status), presence.LastSeenAt)
 		}
 	}
 
-	joinMsg := &dto.OutboundMessage{
-		Type:     dto.MessageTypeJoin,
-		RoomID:   client.RoomID,
-		AuthorID: client.UserID,
-		SentAt:   time.Now(),
-	}
-
-	select {
-	case h.Outbound <- joinMsg:
-	default:
-		log.Printf("Could not broadcast join message for user %s", client.UserID)
-	}
 }
 
 func (h *Hub) unregisterClient(client *Client) {
+
+	roomIDs := client.RoomIDs()
+	roomsForPresence := cloneRoomMap(client.SubscribedRooms)
+
 	h.mu.Lock()
-	defer h.mu.Unlock()
 
-	room, exists := h.Rooms[client.RoomID]
-	if !exists {
-		return
+	current, exists := h.Clients[client.ID]
+	if exists {
+		h.removeClientLocked(current)
 	}
+	// unlock the client
+	h.mu.Unlock()
 
-	delete(room.Clients, client.ID)
 	client.SafeClose()
 
-	_ = h.PresenceService.StopTyping(context.Background(), client.RoomID, client.UserID)
-
-	presence, err := h.PresenceService.MarkDisconnected(context.Background(), client.UserID, client.ID)
-	if err == nil && presence != nil {
-		userID := client.UserID
-
-		presenceMsg := &dto.OutboundMessage{
-			Type:           dto.MessageTypePresence,
-			RoomID:         client.RoomID,
-			AuthorID:       client.UserID,
-			PresenceUserID: &userID,
-			PresenceStatus: utils.StringToPointer(string(presence.Status)),
-			LastSeenAt:     presence.LastSeenAt,
-			SentAt:         time.Now(),
+	if h.PresenceService != nil {
+		for _, roomID := range roomIDs {
+			_ = h.PresenceService.StopTyping(context.Background(), roomID, client.UserID)
 		}
 
-		select {
-		case h.Outbound <- presenceMsg:
-		default:
+		presence, err := h.PresenceService.MarkDisconnected(context.Background(), client.UserID, client.ID)
+		if err == nil && presence != nil {
+			h.broadcastPresenceToRooms(roomsForPresence, client.UserID, string(presence.Status), presence.LastSeenAt)
 		}
 	}
 
-	leavingMsg := &dto.OutboundMessage{
-		Type:     dto.MessageTypeLeave,
-		RoomID:   client.RoomID,
-		AuthorID: client.UserID,
-		SentAt:   time.Now(),
-	}
+}
 
-	// remove room from memory if no user
-	if len(room.Clients) == 0 {
-		delete(h.Rooms, client.RoomID)
-	} else {
-		select {
-		case h.Outbound <- leavingMsg:
-		default:
-			log.Printf("Could not broadcast leave message for user %s", client.UserID)
+// removeClientLocked must only be called while h.mu is write-locked.
+func (h *Hub) removeClientLocked(client *Client) {
+	delete(h.Clients, client.ID)
+
+	if clientsByUser, exists := h.UserClients[client.UserID]; exists {
+		delete(clientsByUser, client.ID)
+		if len(clientsByUser) == 0 {
+			delete(h.UserClients, client.UserID)
 		}
 	}
+
+	for roomID := range client.SubscribedRooms {
+		room, exists := h.Rooms[roomID]
+		if !exists {
+			continue
+		}
+
+		delete(room.Clients, client.ID)
+		if len(room.Clients) == 0 {
+			delete(h.Rooms, roomID)
+		}
+	}
+}
+
+func cloneRoomMap(in map[uuid.UUID]uuid.UUID) map[uuid.UUID]uuid.UUID {
+	out := make(map[uuid.UUID]uuid.UUID, len(in))
+	for roomID, hallID := range in {
+		out[roomID] = hallID
+	}
+	return out
 }
 
 // MESSAGE PROCESSING
 func (h *Hub) processTextMessage(msg *dto.InboundMessage) {
 
-	outboundingMsg, err := h.PersistFunc(context.Background(), msg)
-
-	// handle any error occured during message creation
-	if err != nil {
-		errMsg := &dto.OutboundMessage{
-			Type:     dto.MessageTypeError,
-			RoomID:   msg.RoomID,
-			AuthorID: msg.UserID,
-			Error:    utils.StringToPointer(err.Error()),
-			SentAt:   time.Now(),
-		}
-
-		// send error the the concerning user only
-		h.sendToUser(msg.UserID, msg.RoomID, errMsg)
+	if msg.RoomID == uuid.Nil {
+		h.sendErrorToClient(msg.ClientID, uuid.Nil, msg.UserID, "room_id is required")
 		return
 	}
 
-	// add to broadcast queue (non blocking)
+	// is client even subscribed into this room
+	if !h.isClientSubscribedToRoom(msg.ClientID, msg.RoomID) {
+		h.sendErrorToClient(msg.ClientID, msg.RoomID, msg.UserID, "you are not subscribed to this room")
+		return
+	}
+
+	outboundingMsg, err := h.PersistFunc(context.Background(), msg)
+	if err != nil {
+		h.sendErrorToClient(msg.ClientID, msg.RoomID, msg.UserID, err.Error())
+		return
+	}
+
 	select {
 	case h.Outbound <- outboundingMsg:
-
 	default:
-		//		log.Printf("Broadcast channel full, dropping message %s", outboundingMsg.)
-
+		log.Printf("outbound channel full, dropping message %s", outboundingMsg.ID)
 	}
 
 }
 
 func (h *Hub) processTypingIndicator(msg *dto.InboundMessage) {
 
-	_ = h.PresenceService.SetTyping(context.Background(), msg.RoomID, msg.UserID)
+	if !h.isClientSubscribedToRoom(msg.ClientID, msg.RoomID) {
+		h.sendErrorToClient(msg.ClientID, msg.RoomID, msg.UserID, "you are not subscribed to this room")
+		return
+	}
+
+	if h.PresenceService != nil {
+		_ = h.PresenceService.SetTyping(context.Background(), msg.RoomID, msg.UserID)
+	}
 
 	typingUser := msg.UserID
-
 	typingMsg := &dto.OutboundMessage{
 		Type:       dto.MessageTypeTyping,
 		RoomID:     msg.RoomID,
@@ -259,14 +281,20 @@ func (h *Hub) processTypingIndicator(msg *dto.InboundMessage) {
 	case h.Outbound <- typingMsg:
 	default:
 	}
-
 }
 
 func (h *Hub) processStopTypingIndicator(msg *dto.InboundMessage) {
-	_ = h.PresenceService.StopTyping(context.Background(), msg.RoomID, msg.UserID)
+
+	if !h.isClientSubscribedToRoom(msg.ClientID, msg.RoomID) {
+		h.sendErrorToClient(msg.ClientID, msg.RoomID, msg.UserID, "you are not subscribed to this room")
+		return
+	}
+
+	if h.PresenceService != nil {
+		_ = h.PresenceService.StopTyping(context.Background(), msg.RoomID, msg.UserID)
+	}
 
 	typingUser := msg.UserID
-
 	stopTypingMsg := &dto.OutboundMessage{
 		Type:       dto.MessageTypeStopTyping,
 		RoomID:     msg.RoomID,
@@ -282,31 +310,17 @@ func (h *Hub) processStopTypingIndicator(msg *dto.InboundMessage) {
 }
 
 func (h *Hub) processReadReciept(msg *dto.InboundMessage) {
-	if msg.MessageID == nil {
-		errMsg := &dto.OutboundMessage{
-			Type:     dto.MessageTypeError,
-			RoomID:   msg.RoomID,
-			AuthorID: msg.UserID,
-			Error:    utils.StringToPointer("message_id is required for read receipt"),
-			SentAt:   time.Now(),
-		}
-		h.sendToUser(msg.UserID, msg.RoomID, errMsg)
+
+	if !h.isClientSubscribedToRoom(msg.ClientID, msg.RoomID) {
+		h.sendErrorToClient(msg.ClientID, msg.RoomID, msg.UserID, "you are not subscribed to this room")
 		return
 	}
 
 	out, err := h.ReadReceiptFunc(context.Background(), msg)
 	if err != nil {
-		errMsg := &dto.OutboundMessage{
-			Type:     dto.MessageTypeError,
-			RoomID:   msg.RoomID,
-			AuthorID: msg.UserID,
-			Error:    utils.StringToPointer(err.Error()),
-			SentAt:   time.Now(),
-		}
-		h.sendToUser(msg.UserID, msg.RoomID, errMsg)
+		h.sendErrorToClient(msg.ClientID, msg.RoomID, msg.UserID, err.Error())
 		return
 	}
-
 	if out == nil {
 		return
 	}
@@ -314,114 +328,158 @@ func (h *Hub) processReadReciept(msg *dto.InboundMessage) {
 	select {
 	case h.Outbound <- out:
 	default:
-		log.Printf("Could not broadcast read receipt for user %s", msg.UserID)
+		log.Printf("could not broadcast read receipt for user %s", msg.UserID)
 	}
 
 }
 
-// Todo: Finish this function to close hub connection
-func (h *Hub) Close() error {
-	return nil
-}
-
-func (h *Hub) deliverToRoom(roomId uuid.UUID, msg *dto.OutboundMessage) {
+func (h *Hub) deliverToRoom(roomID uuid.UUID, msg *dto.OutboundMessage) {
+	var disconnectedClients []uuid.UUID
 
 	h.mu.RLock()
-	room, exists := h.Rooms[roomId]
-	defer h.mu.RUnlock()
-
+	room, exists := h.Rooms[roomID]
 	if !exists {
+		h.mu.RUnlock()
 		return
 	}
 
-	// collect clients to disconnect
-	room.mu.RLock()
-	var disconnectedClients []uuid.UUID
-
-	// Deliver to all client in room
-	for userId, client := range room.Clients {
-
-		select {
-		case client.Send <- msg:
-
-		default:
-			// Client send buffer is full -
-			// Disconnect
-			log.Printf("Client %s buffer full, disconnecting", msg.AuthorID)
-			client.SafeClose()
-			disconnectedClients = append(disconnectedClients, userId)
-
-		}
+	if msg.HallID == uuid.Nil && room.HallID != uuid.Nil {
+		msg.HallID = room.HallID
 	}
 
-	room.mu.RUnlock()
+	for clientID, client := range room.Clients {
+		select {
+		case client.Send <- msg:
+		default:
+			log.Printf("client %s buffer full, disconnecting", clientID)
+			disconnectedClients = append(disconnectedClients, clientID)
+		}
+	}
+	h.mu.RUnlock()
 
-	// remove any disconnected clients and empty Rooms
 	if len(disconnectedClients) == 0 {
 		return
 	}
 
-	// If length of disconnected clients is > 0
-	room.mu.Lock()
-
+	h.mu.Lock()
 	for _, clientID := range disconnectedClients {
-		delete(room.Clients, clientID)
+		if client, exists := h.Clients[clientID]; exists {
+			h.removeClientLocked(client)
+			client.SafeClose()
+		}
 	}
-
-	isEmpty := len(room.Clients) == 0
-	room.mu.Unlock()
-
-	// If no of clients in a room became while removing disconnected clients , remove room from mem
-	if isEmpty {
-		h.mu.Lock()
-		delete(h.Rooms, roomId)
-		h.mu.Unlock()
-		log.Printf("Cleaned up empty room %s", roomId)
-	}
+	h.mu.Unlock()
 
 }
 
-func (h *Hub) sendToUser(userID uuid.UUID, roomID uuid.UUID, msg *dto.OutboundMessage) {
-
-	// Read lock to main idemptoancy
-	h.mu.RLock()
-	room, exists := h.Rooms[roomID]
-	h.mu.RUnlock()
-
-	if !exists {
-		return
+func (h *Hub) sendErrorToClient(clientID uuid.UUID, roomID uuid.UUID, userID uuid.UUID, message string) {
+	errMsg := &dto.OutboundMessage{
+		Type:     dto.MessageTypeError,
+		RoomID:   roomID,
+		AuthorID: userID,
+		Error:    utils.StringToPointer(message),
+		SentAt:   time.Now(),
 	}
+	h.sendToClientID(clientID, errMsg)
+}
+
+func (h *Hub) sendToClientID(clientID uuid.UUID, msg *dto.OutboundMessage) {
+	var disconnected *Client
 
 	h.mu.RLock()
-	client, exists := room.Clients[userID]
-	h.mu.RUnlock()
-
-	if !exists {
-		return
-	}
-
-	// sendToUser
-	select {
-
-	case client.Send <- msg:
-
-	default:
-		// buffer full, cleanup
-
-		client.SafeClose()
-
-		h.mu.Lock()
-		if room, exists := h.Rooms[roomID]; exists {
-
-			delete(room.Clients, userID)
-
-			// clean up potential empty room
-			if len(room.Clients) == 0 {
-				delete(h.Rooms, roomID)
-			}
+	client, exists := h.Clients[clientID]
+	if exists {
+		select {
+		case client.Send <- msg:
+		default:
+			disconnected = client
 		}
+	}
+	h.mu.RUnlock()
 
-		h.mu.Unlock()
+	if disconnected == nil {
+		return
 	}
 
+	h.mu.Lock()
+	if current, exists := h.Clients[clientID]; exists {
+		h.removeClientLocked(current)
+		current.SafeClose()
+	}
+	h.mu.Unlock()
+}
+
+// sendToUser sends to all currently connected browser tabs/devices for the user.
+// Useful later for friend requests, direct notifications, etc.
+func (h *Hub) sendToUser(userID uuid.UUID, msg *dto.OutboundMessage) {
+	var disconnectedClients []uuid.UUID
+
+	h.mu.RLock()
+	clientsByUser := h.UserClients[userID]
+	for clientID, client := range clientsByUser {
+		select {
+		case client.Send <- msg:
+		default:
+			disconnectedClients = append(disconnectedClients, clientID)
+		}
+	}
+	h.mu.RUnlock()
+
+	if len(disconnectedClients) == 0 {
+		return
+	}
+
+	h.mu.Lock()
+	for _, clientID := range disconnectedClients {
+		if client, exists := h.Clients[clientID]; exists {
+			h.removeClientLocked(client)
+			client.SafeClose()
+		}
+	}
+	h.mu.Unlock()
+}
+
+func (h *Hub) Close() error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	for _, client := range h.Clients {
+		client.SafeClose()
+		_ = client.Conn.Close()
+	}
+
+	close(h.Inbound)
+	close(h.Outbound)
+	return nil
+}
+
+// ->->->->->->->->->- OTHER HELPER FUNCTIONS
+
+func (h *Hub) isClientSubscribedToRoom(clientID uuid.UUID, roomID uuid.UUID) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	client, exists := h.Clients[clientID]
+	if !exists {
+		return false
+	}
+	return client.IsSubscribedToRoom(roomID)
+}
+
+func (h *Hub) broadcastPresenceToRooms(rooms map[uuid.UUID]uuid.UUID, userID uuid.UUID, status string, lastSeenAt *time.Time) {
+	for roomID, hallID := range rooms {
+		uid := userID
+		hid := hallID
+		msg := &dto.OutboundMessage{
+			Type:           dto.MessageTypePresence,
+			RoomID:         roomID,
+			HallID:         hid,
+			AuthorID:       userID,
+			PresenceUserID: &uid,
+			PresenceStatus: utils.StringToPointer(status),
+			LastSeenAt:     lastSeenAt,
+			SentAt:         time.Now(),
+		}
+		h.deliverToRoom(roomID, msg)
+	}
 }
