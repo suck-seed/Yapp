@@ -56,21 +56,22 @@ var (
 	// =========================
 	// REQUEST VALIDATION ERRORS
 	// =========================
-	ErrorInvalidInput                    = &AppError{Code: http.StatusBadRequest, Message: "Invalid Data"}
-	ErrorCannotBeBothDefaultAndAdminRole = &AppError{Code: http.StatusBadRequest, Message: "A role cannot be both default and admin"}
-	ErrorInvalidUserName                 = &AppError{Code: http.StatusBadRequest, Message: "Invalid Username"}
-	ErrorInvalidHallName                 = &AppError{Code: http.StatusBadRequest, Message: "Invalid Hall Name"}
-	ErrorInvalidFloorName                = &AppError{Code: http.StatusBadRequest, Message: "Invalid Floor Name"}
-	ErrorInvalidEmail                    = &AppError{Code: http.StatusBadRequest, Message: "Invalid Email"}
-	ErrorInvalidPhoneNumber              = &AppError{Code: http.StatusBadRequest, Message: "Invalid Phone Number"}
-	ErrorInvalidDisplayName              = &AppError{Code: http.StatusBadRequest, Message: "Invalid Display Name"}
-	ErrorInvalidPassword                 = &AppError{Code: http.StatusBadRequest, Message: "Invalid Password Format"}
-	ErrorPasswordWhiteSpace              = &AppError{Code: http.StatusBadRequest, Message: "Password has whitespace"}
-	ErrorInvalidIDFormart                = &AppError{Code: http.StatusBadRequest, Message: "Error, Invalid ID format"}
-	ErrorInvalidRoomType                 = &AppError{Code: http.StatusBadRequest, Message: "Invalid Room Type"}
-	ErrorInvalidBannerColor              = &AppError{Code: http.StatusBadRequest, Message: "Invalid banner color"}
-	ErrorInvalidCursorCombination        = &AppError{Code: http.StatusBadRequest, Message: "Invalid cursor combination, Only 1 cursor is to be sent !"}
-	ErrorInvalidCursorLimit              = &AppError{Code: http.StatusBadRequest, Message: "Invalid cursor Limit, Has to be > 0 !"}
+	ErrorInvalidInput                           = &AppError{Code: http.StatusBadRequest, Message: "Invalid Data"}
+	ErrorCannotMakeRoomInsidePrivateFloorPublic = &AppError{Code: http.StatusBadRequest, Message: "Cannot make room inside a private floor public"}
+	ErrorCannotBeBothDefaultAndAdminRole        = &AppError{Code: http.StatusBadRequest, Message: "A role cannot be both default and admin"}
+	ErrorInvalidUserName                        = &AppError{Code: http.StatusBadRequest, Message: "Invalid Username"}
+	ErrorInvalidHallName                        = &AppError{Code: http.StatusBadRequest, Message: "Invalid Hall Name"}
+	ErrorInvalidFloorName                       = &AppError{Code: http.StatusBadRequest, Message: "Invalid Floor Name"}
+	ErrorInvalidEmail                           = &AppError{Code: http.StatusBadRequest, Message: "Invalid Email"}
+	ErrorInvalidPhoneNumber                     = &AppError{Code: http.StatusBadRequest, Message: "Invalid Phone Number"}
+	ErrorInvalidDisplayName                     = &AppError{Code: http.StatusBadRequest, Message: "Invalid Display Name"}
+	ErrorInvalidPassword                        = &AppError{Code: http.StatusBadRequest, Message: "Invalid Password Format"}
+	ErrorPasswordWhiteSpace                     = &AppError{Code: http.StatusBadRequest, Message: "Password has whitespace"}
+	ErrorInvalidIDFormart                       = &AppError{Code: http.StatusBadRequest, Message: "Error, Invalid ID format"}
+	ErrorInvalidRoomType                        = &AppError{Code: http.StatusBadRequest, Message: "Invalid Room Type"}
+	ErrorInvalidBannerColor                     = &AppError{Code: http.StatusBadRequest, Message: "Invalid banner color"}
+	ErrorInvalidCursorCombination               = &AppError{Code: http.StatusBadRequest, Message: "Invalid cursor combination, Only 1 cursor is to be sent !"}
+	ErrorInvalidCursorLimit                     = &AppError{Code: http.StatusBadRequest, Message: "Invalid cursor Limit, Has to be > 0 !"}
 
 	// =========================
 	// RESOURCE CREATION ERRORS
@@ -79,6 +80,7 @@ var (
 	ErrorCreatingHall       = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall"}
 	ErrorCreatingFloor      = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while creating Floor"}
 	ErrorCreatingRoom       = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while creating Room"}
+	ErrorCreatingRoomMember = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while creating Room Member"}
 	ErrorCreatingHallRole   = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Role"}
 	ErrorCreatingHallMember = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Member"}
 

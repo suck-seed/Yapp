@@ -21,6 +21,9 @@ type IFloorRepository interface {
 
 	GetFloorPositionBounds(ctx context.Context, db database.DBRunner, hallID uuid.UUID, afterID *uuid.UUID) (lower float64, upper *float64, err error)
 	UpdateFloorPosition(ctx context.Context, db database.DBRunner, floorID uuid.UUID, position float64) (*models.Floor, error)
+
+	// Helper functions
+	IsFloorPrivate(ctx context.Context, db database.DBRunner, floorID uuid.UUID) (bool, error)
 }
 
 type floorRepository struct{}
@@ -226,4 +229,23 @@ func (r *floorRepository) UpdateFloorPosition(ctx context.Context, db database.D
 		return nil, err
 	}
 	return out, nil
+}
+
+// HELPER FUNCTIONS
+func (r *floorRepository) IsFloorPrivate(ctx context.Context, db database.DBRunner, floorID uuid.UUID) (bool, error) {
+	query := `
+		SELECT is_private
+		FROM floors
+		WHERE id = $1
+	`
+
+	var isPrivate bool
+
+	err := db.QueryRow(ctx, query, floorID).Scan(&isPrivate)
+
+	if err != nil {
+		return false, err
+	}
+
+	return isPrivate, nil
 }

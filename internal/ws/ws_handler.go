@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -125,6 +126,8 @@ func (h *WebsocketHandler) Connect(c *gin.Context) {
 		ConnectedAt: time.Now(),
 		LastPing:    time.Now(),
 	}
+
+	log.Printf("Client Information: \n %v\n", client)
 
 	h.hub.Register <- client
 

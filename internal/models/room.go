@@ -24,3 +24,8 @@ type Room struct {
 	CreatedAt time.Time  `json:"created_at"           db:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"           db:"updated_at"`
 }
+
+type RoomMember struct {
+	RoomID uuid.UUID `json:"room_id" db:"room_id"`
+	UserID uuid.UUID `json:"user_id" db:"user_id"`
+}

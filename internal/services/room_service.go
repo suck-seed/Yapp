@@ -124,6 +124,7 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 	}
 
 	// If a floor is specified, verify it belongs to this hall
+	var isFloorPrivate bool
 	if req.FloorID != nil {
 		floorExists, err := s.IFloorRepository.DoesFloorExistInHall(ctx, runner, *req.FloorID, hallID)
 		if err != nil || !floorExists {
@@ -131,6 +132,14 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 				return nil, utils.ErrorRequestTimeout
 			}
 			return nil, utils.ErrorFloorNotFound
+		}
+
+		isFloorPrivate, err = s.IFloorRepository.IsFloorPrivate(ctx, runner, *req.FloorID)
+		if err != nil {
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingFloor
 		}
 	}
 
@@ -157,6 +166,12 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 		isPrivate = *req.IsPrivate
 	}
 
+	// Sync to Floor is floor is private
+	if req.FloorID != nil && isFloorPrivate {
+		isPrivate = true
+	}
+
+	now := time.Now()
 	created, err := s.IRoomRepository.CreateRoom(ctx, runner, &models.Room{
 		ID:        roomID,
 		HallID:    hallID,
@@ -165,14 +180,36 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 		RoomType:  string(canonRoomType),
 		Position:  maxPos + 1000.0,
 		IsPrivate: isPrivate,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		CreatedAt: now,
+		UpdatedAt: now,
 	})
 	if err != nil {
 		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorCreatingRoom
+	}
+
+	// Check if room is being made inside a floor
+	if created.FloorID != nil && isFloorPrivate {
+		// Private Floor own access
+		// New room get same member list as the floor
+		if err := s.IRoomRepository.SyncRoomMembersFromFloor(ctx, runner, created.ID, *created.FloorID); err != nil {
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorCreatingRoom
+		}
+	} else if created.IsPrivate {
+		// Standalone private room
+		// Or, private room inside a public folder
+		// At minimum, room creator should have access
+		if err := s.IRoomRepository.AddRoomMember(ctx, runner, created.ID, userInfo.ID); err != nil {
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorCreatingRoom
+		}
 	}
 
 	if err := runner.Commit(ctx); err != nil {
@@ -346,6 +383,7 @@ func (s *roomService) UpdateRoom(c context.Context, userInfo *auth.UserInfo, hal
 	runner := database.NewTxWrapper(tx)
 	defer runner.Rollback(ctx)
 
+	// check if appropriate permissions to manage room and things
 	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
 		return nil, err
 	}
@@ -365,6 +403,22 @@ func (s *roomService) UpdateRoom(c context.Context, userInfo *auth.UserInfo, hal
 		return nil, utils.ErrorRoomNotFound
 	}
 
+	// Check if the room is inside a private floor
+	// in that case, cannot update it to public sorry mate
+	if room.FloorID != nil && req.IsPrivate != nil && !*req.IsPrivate {
+		isFloorPrivate, err := s.IFloorRepository.IsFloorPrivate(ctx, runner, *room.FloorID)
+		if err != nil {
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingFloor
+		}
+
+		if isFloorPrivate {
+			return nil, utils.ErrorCannotMakeRoomInsidePrivateFloorPublic
+		}
+	}
+
 	updated, err := s.IRoomRepository.UpdateRoom(ctx, runner, roomID, req.Name, req.IsPrivate)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -374,6 +428,32 @@ func (s *roomService) UpdateRoom(c context.Context, userInfo *auth.UserInfo, hal
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingRoom
+	}
+
+	// Privacy transition handling
+	if req.IsPrivate != nil {
+		wasPrivate := room.IsPrivate
+		nowPrivate := *req.IsPrivate
+
+		// public -> private
+		if !wasPrivate && nowPrivate {
+			if err := s.IRoomRepository.AddRoomMember(ctx, runner, roomID, userInfo.ID); err != nil {
+				if utils.IsDeadline(err) {
+					return nil, utils.ErrorRequestTimeout
+				}
+				return nil, utils.ErrorCreatingRoomMember
+			}
+		}
+
+		// private -> public
+		if wasPrivate && !nowPrivate {
+			if err := s.IRoomRepository.ClearRoomMembers(ctx, runner, roomID); err != nil {
+				if utils.IsDeadline(err) {
+					return nil, utils.ErrorRequestTimeout
+				}
+				return nil, utils.ErrorFetchingRoom
+			}
+		}
 	}
 
 	if err := runner.Commit(ctx); err != nil {

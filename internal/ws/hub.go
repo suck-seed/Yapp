@@ -86,6 +86,7 @@ func (h *Hub) handleInboundMessage() {
 	for inboundMessage := range h.Inbound {
 		switch inboundMessage.Type {
 		case dto.MessageTypeText:
+			log.Printf("Inbound Message: handleInboundMessage() \n %v\n", inboundMessage)
 			h.processTextMessage(inboundMessage)
 		case dto.MessageTypeTyping:
 			h.processTypingIndicator(inboundMessage)
@@ -105,6 +106,7 @@ func (h *Hub) handleInboundMessage() {
 func (h *Hub) handleOutbound() {
 
 	for msg := range h.Outbound {
+		log.Printf("Outbound Message handleOutbound() : \n %v\n", msg)
 		h.deliverToRoom(msg.RoomID, msg)
 	}
 }
@@ -117,6 +119,8 @@ func (h *Hub) registerClient(client *Client) {
 	}
 
 	h.mu.Lock()
+
+	h.Clients[client.ID] = client
 
 	// If client with this UserID doesnt exist
 	if _, exists := h.UserClients[client.UserID]; !exists {
@@ -142,7 +146,7 @@ func (h *Hub) registerClient(client *Client) {
 		// if doesnt exist, create the room and add in h.Rooms
 		if !exists {
 
-			room := &Room{
+			room = &Room{
 				ID:      roomID,
 				HallID:  hallID,
 				Clients: make(map[uuid.UUID]*Client),
@@ -165,6 +169,8 @@ func (h *Hub) registerClient(client *Client) {
 			h.broadcastPresenceToRooms(client.SubscribedRooms, client.UserID, string(presence.Status), presence.LastSeenAt)
 		}
 	}
+
+	log.Printf("Client Registered: \n %v\n", client)
 
 }
 
@@ -194,6 +200,8 @@ func (h *Hub) unregisterClient(client *Client) {
 			h.broadcastPresenceToRooms(roomsForPresence, client.UserID, string(presence.Status), presence.LastSeenAt)
 		}
 	}
+
+	log.Printf("Client Unregistered: \n %v\n", client)
 
 }
 
@@ -336,6 +344,7 @@ func (h *Hub) processReadReciept(msg *dto.InboundMessage) {
 func (h *Hub) deliverToRoom(roomID uuid.UUID, msg *dto.OutboundMessage) {
 	var disconnectedClients []uuid.UUID
 
+	log.Print(" Hit: deliverToRoom")
 	h.mu.RLock()
 	room, exists := h.Rooms[roomID]
 	if !exists {

@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,7 +16,7 @@ type IRoomRepository interface {
 	// existing
 	CreateRoom(ctx context.Context, db database.DBRunner, room *models.Room) (*models.Room, error)
 	GetRoomByID(ctx context.Context, db database.DBRunner, roomID uuid.UUID) (*models.Room, error)
-	IsUserRoomMember(ctx context.Context, db database.DBRunner, roomID uuid.UUID, userID uuid.UUID) (bool, error)
+
 	DoesRoomExists(ctx context.Context, db database.DBRunner, roomID uuid.UUID) (bool, error)
 	// new
 	GetRoomsByHallID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.Room, error)
@@ -24,6 +26,11 @@ type IRoomRepository interface {
 	GetMaxPositionInContainer(ctx context.Context, db database.DBRunner, hallID uuid.UUID, floorID *uuid.UUID) (float64, error)
 	ReorderRooms(ctx context.Context, db database.DBRunner, hallID uuid.UUID, floorID *uuid.UUID, orderedIDs []uuid.UUID) error
 	MoveRoom(ctx context.Context, db database.DBRunner, roomID uuid.UUID, newFloorID *uuid.UUID, newPosition float64) (*models.Room, error)
+
+	IsUserRoomMember(ctx context.Context, db database.DBRunner, roomID uuid.UUID, userID uuid.UUID) (bool, error)
+	AddRoomMember(ctx context.Context, db database.DBRunner, roomID uuid.UUID, userID uuid.UUID) error
+	SyncRoomMembersFromFloor(ctx context.Context, db database.DBRunner, roomID uuid.UUID, floorID uuid.UUID) error
+	ClearRoomMembers(ctx context.Context, db database.DBRunner, roomID uuid.UUID) error
 
 	GetRoomPositionBounds(ctx context.Context, db database.DBRunner, hallID uuid.UUID, floorID *uuid.UUID, afterID *uuid.UUID) (lower float64, upper *float64, err error)
 }
@@ -131,25 +138,69 @@ func (r *roomRepository) GetRoomsIDandPrivateInfoByHallID(ctx context.Context, d
 	return nil, rows.Err()
 }
 
-func (r *roomRepository) UpdateRoom(ctx context.Context, db database.DBRunner, roomID uuid.UUID, name *string, isPrivate *bool) (*models.Room, error) {
-	query := `
-        UPDATE rooms
-        SET
-            name       = COALESCE($1, name),
-            is_private = COALESCE($2, is_private),
-            updated_at = $3
-        WHERE id = $4
-        RETURNING id, hall_id, floor_id, name, room_type, position, is_private, created_at, updated_at
-    `
+// func (r *roomRepository) UpdateRoom(ctx context.Context, db database.DBRunner, roomID uuid.UUID, name *string, isPrivate *bool) (*models.Room, error) {
+// 	query := `
+//         UPDATE rooms
+//         SET
+//             name       = COALESCE($1, name),
+//             is_private = COALESCE($2, is_private),
+//             updated_at = $3
+//         WHERE id = $4
+//         RETURNING id, hall_id, floor_id, name, room_type, position, is_private, created_at, updated_at
+//     `
+// 	out := &models.Room{}
+// 	err := db.QueryRow(ctx, query, name, isPrivate, time.Now(), roomID).Scan(
+// 		&out.ID, &out.HallID, &out.FloorID, &out.Name,
+// 		&out.RoomType, &out.Position, &out.IsPrivate,
+// 		&out.CreatedAt, &out.UpdatedAt,
+// 	)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return out, nil
+// }
+
+func (r *roomRepository) UpdateRoom(ctx context.Context, db database.DBRunner, roomID uuid.UUID, fields map[string]any) (*models.Room, error) {
+	setClauses := make([]string, 0, len(fields)+1)
+	args := make([]any, 0, len(fields)+2)
+
+	i := 1
+	for col, val := range fields {
+		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", col, i))
+		args = append(args, val)
+		i++
+	}
+
+	setClauses = append(setClauses, fmt.Sprintf("updated_at = $%d", i))
+	args = append(args, time.Now())
+	i++
+
+	args = append(args, roomID)
+
+	query := fmt.Sprintf(`
+		UPDATE rooms
+		SET %s
+		WHERE id = $%d
+		RETURNING id, hall_id, floor_id, name, room_type, position, is_private, created_at, updated_at
+	`, strings.Join(setClauses, ", "), i)
+
 	out := &models.Room{}
-	err := db.QueryRow(ctx, query, name, isPrivate, time.Now(), roomID).Scan(
-		&out.ID, &out.HallID, &out.FloorID, &out.Name,
-		&out.RoomType, &out.Position, &out.IsPrivate,
-		&out.CreatedAt, &out.UpdatedAt,
+	err := db.QueryRow(ctx, query, args...).Scan(
+		&out.ID,
+		&out.HallID,
+		&out.FloorID,
+		&out.Name,
+		&out.RoomType,
+		&out.Position,
+		&out.IsPrivate,
+		&out.CreatedAt,
+		&out.UpdatedAt,
 	)
+
 	if err != nil {
 		return nil, err
 	}
+
 	return out, nil
 }
 
@@ -228,6 +279,41 @@ func (r *roomRepository) IsUserRoomMember(ctx context.Context, db database.DBRun
 		roomID, userID,
 	).Scan(&exists)
 	return exists, err
+}
+
+func (r *roomRepository) AddRoomMember(ctx context.Context, db database.DBRunner, roomID uuid.UUID, userID uuid.UUID) error {
+
+	query := `
+		INSERT INTO room_members (room_id, user_id)
+		VALUES ($1, $2)
+		ON CONFLICT (room_id, user_id) DO NOTHING
+	`
+
+	_, err := db.Exec(ctx, query, roomID, userID)
+	return err
+}
+
+func (r *roomRepository) SyncRoomMembersFromFloor(ctx context.Context, db database.DBRunner, roomID uuid.UUID, floorID uuid.UUID) error {
+	query := `
+		INSERT INTO room_members (room_id, user_id)
+		SELECT $1, fm.user_id
+		FROM floor_members fm
+		WHERE fm.floor_id = $2
+		ON CONFLICT (room_id, user_id) DO NOTHING
+	`
+
+	_, err := db.Exec(ctx, query, roomID, floorID)
+	return err
+}
+
+func (r *roomRepository) ClearRoomMembers(ctx context.Context, db database.DBRunner, roomID uuid.UUID) error {
+	query := `
+		DELETE FROM room_members
+		WHERE room_id = $1
+	`
+
+	_, err := db.Exec(ctx, query, roomID)
+	return err
 }
 
 func (r *roomRepository) DoesRoomExists(ctx context.Context, db database.DBRunner, roomID uuid.UUID) (bool, error) {

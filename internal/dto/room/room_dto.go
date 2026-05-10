@@ -68,4 +68,9 @@ type MoveRoomReq struct {
 	HallID     uuid.UUID  `json:"hall_id"     binding:"required"`
 	NewFloorID *uuid.UUID `json:"new_floor_id" binding:"omitempty"` // nil = top-level
 	AfterID    *uuid.UUID `json:"after_id"    binding:"omitempty"`  // nil = place at top
+
+	// If moved into a private floor, give user option to syncPrivate
+	// If true, will change the isPrivate of room = true
+	// And mirror the room_member's list to floor's member list
+	SyncPrivate *bool `json:"sync_private" binding:"omitempty"`
 }
