@@ -21,7 +21,7 @@ type IRoomRepository interface {
 	// new
 	GetRoomsByHallID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.Room, error)
 	GetRoomsIDandPrivateInfoByHallID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*dto.RoomIDandPrivate, error)
-	UpdateRoom(ctx context.Context, db database.DBRunner, roomID uuid.UUID, name *string, isPrivate *bool) (*models.Room, error)
+	UpdateRoom(ctx context.Context, db database.DBRunner, roomID uuid.UUID, fields map[string]any) (*models.Room, error)
 	DeleteRoom(ctx context.Context, db database.DBRunner, roomID uuid.UUID) error
 	GetMaxPositionInContainer(ctx context.Context, db database.DBRunner, hallID uuid.UUID, floorID *uuid.UUID) (float64, error)
 	ReorderRooms(ctx context.Context, db database.DBRunner, hallID uuid.UUID, floorID *uuid.UUID, orderedIDs []uuid.UUID) error

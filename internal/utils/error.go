@@ -56,6 +56,10 @@ var (
 	// =========================
 	// REQUEST VALIDATION ERRORS
 	// =========================
+	ErrorInvalidMoveRoomPayload = &AppError{
+		Code:    400,
+		Message: "Cannot set both move_to_top_level and new_floor_id",
+	}
 	ErrorInvalidInput                           = &AppError{Code: http.StatusBadRequest, Message: "Invalid Data"}
 	ErrorCannotMakeRoomInsidePrivateFloorPublic = &AppError{Code: http.StatusBadRequest, Message: "Cannot make room inside a private floor public"}
 	ErrorCannotBeBothDefaultAndAdminRole        = &AppError{Code: http.StatusBadRequest, Message: "A role cannot be both default and admin"}

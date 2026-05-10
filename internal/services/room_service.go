@@ -368,12 +368,18 @@ func (s *roomService) UpdateRoom(c context.Context, userInfo *auth.UserInfo, hal
 		return nil, utils.ErrorNoFieldsToUpdate
 	}
 
+	fields := make(map[string]any)
+
 	if req.Name != nil {
 		canon, err := utils.SanitizeFloorname(*req.Name)
 		if err != nil {
 			return nil, err
 		}
-		req.Name = &canon
+		fields["name"] = canon
+	}
+
+	if req.IsPrivate != nil {
+		fields["is_private"] = *req.IsPrivate
 	}
 
 	tx, err := s.pool.Begin(ctx)
@@ -419,7 +425,7 @@ func (s *roomService) UpdateRoom(c context.Context, userInfo *auth.UserInfo, hal
 		}
 	}
 
-	updated, err := s.IRoomRepository.UpdateRoom(ctx, runner, roomID, req.Name, req.IsPrivate)
+	updated, err := s.IRoomRepository.UpdateRoom(ctx, runner, roomID, fields)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorRoomNotFound
@@ -511,6 +517,26 @@ func (s *roomService) MoveRoom(c context.Context, userInfo *auth.UserInfo, hallI
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
+	// Invalid conflicting move instructions
+	if req.MoveToTopLevel != nil &&
+		*req.MoveToTopLevel &&
+		req.NewFloorID != nil {
+
+		return nil, utils.ErrorInvalidMoveRoomPayload
+	}
+
+	// nothing to move
+	if req.MoveToTopLevel == nil &&
+		req.NewFloorID == nil &&
+		req.AfterID == nil {
+		return nil, utils.ErrorNoFieldsToUpdate
+	}
+
+	// sync_private only makes sense when moving into a floor
+	if req.SyncPrivate != nil && *req.SyncPrivate && req.NewFloorID == nil {
+		return nil, utils.ErrorInvalidMoveRoomPayload
+	}
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
@@ -533,11 +559,18 @@ func (s *roomService) MoveRoom(c context.Context, userInfo *auth.UserInfo, hallI
 		}
 		return nil, utils.ErrorFetchingRoom
 	}
+
 	if room.HallID != hallID {
 		return nil, utils.ErrorRoomNotFound
 	}
 
+	newFloorID := room.FloorID
+
 	// Verify target floor belongs to this hall (if targeting a floor)
+	if req.MoveToTopLevel != nil && *req.MoveToTopLevel {
+		newFloorID = nil
+	}
+
 	if req.NewFloorID != nil {
 		floorExists, err := s.IFloorRepository.DoesFloorExistInHall(ctx, runner, *req.NewFloorID, hallID)
 		if err != nil || !floorExists {
@@ -546,9 +579,11 @@ func (s *roomService) MoveRoom(c context.Context, userInfo *auth.UserInfo, hallI
 			}
 			return nil, utils.ErrorFloorNotFound
 		}
+
+		newFloorID = req.NewFloorID
 	}
 
-	lower, upper, err := s.IRoomRepository.GetRoomPositionBounds(ctx, runner, hallID, req.NewFloorID, req.AfterID)
+	lower, upper, err := s.IRoomRepository.GetRoomPositionBounds(ctx, runner, hallID, newFloorID, req.AfterID)
 	if err != nil {
 		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
@@ -558,13 +593,53 @@ func (s *roomService) MoveRoom(c context.Context, userInfo *auth.UserInfo, hallI
 
 	newPos := utils.CalcPosition(lower, upper)
 
-	moved, err := s.IRoomRepository.MoveRoom(ctx, runner, roomID, req.NewFloorID, newPos)
+	moved, err := s.IRoomRepository.MoveRoom(ctx, runner, roomID, newFloorID, newPos)
 	if err != nil {
 		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorMovingRoom
 	}
+
+	if req.NewFloorID != nil && req.SyncPrivate != nil && *req.SyncPrivate {
+		isFloorPrivate, err := s.IFloorRepository.IsFloorPrivate(ctx, runner, *req.NewFloorID)
+		if err != nil {
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingFloor
+		}
+
+		if isFloorPrivate {
+			if err := s.IRoomRepository.ClearRoomMembers(ctx, runner, roomID); err != nil {
+				if utils.IsDeadline(err) {
+					return nil, utils.ErrorRequestTimeout
+				}
+				return nil, utils.ErrorFetchingRoom
+			}
+
+			if err := s.IRoomRepository.SyncRoomMembersFromFloor(ctx, runner, roomID, *req.NewFloorID); err != nil {
+				if utils.IsDeadline(err) {
+					return nil, utils.ErrorRequestTimeout
+				}
+				return nil, utils.ErrorCreatingRoomMember
+			}
+
+			private := true
+			moved, err = s.IRoomRepository.UpdateRoom(ctx, runner, roomID, map[string]any{
+				"is_private": private,
+			})
+			if err != nil {
+				if utils.IsDeadline(err) {
+					return nil, utils.ErrorRequestTimeout
+				}
+				return nil, utils.ErrorFetchingRoom
+			}
+		}
+	}
+
+	// If moved out of floor, do nothing to room_members.
+	// Existing room_members are retained.
 
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
