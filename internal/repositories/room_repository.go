@@ -40,6 +40,7 @@ type IRoomRepository interface {
 	SyncRoomMembersFromFloor(ctx context.Context, db database.DBRunner, roomID uuid.UUID, floorID uuid.UUID) error
 
 	GetRoomPositionBounds(ctx context.Context, db database.DBRunner, hallID uuid.UUID, floorID *uuid.UUID, afterID *uuid.UUID) (lower float64, upper *float64, err error)
+	DisableFloorMemberSyncForRoomsInFloor(ctx context.Context, db database.DBRunner, hallID uuid.UUID, floorID uuid.UUID) error
 }
 
 type roomRepository struct{}
@@ -536,4 +537,23 @@ func (r *roomRepository) GetRoomPositionBounds(
 		return 0, nil, err
 	}
 	return lower, up, nil
+}
+
+func (r *roomRepository) DisableFloorMemberSyncForRoomsInFloor(
+	ctx context.Context,
+	db database.DBRunner,
+	hallID uuid.UUID,
+	floorID uuid.UUID,
+) error {
+	query := `
+		UPDATE rooms
+		SET sync_with_floor_members = false,
+		    updated_at = now()
+		WHERE hall_id = $1
+		  AND floor_id = $2
+		  AND sync_with_floor_members = true
+	`
+
+	_, err := db.Exec(ctx, query, hallID, floorID)
+	return err
 }

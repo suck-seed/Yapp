@@ -157,8 +157,44 @@ func (s *floorService) CreateFloor(c context.Context, userInfo *auth.UserInfo, h
 		return nil, utils.ErrorCreatingFloor
 	}
 
+	var creatorMemberID uuid.UUID
+
+	// If creator creates a private floor, creator must automatically be a floor member.
+	// Otherwise creator can create private rooms inside the floor but cannot message in them.
+	if created.IsPrivate {
+		creatorMemberID, err = s.IHallRepository.GetHallMemberID(ctx, runner, hallID, userInfo.ID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, utils.ErrorMemberNotFound
+			}
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingHallMembers
+		}
+
+		if err := s.IFloorRepository.AddFloorMember(ctx, runner, created.ID, creatorMemberID); err != nil {
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorCreatingFloorMember
+		}
+	}
+
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
+	}
+
+	// PUBLISH EVENT
+	// This resyncs the creator's connected WS clients.
+	if created.IsPrivate {
+		publishHubEvent(s.EventPublisher, realtime.HubEvent{
+			Type:     realtime.HubEventFloorMemberAdded,
+			HallID:   hallID,
+			FloorID:  created.ID,
+			MemberID: creatorMemberID,
+			UserID:   userInfo.ID,
+		})
 	}
 
 	return &dto.CreateFloorRes{
@@ -341,9 +377,24 @@ func (s *floorService) DeleteFloor(c context.Context, userInfo *auth.UserInfo, h
 	// Verify floor belongs to this hall before deleting
 	exists, err := s.IFloorRepository.DoesFloorExistInHall(ctx, runner, floorID, hallID)
 	if err != nil || !exists {
+		if utils.IsDeadline(err) {
+			return utils.ErrorRequestTimeout
+		}
 		return utils.ErrorFloorNotFound
 	}
 
+	// Important:
+	// When floor is deleted, rooms are moved to top-level by FK ON DELETE SET NULL.
+	// So rooms should no longer claim they are synced with floor members.
+	if err := s.IRoomRepository.DisableFloorMemberSyncForRoomsInFloor(ctx, runner, hallID, floorID); err != nil {
+		if utils.IsDeadline(err) {
+			return utils.ErrorRequestTimeout
+		}
+		return utils.ErrorFetchingRoom
+	}
+
+	// Now delete the floor.
+	// DB will set rooms.floor_id = NULL because of ON DELETE SET NULL.
 	if err := s.IFloorRepository.DeleteFloor(ctx, runner, floorID); err != nil {
 		if utils.IsDeadline(err) {
 			return utils.ErrorRequestTimeout

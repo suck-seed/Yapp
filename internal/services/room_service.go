@@ -180,7 +180,9 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 	// Sync to Floor is floor is private
 	syncWithFloorMembers := false
 
-	// Sync to Floor is floor is private
+	// Rule:
+	// Any room inside a private floor must also be private
+	// and should sync with floor members by default.
 	if req.FloorID != nil && isFloorPrivate {
 		isPrivate = true
 		syncWithFloorMembers = true
@@ -206,22 +208,42 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 		return nil, utils.ErrorCreatingRoom
 	}
 
-	// Check if room is being made inside a floor
+	// Important fix:
+	// If room is inside a private floor, make sure the creator is part of floor_members
+	// before syncing room_members from floor_members.
 	if created.FloorID != nil && isFloorPrivate {
-		// Private Floor own access
-		// New room get same member list as the floor
-		if err := s.IRoomRepository.ReplaceRoomMembersFromFloor(ctx, runner, created.ID, *created.FloorID); err != nil {
+		creatorMemberID, err := s.IHallRepository.GetHallMemberID(ctx, runner, hallID, userInfo.ID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, utils.ErrorUserDoesntBelongHall
+			}
 			if utils.IsDeadline(err) {
 				return nil, utils.ErrorRequestTimeout
 			}
-			return nil, utils.ErrorCreatingRoom
+			return nil, utils.ErrorFetchingHallMembers
 		}
-	} else if created.IsPrivate {
-		// Standalone private room
-		// Or, private room inside a public folder
-		// At minimum, room creator should have access
 
-		creatorMember, err := s.IHallRepository.GetHallMemberByUserID(ctx, runner, hallID, userInfo.ID)
+		// Idempotent because repository uses ON CONFLICT DO NOTHING.
+		if err := s.IFloorRepository.AddFloorMember(ctx, runner, *created.FloorID, creatorMemberID); err != nil {
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorCreatingFloorMember
+		}
+
+		// Sync all synced private rooms in this floor, including the newly created room.
+		if err := s.IRoomRepository.SyncRoomsInFloorFromFloorMembers(ctx, runner, *created.FloorID); err != nil {
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorCreatingRoomMember
+		}
+
+	} else if created.IsPrivate {
+		// Standalone private room OR private room inside a public floor.
+		// At minimum, room creator should have access.
+
+		creatorMemberID, err := s.IHallRepository.GetHallMemberID(ctx, runner, hallID, userInfo.ID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return nil, utils.ErrorUserDoesntBelongHall
@@ -232,11 +254,11 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 			return nil, utils.ErrorInternal
 		}
 
-		if err := s.IRoomRepository.AddRoomMember(ctx, runner, created.ID, creatorMember.ID); err != nil {
+		if err := s.IRoomRepository.AddRoomMember(ctx, runner, created.ID, creatorMemberID); err != nil {
 			if utils.IsDeadline(err) {
 				return nil, utils.ErrorRequestTimeout
 			}
-			return nil, utils.ErrorCreatingRoom
+			return nil, utils.ErrorCreatingRoomMember
 		}
 	}
 
@@ -245,6 +267,8 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 	}
 
 	// PUBLISH EVENT
+	// For private rooms, hub will resync this user.
+	// For public rooms, hub will subscribe hall clients directly.
 	publishHubEvent(s.EventPublisher, realtime.HubEvent{
 		Type:      realtime.HubEventRoomCreated,
 		HallID:    created.HallID,

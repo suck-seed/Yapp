@@ -745,7 +745,7 @@ func (s *hallService) UpdateHallProfile(c context.Context, userInfo *auth.UserIn
 		IsPrivate:        hall.IsPrivate,
 		IconURL:          hall.IconURL,
 		IconThumbnailURL: hall.IconThumbnailURL,
-		BannerColor:      *hall.BannerColor,
+		BannerColor:      hall.BannerColor,
 		Description:      hall.Description,
 		OwnerID:          hall.OwnerID,
 		UpdatedAt:        hall.UpdatedAt,
