@@ -131,6 +131,13 @@ func (c *Client) readPump(hub *Hub) {
 		inboundMessage.UserID = c.UserID
 		inboundMessage.ClientID = c.ID
 
+		// sync_subscriptions is a connection-level command.
+		// It does NOT need room_id.
+		if inboundMessage.Type == dto.MessageTypeSyncSubscriptions {
+			hub.Inbound <- inboundMessage
+			continue
+		}
+
 		// Validate if RoomID field is empty or not (should never be empty)
 		if inboundMessage.RoomID == uuid.Nil {
 			hub.sendErrorToClient(c.ID, uuid.Nil, c.UserID, "room_id is required")

@@ -10,7 +10,7 @@ import (
 type RoomType string
 
 const (
-	AudioRoom RoomType = "audio"
+	VoiceRoom RoomType = "voice"
 	TextRoom  RoomType = "text"
 )
 

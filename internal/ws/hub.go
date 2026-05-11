@@ -97,16 +97,29 @@ func (h *Hub) handleInboundMessage() {
 	// contains all info about the inbound message
 	for inboundMessage := range h.Inbound {
 		switch inboundMessage.Type {
+
 		case dto.MessageTypeText:
 			h.processTextMessage(inboundMessage)
+
 		case dto.MessageTypeTyping:
 			h.processTypingIndicator(inboundMessage)
+
 		case dto.MessageTypeStopTyping:
 			h.processStopTypingIndicator(inboundMessage)
+
 		case dto.MessageTypeRead:
 			h.processReadReciept(inboundMessage)
+
+		case dto.MessageTypeSyncSubscriptions:
+			h.processSyncSubscriptions(inboundMessage)
+
 		default:
-			h.sendErrorToClient(inboundMessage.ClientID, inboundMessage.RoomID, inboundMessage.UserID, "unknown websocket message type")
+			h.sendErrorToClient(
+				inboundMessage.ClientID,
+				inboundMessage.RoomID,
+				inboundMessage.UserID,
+				"unknown websocket message type",
+			)
 		}
 
 	}
@@ -483,4 +496,87 @@ func (h *Hub) broadcastPresenceToRooms(rooms map[uuid.UUID]uuid.UUID, userID uui
 		}
 		h.deliverToRoom(roomID, msg)
 	}
+}
+
+func (h *Hub) processSyncSubscriptions(msg *dto.InboundMessage) {
+	if msg.ClientID == uuid.Nil || msg.UserID == uuid.Nil {
+		h.sendErrorToClient(msg.ClientID, uuid.Nil, msg.UserID, "invalid sync_subscriptions request")
+		return
+	}
+
+	newRooms, err := h.syncClientAccess(context.Background(), msg.ClientID, msg.UserID)
+	if err != nil {
+		log.Printf("failed to sync subscriptions for client %s user %s: %v", msg.ClientID, msg.UserID, err)
+		h.sendErrorToClient(msg.ClientID, uuid.Nil, msg.UserID, "failed to sync subscriptions")
+		return
+	}
+
+	now := time.Now()
+	count := len(newRooms)
+
+	out := &dto.OutboundMessage{
+		Type:                dto.MessageTypeSubscriptionsSynced,
+		AuthorID:            msg.UserID,
+		SentAt:              now,
+		SubscribedRoomCount: &count,
+		SubscribedRooms:     subscriptionMapToList(newRooms),
+		SyncedAt:            &now,
+	}
+
+	h.sendToClientID(msg.ClientID, out)
+}
+
+func (h *Hub) syncClientAccess(ctx context.Context, clientID uuid.UUID, userID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
+	if h.AccessResolver == nil {
+		return nil, utils.ErrorInternal
+	}
+
+	// DB-backed source of truth.
+	// room_id -> hall_id
+	newRooms, err := h.AccessResolver(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	client, exists := h.Clients[clientID]
+	if !exists {
+		return newRooms, nil
+	}
+
+	// Safety check: a client can only sync itself.
+	if client.UserID != userID {
+		return nil, utils.ErrorForbidden
+	}
+
+	oldRooms := client.SubscribedRoomsSnapshot()
+
+	// Remove rooms the user no longer has access to.
+	for oldRoomID := range oldRooms {
+		if _, stillAllowed := newRooms[oldRoomID]; !stillAllowed {
+			h.unsubscribeClientFromRoomLocked(client, oldRoomID)
+		}
+	}
+
+	// Add rooms the user now has access to.
+	for newRoomID, hallID := range newRooms {
+		h.subscribeClientToRoomLocked(client, hallID, newRoomID)
+	}
+
+	return newRooms, nil
+}
+
+func subscriptionMapToList(roomMap map[uuid.UUID]uuid.UUID) []dto.SubscribedRoomInfo {
+	out := make([]dto.SubscribedRoomInfo, 0, len(roomMap))
+
+	for roomID, hallID := range roomMap {
+		out = append(out, dto.SubscribedRoomInfo{
+			RoomID: roomID,
+			HallID: hallID,
+		})
+	}
+
+	return out
 }

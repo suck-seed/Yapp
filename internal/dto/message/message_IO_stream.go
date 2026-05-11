@@ -22,6 +22,12 @@ const (
 
 	MessageTypePresence MessageType = "presence"
 
+	// Client asks server to refresh this WS client's room subscriptions from DB.
+	MessageTypeSyncSubscriptions MessageType = "sync_subscriptions"
+
+	// Server confirms subscriptions were refreshed.
+	MessageTypeSubscriptionsSynced MessageType = "subscriptions_synced"
+
 	// System messages (sent by server only)
 	MessageTypeJoin  MessageType = "join"
 	MessageTypeLeave MessageType = "leave"
@@ -85,4 +91,14 @@ type OutboundMessage struct {
 	LastSeenAt     *time.Time `json:"last_seen_at,omitempty"`
 
 	Error *string `json:"error,omitempty"` // opt
+
+	// New subscription sync response
+	SubscribedRoomCount *int                 `json:"subscribed_room_count,omitempty"`
+	SubscribedRooms     []SubscribedRoomInfo `json:"subscribed_rooms,omitempty"`
+	SyncedAt            *time.Time           `json:"synced_at,omitempty"`
+}
+
+type SubscribedRoomInfo struct {
+	RoomID uuid.UUID `json:"room_id"`
+	HallID uuid.UUID `json:"hall_id"`
 }

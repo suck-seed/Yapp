@@ -78,8 +78,8 @@ func SanitizeRoomname(s string) (string, error) {
 
 func ParseRoomType(s string) (models.RoomType, error) {
 	switch strings.ToLower(s) {
-	case string(models.AudioRoom):
-		return models.AudioRoom, nil
+	case string(models.VoiceRoom):
+		return models.VoiceRoom, nil
 	case string(models.TextRoom):
 		return models.TextRoom, nil
 	default:

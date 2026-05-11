@@ -23,6 +23,9 @@ import (
 const HALLCREATORROLENAME string = "creator"
 const HALLDEFAULTROLENAME string = "everyone"
 
+const DEFAULT_GENERAL_ROOM_NAME string = "general"
+const DEFAULT_GENERAL_ROOM_POSITION float64 = 1000.0
+
 type IHallService interface {
 
 	// -------------- HALLS
@@ -55,12 +58,10 @@ type hallService struct {
 	repositories.IHallRepository
 	repositories.IUserRepository
 	repositories.IRoleRepository
+	repositories.IRoomRepository
 	repositories.IBanRepsitory
 
-	// Permission checker service
 	IPermissionCheckerService
-
-	// Presnece checker service
 	IPresenceService
 
 	EventPublisher realtime.Publisher
@@ -75,17 +76,18 @@ func NewHallService(
 	hallRepo repositories.IHallRepository,
 	userRepo repositories.IUserRepository,
 	roleRepo repositories.IRoleRepository,
+	roomRepo repositories.IRoomRepository,
 	banRepo repositories.IBanRepsitory,
 	permissionChecker IPermissionCheckerService,
 	presenceService IPresenceService,
 	eventPublisher realtime.Publisher,
 	pool *pgxpool.Pool,
-
 ) IHallService {
 	return &hallService{
 		hallRepo,
 		userRepo,
 		roleRepo,
+		roomRepo,
 		banRepo,
 		permissionChecker,
 		presenceService,
@@ -246,10 +248,44 @@ func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req
 		return nil, utils.ErrorCreatingHallMember
 	}
 
+	// ---------------------- DEFAULT GENERAL ROOM
+	generalRoomID, err := uuid.NewV7()
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	generalRoom := &models.Room{
+		ID:                   generalRoomID,
+		HallID:               hallCRES.ID,
+		FloorID:              nil, // top-level room
+		Name:                 DEFAULT_GENERAL_ROOM_NAME,
+		RoomType:             string(models.TextRoom),
+		Position:             DEFAULT_GENERAL_ROOM_POSITION,
+		IsPrivate:            false,
+		SyncWithFloorMembers: false,
+		CreatedAt:            time.Now(),
+		UpdatedAt:            time.Now(),
+	}
+
+	_, err = s.IRoomRepository.CreateRoom(ctx, runner, generalRoom)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorCreatingRoom
+	}
+
 	// ---------------------- COMMIT
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:   realtime.HubEventUserJoinedHall,
+		HallID: hallCRES.ID,
+		UserID: userInfo.ID,
+	})
 
 	return &dto.CreateHallRes{
 		ID:               hallCRES.ID,
@@ -264,6 +300,7 @@ func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req
 		IsPrivate:        hallCRES.IsPrivate,
 	}, nil
 }
+
 func (s *hallService) JoinHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*dto.JoinHallRes, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()

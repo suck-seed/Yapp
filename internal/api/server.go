@@ -81,6 +81,7 @@ func StartServer(cfg config.AppConfig) {
 		hallRepository,
 		userRepository,
 		roleRepository,
+		roomRepository,
 		banRepository,
 		permissionCheckerService,
 		presenceService,
