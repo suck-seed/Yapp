@@ -31,6 +31,8 @@ type IRoomService interface {
 	GetAccessibleRoomsForUser(c context.Context, userInfo *auth.UserInfo) (map[uuid.UUID]uuid.UUID, error)
 
 	// Room member management
+	GetRoomMembers(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID) (*dto.GetRoomMembersRes, error)
+	GetRoomMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID, memberID uuid.UUID) (*dto.GetRoomMemberRes, error)
 	AddRoomMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID, memberID uuid.UUID) (*dto.RoomAccessMemberRes, error)
 	RemoveRoomMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID, memberID uuid.UUID) (*dto.RoomAccessMemberRes, error)
 	SyncRoomMembersToFloor(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID) (*dto.RoomRes, error)
@@ -87,6 +89,19 @@ func roomToRes(r *models.Room) dto.RoomRes {
 		SyncWithFloorMembers: r.SyncWithFloorMembers,
 		CreatedAt:            r.CreatedAt,
 		UpdatedAt:            r.UpdatedAt,
+	}
+}
+
+func roomMemberToRes(m *models.HallMember) *dto.RoomMemberRes {
+	return &dto.RoomMemberRes{
+		ID:        m.ID,
+		HallID:    m.HallID,
+		UserID:    m.UserID,
+		RoleID:    m.RoleID,
+		Nickname:  m.Nickname,
+		JoinedAt:  m.JoinedAt,
+		CreatedAt: m.CreatedAt,
+		UpdatedAt: m.UpdatedAt,
 	}
 }
 
@@ -1109,4 +1124,105 @@ func (s *roomService) SyncRoomMembersToFloor(c context.Context, userInfo *auth.U
 
 	res := roomToRes(updated)
 	return &res, nil
+}
+
+func (s *roomService) GetRoomMembers(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID) (*dto.GetRoomMembersRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return nil, err
+	}
+
+	room, err := s.IRoomRepository.GetRoomByID(ctx, runner, roomID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorRoomNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingRoom
+	}
+
+	if room.HallID != hallID {
+		return nil, utils.ErrorRoomNotFound
+	}
+
+	if !room.IsPrivate {
+		return nil, utils.ErrorRoomIsNotPrivate
+	}
+
+	members, err := s.IRoomRepository.ListRoomMembers(ctx, runner, hallID, roomID)
+	if err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHallMembers
+	}
+
+	out := make([]*dto.RoomMemberRes, 0, len(members))
+	for _, m := range members {
+		out = append(out, roomMemberToRes(m))
+	}
+
+	return &dto.GetRoomMembersRes{
+		Members: out,
+		Total:   len(out),
+	}, nil
+}
+
+func (s *roomService) GetRoomMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, roomID uuid.UUID, memberID uuid.UUID) (*dto.GetRoomMemberRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return nil, err
+	}
+
+	room, err := s.IRoomRepository.GetRoomByID(ctx, runner, roomID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorRoomNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingRoom
+	}
+
+	if room.HallID != hallID {
+		return nil, utils.ErrorRoomNotFound
+	}
+
+	if !room.IsPrivate {
+		return nil, utils.ErrorRoomIsNotPrivate
+	}
+
+	member, err := s.IRoomRepository.GetRoomMember(ctx, runner, hallID, roomID, memberID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorMemberNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHallMembers
+	}
+
+	return roomMemberToRes(member), nil
 }

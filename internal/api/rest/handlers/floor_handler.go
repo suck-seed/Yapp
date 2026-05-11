@@ -408,3 +408,75 @@ func (h *FloorHandler) RemoveFloorMember(c *gin.Context) {
 		"data":    res,
 	})
 }
+
+func (h *FloorHandler) GetFloorMembers(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	floorID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IFloorService.GetFloorMembers(c.Request.Context(), userInfo, hallID, floorID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "Floor members fetched successfully",
+		"success": true,
+		"data":    res,
+	})
+}
+
+func (h *FloorHandler) GetFloorMember(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	floorID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	memberID, err := uuid.Parse(c.Param("memberID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IFloorService.GetFloorMember(c.Request.Context(), userInfo, hallID, floorID, memberID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "Floor member fetched successfully",
+		"success": true,
+		"data":    res,
+	})
+}

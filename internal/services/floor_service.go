@@ -27,6 +27,8 @@ type IFloorService interface {
 	MoveFloor(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, req *dto.MoveFloorReq) (*dto.GetFloorRes, error)
 
 	// Floor member management
+	GetFloorMembers(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID) (*dto.GetFloorMembersRes, error)
+	GetFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.GetFloorMemberRes, error)
 	AddFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.FloorAccessMemberRes, error)
 	RemoveFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.FloorAccessMemberRes, error)
 }
@@ -79,6 +81,19 @@ func floorToGetRes(f *models.Floor) dto.GetFloorRes {
 		IsPrivate: f.IsPrivate,
 		CreatedAt: f.CreatedAt,
 		UpdatedAt: f.UpdatedAt,
+	}
+}
+
+func floorMemberToRes(m *models.HallMember) *dto.FloorMemberRes {
+	return &dto.FloorMemberRes{
+		ID:        m.ID,
+		HallID:    m.HallID,
+		UserID:    m.UserID,
+		RoleID:    m.RoleID,
+		Nickname:  m.Nickname,
+		JoinedAt:  m.JoinedAt,
+		CreatedAt: m.CreatedAt,
+		UpdatedAt: m.UpdatedAt,
 	}
 }
 
@@ -139,12 +154,17 @@ func (s *floorService) CreateFloor(c context.Context, userInfo *auth.UserInfo, h
 		return nil, utils.ErrorInternal
 	}
 
+	isPrivate := false
+	if req.IsPrivate != nil {
+		isPrivate = *req.IsPrivate
+	}
+
 	floor := &models.Floor{
 		ID:        floorID,
 		HallID:    hallID,
 		Name:      canonName,
 		Position:  maxPos + 1000.0,
-		IsPrivate: *req.IsPrivate,
+		IsPrivate: isPrivate,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -634,4 +654,105 @@ func (s *floorService) RemoveFloorMember(c context.Context, userInfo *auth.UserI
 		FloorID:  floorID,
 		MemberID: memberID,
 	}, nil
+}
+
+func (s *floorService) GetFloorMembers(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID) (*dto.GetFloorMembersRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return nil, err
+	}
+
+	floor, err := s.IFloorRepository.GetFloorByID(ctx, runner, floorID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorFloorNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingFloor
+	}
+
+	if floor.HallID != hallID {
+		return nil, utils.ErrorFloorNotFound
+	}
+
+	if !floor.IsPrivate {
+		return nil, utils.ErrorFloorIsNotPrivate
+	}
+
+	members, err := s.IFloorRepository.ListFloorMembers(ctx, runner, hallID, floorID)
+	if err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHallMembers
+	}
+
+	out := make([]*dto.FloorMemberRes, 0, len(members))
+	for _, m := range members {
+		out = append(out, floorMemberToRes(m))
+	}
+
+	return &dto.GetFloorMembersRes{
+		Members: out,
+		Total:   len(out),
+	}, nil
+}
+
+func (s *floorService) GetFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.GetFloorMemberRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return nil, err
+	}
+
+	floor, err := s.IFloorRepository.GetFloorByID(ctx, runner, floorID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorFloorNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingFloor
+	}
+
+	if floor.HallID != hallID {
+		return nil, utils.ErrorFloorNotFound
+	}
+
+	if !floor.IsPrivate {
+		return nil, utils.ErrorFloorIsNotPrivate
+	}
+
+	member, err := s.IFloorRepository.GetFloorMember(ctx, runner, hallID, floorID, memberID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorMemberNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHallMembers
+	}
+
+	return floorMemberToRes(member), nil
 }

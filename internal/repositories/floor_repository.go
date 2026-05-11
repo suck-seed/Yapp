@@ -25,6 +25,8 @@ type IFloorRepository interface {
 	// Floor Members
 	AddFloorMember(ctx context.Context, db database.DBRunner, floorID uuid.UUID, memberID uuid.UUID) error
 	RemoveFloorMember(ctx context.Context, db database.DBRunner, floorID uuid.UUID, memberID uuid.UUID) error
+	ListFloorMembers(ctx context.Context, db database.DBRunner, hallID uuid.UUID, floorID uuid.UUID) ([]*models.HallMember, error)
+	GetFloorMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*models.HallMember, error)
 
 	// Helper functions
 	IsFloorPrivate(ctx context.Context, db database.DBRunner, floorID uuid.UUID) (bool, error)
@@ -276,4 +278,90 @@ func (r *floorRepository) RemoveFloorMember(ctx context.Context, db database.DBR
 
 	_, err := db.Exec(ctx, query, floorID, memberID)
 	return err
+}
+
+func (r *floorRepository) ListFloorMembers(
+	ctx context.Context,
+	db database.DBRunner,
+	hallID uuid.UUID,
+	floorID uuid.UUID,
+) ([]*models.HallMember, error) {
+	query := `
+		SELECT hm.id, hm.hall_id, hm.user_id, hm.role_id,
+		       hm.nickname, hm.joined_at, hm.created_at, hm.updated_at
+		FROM floor_members fm
+		INNER JOIN hall_members hm ON hm.id = fm.member_id
+		WHERE fm.floor_id = $1
+		  AND hm.hall_id = $2
+		ORDER BY hm.joined_at ASC
+	`
+
+	rows, err := db.Query(ctx, query, floorID, hallID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	members := make([]*models.HallMember, 0)
+
+	for rows.Next() {
+		m := &models.HallMember{}
+
+		if err := rows.Scan(
+			&m.ID,
+			&m.HallID,
+			&m.UserID,
+			&m.RoleID,
+			&m.Nickname,
+			&m.JoinedAt,
+			&m.CreatedAt,
+			&m.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		members = append(members, m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return members, nil
+}
+
+func (r *floorRepository) GetFloorMember(
+	ctx context.Context,
+	db database.DBRunner,
+	hallID uuid.UUID,
+	floorID uuid.UUID,
+	memberID uuid.UUID,
+) (*models.HallMember, error) {
+	query := `
+		SELECT hm.id, hm.hall_id, hm.user_id, hm.role_id,
+		       hm.nickname, hm.joined_at, hm.created_at, hm.updated_at
+		FROM floor_members fm
+		INNER JOIN hall_members hm ON hm.id = fm.member_id
+		WHERE fm.floor_id = $1
+		  AND hm.hall_id = $2
+		  AND hm.id = $3
+	`
+
+	m := &models.HallMember{}
+
+	err := db.QueryRow(ctx, query, floorID, hallID, memberID).Scan(
+		&m.ID,
+		&m.HallID,
+		&m.UserID,
+		&m.RoleID,
+		&m.Nickname,
+		&m.JoinedAt,
+		&m.CreatedAt,
+		&m.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }

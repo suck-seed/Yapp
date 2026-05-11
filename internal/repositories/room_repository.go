@@ -33,6 +33,8 @@ type IRoomRepository interface {
 	RemoveRoomMember(ctx context.Context, db database.DBRunner, roomID uuid.UUID, memberID uuid.UUID) error
 	ClearRoomMembers(ctx context.Context, db database.DBRunner, roomID uuid.UUID) error
 	ReplaceRoomMembersFromFloor(ctx context.Context, db database.DBRunner, roomID uuid.UUID, floorID uuid.UUID) error
+	ListRoomMembers(ctx context.Context, db database.DBRunner, hallID uuid.UUID, roomID uuid.UUID) ([]*models.HallMember, error)
+	GetRoomMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, roomID uuid.UUID, memberID uuid.UUID) (*models.HallMember, error)
 
 	SyncRoomsInFloorFromFloorMembers(ctx context.Context, db database.DBRunner, floorID uuid.UUID) error
 	SetRoomFloorMemberSync(ctx context.Context, db database.DBRunner, roomID uuid.UUID, sync bool) error
@@ -556,4 +558,90 @@ func (r *roomRepository) DisableFloorMemberSyncForRoomsInFloor(
 
 	_, err := db.Exec(ctx, query, hallID, floorID)
 	return err
+}
+
+func (r *roomRepository) ListRoomMembers(
+	ctx context.Context,
+	db database.DBRunner,
+	hallID uuid.UUID,
+	roomID uuid.UUID,
+) ([]*models.HallMember, error) {
+	query := `
+		SELECT hm.id, hm.hall_id, hm.user_id, hm.role_id,
+		       hm.nickname, hm.joined_at, hm.created_at, hm.updated_at
+		FROM room_members rm
+		INNER JOIN hall_members hm ON hm.id = rm.member_id
+		WHERE rm.room_id = $1
+		  AND hm.hall_id = $2
+		ORDER BY hm.joined_at ASC
+	`
+
+	rows, err := db.Query(ctx, query, roomID, hallID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	members := make([]*models.HallMember, 0)
+
+	for rows.Next() {
+		m := &models.HallMember{}
+
+		if err := rows.Scan(
+			&m.ID,
+			&m.HallID,
+			&m.UserID,
+			&m.RoleID,
+			&m.Nickname,
+			&m.JoinedAt,
+			&m.CreatedAt,
+			&m.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		members = append(members, m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return members, nil
+}
+
+func (r *roomRepository) GetRoomMember(
+	ctx context.Context,
+	db database.DBRunner,
+	hallID uuid.UUID,
+	roomID uuid.UUID,
+	memberID uuid.UUID,
+) (*models.HallMember, error) {
+	query := `
+		SELECT hm.id, hm.hall_id, hm.user_id, hm.role_id,
+		       hm.nickname, hm.joined_at, hm.created_at, hm.updated_at
+		FROM room_members rm
+		INNER JOIN hall_members hm ON hm.id = rm.member_id
+		WHERE rm.room_id = $1
+		  AND hm.hall_id = $2
+		  AND hm.id = $3
+	`
+
+	m := &models.HallMember{}
+
+	err := db.QueryRow(ctx, query, roomID, hallID, memberID).Scan(
+		&m.ID,
+		&m.HallID,
+		&m.UserID,
+		&m.RoleID,
+		&m.Nickname,
+		&m.JoinedAt,
+		&m.CreatedAt,
+		&m.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }

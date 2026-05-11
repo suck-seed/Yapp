@@ -431,3 +431,75 @@ func (h *RoomHandler) SyncRoomMembersToFloor(c *gin.Context) {
 		"data":    res,
 	})
 }
+
+func (h *RoomHandler) GetRoomMembers(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	roomID, err := uuid.Parse(c.Param("roomID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IRoomService.GetRoomMembers(c.Request.Context(), userInfo, hallID, roomID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "Room members fetched successfully",
+		"success": true,
+		"data":    res,
+	})
+}
+
+func (h *RoomHandler) GetRoomMember(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	roomID, err := uuid.Parse(c.Param("roomID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	memberID, err := uuid.Parse(c.Param("memberID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IRoomService.GetRoomMember(c.Request.Context(), userInfo, hallID, roomID, memberID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"message": "Room member fetched successfully",
+		"success": true,
+		"data":    res,
+	})
+}
