@@ -48,19 +48,49 @@ const (
 )
 
 func (c *Client) IsSubscribedToRoom(roomID uuid.UUID) bool {
-	if c == nil || c.SubscribedRooms == nil {
+	if c == nil {
 		return false
 	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.SubscribedRooms == nil {
+		return false
+	}
+
 	_, ok := c.SubscribedRooms[roomID]
 	return ok
 }
 
 func (c *Client) RoomIDs() []uuid.UUID {
+	if c == nil {
+		return nil
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	ids := make([]uuid.UUID, 0, len(c.SubscribedRooms))
 	for roomID := range c.SubscribedRooms {
 		ids = append(ids, roomID)
 	}
 	return ids
+}
+
+func (c *Client) SubscribedRoomsSnapshot() map[uuid.UUID]uuid.UUID {
+	if c == nil {
+		return map[uuid.UUID]uuid.UUID{}
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	out := make(map[uuid.UUID]uuid.UUID, len(c.SubscribedRooms))
+	for roomID, hallID := range c.SubscribedRooms {
+		out[roomID] = hallID
+	}
+	return out
 }
 
 // readPump continuously reads JSON events from this client.
