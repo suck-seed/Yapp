@@ -97,6 +97,7 @@ func StartServer(cfg config.AppConfig) {
 		rest.RegisterHallRoutes(protectedv1, hallService, roleService, banService, inviteService, floorService, roomService, messageService)
 		rest.RegisterMessageRoutes(protectedv1, messageService)
 		rest.RegisterInvitePrivateRoutes(protectedv1, inviteService)
+		rest.RegisterPresenceRoutes(protectedv1, presenceService)
 	}
 
 	wsHandler := router.Group("/ws", auth.AuthMiddleware())
