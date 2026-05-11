@@ -163,7 +163,12 @@ func (r *roomRepository) GetRoomsByHallID(ctx context.Context, db database.DBRun
 		rooms = append(rooms, rm)
 	}
 
-	return rooms, rows.Err()
+	// check if error iterating bans
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return rooms, nil
 }
 
 func (r *roomRepository) GetRoomsIDandPrivateInfoByHallID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*dto.RoomIDandPrivate, error) {
@@ -191,7 +196,13 @@ func (r *roomRepository) GetRoomsIDandPrivateInfoByHallID(ctx context.Context, d
 		}
 		roomIDandPrivate = append(roomIDandPrivate, rm)
 	}
-	return nil, rows.Err()
+
+	// check if error iterating bans
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// return nil, rows.Err()
+	return roomIDandPrivate, nil
 }
 
 // func (r *roomRepository) UpdateRoom(ctx context.Context, db database.DBRunner, roomID uuid.UUID, name *string, isPrivate *bool) (*models.Room, error) {
@@ -461,16 +472,8 @@ func (r *roomRepository) SetRoomFloorMemberSync(ctx context.Context, db database
 }
 
 func (r *roomRepository) SyncRoomMembersFromFloor(ctx context.Context, db database.DBRunner, roomID uuid.UUID, floorID uuid.UUID) error {
-	query := `
-		INSERT INTO room_members (room_id, user_id)
-		SELECT $1, fm.user_id
-		FROM floor_members fm
-		WHERE fm.floor_id = $2
-		ON CONFLICT (room_id, user_id) DO NOTHING
-	`
+	return r.ReplaceRoomMembersFromFloor(ctx, db, roomID, floorID)
 
-	_, err := db.Exec(ctx, query, roomID, floorID)
-	return err
 }
 
 func (r *roomRepository) DoesRoomExists(ctx context.Context, db database.DBRunner, roomID uuid.UUID) (bool, error) {

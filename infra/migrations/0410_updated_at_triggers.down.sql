@@ -16,6 +16,6 @@ DROP TRIGGER IF EXISTS halls_set_updated_at ON halls;
 
 DROP TRIGGER IF EXISTS user_app_links_set_updated_at ON user_app_links;
 
-DROP TRIGGER IF EXISTS user_devices_set_updated_at ON user_devices;
+DROP TRIGGER IF EXISTS user_metadatas_set_updated_at ON user_metadatas;
 
 DROP TRIGGER IF EXISTS users_set_updated_at ON users;

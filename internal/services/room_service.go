@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"log"
 	"sync"
 	"time"
 
@@ -72,15 +73,16 @@ func NewRoomService(
 
 func roomToRes(r *models.Room) dto.RoomRes {
 	return dto.RoomRes{
-		ID:        r.ID,
-		HallID:    r.HallID,
-		FloorID:   r.FloorID,
-		Name:      r.Name,
-		RoomType:  r.RoomType,
-		Position:  r.Position,
-		IsPrivate: r.IsPrivate,
-		CreatedAt: r.CreatedAt,
-		UpdatedAt: r.UpdatedAt,
+		ID:                   r.ID,
+		HallID:               r.HallID,
+		FloorID:              r.FloorID,
+		Name:                 r.Name,
+		RoomType:             r.RoomType,
+		Position:             r.Position,
+		IsPrivate:            r.IsPrivate,
+		SyncWithFloorMembers: r.SyncWithFloorMembers,
+		CreatedAt:            r.CreatedAt,
+		UpdatedAt:            r.UpdatedAt,
 	}
 }
 
@@ -172,21 +174,26 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 	}
 
 	// Sync to Floor is floor is private
+	syncWithFloorMembers := false
+
+	// Sync to Floor is floor is private
 	if req.FloorID != nil && isFloorPrivate {
 		isPrivate = true
+		syncWithFloorMembers = true
 	}
 
 	now := time.Now()
 	created, err := s.IRoomRepository.CreateRoom(ctx, runner, &models.Room{
-		ID:        roomID,
-		HallID:    hallID,
-		FloorID:   req.FloorID,
-		Name:      canonName,
-		RoomType:  string(canonRoomType),
-		Position:  maxPos + 1000.0,
-		IsPrivate: isPrivate,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:                   roomID,
+		HallID:               hallID,
+		FloorID:              req.FloorID,
+		Name:                 canonName,
+		RoomType:             string(canonRoomType),
+		Position:             maxPos + 1000.0,
+		IsPrivate:            isPrivate,
+		SyncWithFloorMembers: syncWithFloorMembers,
+		CreatedAt:            now,
+		UpdatedAt:            now,
 	})
 	if err != nil {
 		if utils.IsDeadline(err) {
@@ -199,7 +206,7 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 	if created.FloorID != nil && isFloorPrivate {
 		// Private Floor own access
 		// New room get same member list as the floor
-		if err := s.IRoomRepository.SyncRoomMembersFromFloor(ctx, runner, created.ID, *created.FloorID); err != nil {
+		if err := s.IRoomRepository.ReplaceRoomMembersFromFloor(ctx, runner, created.ID, *created.FloorID); err != nil {
 			if utils.IsDeadline(err) {
 				return nil, utils.ErrorRequestTimeout
 			}
@@ -209,7 +216,19 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 		// Standalone private room
 		// Or, private room inside a public folder
 		// At minimum, room creator should have access
-		if err := s.IRoomRepository.AddRoomMember(ctx, runner, created.ID, userInfo.ID); err != nil {
+
+		creatorMember, err := s.IHallRepository.GetHallMemberByUserID(ctx, runner, hallID, userInfo.ID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, utils.ErrorUserDoesntBelongHall
+			}
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorInternal
+		}
+
+		if err := s.IRoomRepository.AddRoomMember(ctx, runner, created.ID, creatorMember.ID); err != nil {
 			if utils.IsDeadline(err) {
 				return nil, utils.ErrorRequestTimeout
 			}
@@ -447,13 +466,22 @@ func (s *roomService) UpdateRoom(c context.Context, userInfo *auth.UserInfo, hal
 		nowPrivate := *req.IsPrivate
 
 		// public -> private
-		if !wasPrivate && nowPrivate {
-			if err := s.IRoomRepository.AddRoomMember(ctx, runner, roomID, userInfo.ID); err != nil {
-				if utils.IsDeadline(err) {
-					return nil, utils.ErrorRequestTimeout
-				}
-				return nil, utils.ErrorCreatingRoomMember
+		creatorMemberID, err := s.IHallRepository.GetHallMemberID(ctx, runner, hallID, userInfo.ID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, utils.ErrorUserDoesntBelongHall
 			}
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingHallMembers
+		}
+
+		if err := s.IRoomRepository.AddRoomMember(ctx, runner, roomID, creatorMemberID); err != nil {
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorCreatingRoomMember
 		}
 
 		// private -> public
@@ -706,11 +734,15 @@ func (s *roomService) GetAccessibleRoomsForUser(c context.Context, userInfo *aut
 		return nil, utils.ErrorInternal
 	}
 
+	log.Printf("Hall IDs: \n %v\n", hallIDs)
+
 	accessibleRooms := make(map[uuid.UUID]uuid.UUID)
 
 	// range through the hall
 	// fetch all the room associated with the hallID
 	for _, hallID := range hallIDs {
+
+		log.Printf("Current HallID: \n %v\n", hallID)
 
 		// fetch all roomID of current hall
 
@@ -723,6 +755,8 @@ func (s *roomService) GetAccessibleRoomsForUser(c context.Context, userInfo *aut
 			}
 			return nil, utils.ErrorFetchingRoom
 		}
+
+		log.Printf("Room Infos: \n %v\n", roomInfo)
 
 		// check if private
 		// if private, check if accessible
@@ -743,6 +777,7 @@ func (s *roomService) GetAccessibleRoomsForUser(c context.Context, userInfo *aut
 				}
 
 			}
+			log.Printf("Current RoomID and Info: \n %v\n", rm)
 
 			// map current RoomId -> hallID
 			accessibleRooms[rm.RoomID] = hallID
@@ -750,6 +785,8 @@ func (s *roomService) GetAccessibleRoomsForUser(c context.Context, userInfo *aut
 		}
 
 	}
+
+	log.Printf("Accessible Rooms: \n %v\n", accessibleRooms)
 
 	return accessibleRooms, nil
 }

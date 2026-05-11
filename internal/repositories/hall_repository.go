@@ -24,6 +24,7 @@ type IHallRepository interface {
 	GetHallByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error)   // R
 	GetHallOwnerID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (uuid.UUID, error)   // R
 	GetHallMemberByUserID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (*models.HallMember, error)
+	GetHallMemberID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (uuid.UUID, error)
 	GetHallMemberByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, memberID uuid.UUID) (*models.HallMember, error)
 	ListHallMembers(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.HallMember, error)
 	UpdateHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID, fields map[string]any) (*models.HallMember, error)
@@ -255,6 +256,21 @@ func (r *hallRepository) GetHallMemberByUserID(ctx context.Context, db database.
 	}
 
 	return m, nil
+}
+func (r *hallRepository) GetHallMemberID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (uuid.UUID, error) {
+	query := `
+		SELECT id
+		FROM hall_members
+		WHERE hall_id = $1 AND user_id = $2
+	`
+
+	var memberID uuid.UUID
+	err := db.QueryRow(ctx, query, hallID, userID).Scan(&memberID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return memberID, nil
 }
 
 func (r *hallRepository) GetHallMemberByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, memberID uuid.UUID) (*models.HallMember, error) {

@@ -44,3 +44,8 @@ testing.json
 .env.prod
 /system designs
 /scripts
+
+# DEBUG
+.env.debug
+__debug_bin2656513136
+__debug_bin2988462220

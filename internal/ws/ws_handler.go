@@ -96,6 +96,8 @@ func (h *WebsocketHandler) Connect(c *gin.Context) {
 		return
 	}
 
+	log.Printf("WS subscribedRooms for user %s: %+v\n", user.ID, subscribedRooms)
+
 	// Upgrade HTTP to websocket
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
