@@ -14,6 +14,7 @@ import (
 	"github.com/suck-seed/yapp/internal/database"
 	dto "github.com/suck-seed/yapp/internal/dto/hall"
 	"github.com/suck-seed/yapp/internal/models"
+	"github.com/suck-seed/yapp/internal/realtime"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/utils"
 )
@@ -49,6 +50,8 @@ type inviteService struct {
 
 	IPermissionCheckerService
 
+	EventPublisher realtime.Publisher
+
 	pool    *pgxpool.Pool
 	timeout time.Duration
 	mu      sync.RWMutex
@@ -59,16 +62,18 @@ func NewInviteService(
 	hallRepo repositories.IHallRepository,
 	roleRepo repositories.IRoleRepository,
 	permSvc IPermissionCheckerService,
+	eventPublisher realtime.Publisher,
 	pool *pgxpool.Pool,
 ) IInviteService {
 	return &inviteService{
-		IInviteRepository:         inviteRepo,
-		IHallRepository:           hallRepo,
-		IRoleRepository:           roleRepo,
-		IPermissionCheckerService: permSvc,
-		pool:                      pool,
-		timeout:                   2 * time.Second,
-		mu:                        sync.RWMutex{},
+		inviteRepo,
+		hallRepo,
+		roleRepo,
+		permSvc,
+		eventPublisher,
+		pool,
+		2 * time.Second,
+		sync.RWMutex{},
 	}
 }
 
@@ -434,6 +439,14 @@ func (s *inviteService) AcceptInviteLink(ctx context.Context, userInfo *auth.Use
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorTest4
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:     realtime.HubEventUserJoinedHall,
+		HallID:   member.HallID,
+		UserID:   member.UserID,
+		MemberID: member.ID,
+	})
 
 	return &dto.AcceptInviteLinkRes{
 		HallID:   member.HallID,

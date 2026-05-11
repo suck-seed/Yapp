@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"errors"
-	"log"
 	"sync"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/suck-seed/yapp/internal/database"
 	dto "github.com/suck-seed/yapp/internal/dto/room"
 	"github.com/suck-seed/yapp/internal/models"
+	"github.com/suck-seed/yapp/internal/realtime"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/utils"
 )
@@ -44,6 +44,8 @@ type roomService struct {
 
 	IPermissionCheckerService
 
+	EventPublisher realtime.Publisher
+
 	pool    *pgxpool.Pool
 	timeout time.Duration
 	mu      sync.RWMutex
@@ -55,6 +57,7 @@ func NewRoomService(
 	roomRepo repositories.IRoomRepository,
 	banRepo repositories.IBanRepsitory,
 	permissionChecker IPermissionCheckerService,
+	eventPublisher realtime.Publisher,
 	pool *pgxpool.Pool,
 ) IRoomService {
 	return &roomService{
@@ -63,6 +66,7 @@ func NewRoomService(
 		roomRepo,
 		banRepo,
 		permissionChecker,
+		eventPublisher,
 		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
@@ -239,6 +243,15 @@ func (s *roomService) CreateRoom(c context.Context, userInfo *auth.UserInfo, hal
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:      realtime.HubEventRoomCreated,
+		HallID:    created.HallID,
+		RoomID:    created.ID,
+		UserID:    userInfo.ID,
+		IsPrivate: created.IsPrivate,
+	})
 
 	res := roomToRes(created)
 	return &res, nil
@@ -499,6 +512,18 @@ func (s *roomService) UpdateRoom(c context.Context, userInfo *auth.UserInfo, hal
 		return nil, utils.ErrorInternal
 	}
 
+	// PUBLISH EVENT
+	// room's privacy status change checker
+	// if changed publish event HubEventRoomPrivacyChanged
+	if room.IsPrivate != updated.IsPrivate {
+		publishHubEvent(s.EventPublisher, realtime.HubEvent{
+			Type:      realtime.HubEventRoomPrivacyChanged,
+			HallID:    updated.HallID,
+			RoomID:    updated.ID,
+			IsPrivate: updated.IsPrivate,
+		})
+	}
+
 	res := roomToRes(updated)
 	return &res, nil
 }
@@ -541,7 +566,19 @@ func (s *roomService) DeleteRoom(c context.Context, userInfo *auth.UserInfo, hal
 		return utils.ErrorInternal
 	}
 
-	return runner.Commit(ctx)
+	if err := runner.Commit(ctx); err != nil {
+		return utils.ErrorInternal
+	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:   realtime.HubEventRoomDeleted,
+		HallID: room.HallID,
+		RoomID: room.ID,
+	})
+
+	return nil
+
 }
 
 // ── MoveRoom ──────────────────────────────────────────────────────────────────
@@ -678,6 +715,13 @@ func (s *roomService) MoveRoom(c context.Context, userInfo *auth.UserInfo, hallI
 		return nil, utils.ErrorInternal
 	}
 
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:   realtime.HubEventRoomMoved,
+		HallID: moved.HallID,
+		RoomID: moved.ID,
+	})
+
 	res := roomToRes(moved)
 	return &res, nil
 }
@@ -734,15 +778,11 @@ func (s *roomService) GetAccessibleRoomsForUser(c context.Context, userInfo *aut
 		return nil, utils.ErrorInternal
 	}
 
-	log.Printf("Hall IDs: \n %v\n", hallIDs)
-
 	accessibleRooms := make(map[uuid.UUID]uuid.UUID)
 
 	// range through the hall
 	// fetch all the room associated with the hallID
 	for _, hallID := range hallIDs {
-
-		log.Printf("Current HallID: \n %v\n", hallID)
 
 		// fetch all roomID of current hall
 
@@ -755,8 +795,6 @@ func (s *roomService) GetAccessibleRoomsForUser(c context.Context, userInfo *aut
 			}
 			return nil, utils.ErrorFetchingRoom
 		}
-
-		log.Printf("Room Infos: \n %v\n", roomInfo)
 
 		// check if private
 		// if private, check if accessible
@@ -777,7 +815,6 @@ func (s *roomService) GetAccessibleRoomsForUser(c context.Context, userInfo *aut
 				}
 
 			}
-			log.Printf("Current RoomID and Info: \n %v\n", rm)
 
 			// map current RoomId -> hallID
 			accessibleRooms[rm.RoomID] = hallID
@@ -785,8 +822,6 @@ func (s *roomService) GetAccessibleRoomsForUser(c context.Context, userInfo *aut
 		}
 
 	}
-
-	log.Printf("Accessible Rooms: \n %v\n", accessibleRooms)
 
 	return accessibleRooms, nil
 }
@@ -831,7 +866,8 @@ func (s *roomService) AddRoomMember(c context.Context, userInfo *auth.UserInfo, 
 	}
 
 	// Verify member belongs to this hall
-	if _, err := s.IHallRepository.GetHallMemberByID(ctx, runner, hallID, memberID); err != nil {
+	member, err := s.IHallRepository.GetHallMemberByID(ctx, runner, hallID, memberID)
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorMemberNotFound
 		}
@@ -862,6 +898,15 @@ func (s *roomService) AddRoomMember(c context.Context, userInfo *auth.UserInfo, 
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:     realtime.HubEventRoomMemberAdded,
+		HallID:   hallID,
+		RoomID:   roomID,
+		MemberID: memberID,
+		UserID:   member.UserID,
+	})
 
 	return &dto.RoomAccessMemberRes{
 		RoomID:   roomID,
@@ -907,7 +952,8 @@ func (s *roomService) RemoveRoomMember(c context.Context, userInfo *auth.UserInf
 	}
 
 	// Verify member belongs to this hall
-	if _, err := s.IHallRepository.GetHallMemberByID(ctx, runner, hallID, memberID); err != nil {
+	member, err := s.IHallRepository.GetHallMemberByID(ctx, runner, hallID, memberID)
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorMemberNotFound
 		}
@@ -938,6 +984,15 @@ func (s *roomService) RemoveRoomMember(c context.Context, userInfo *auth.UserInf
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:     realtime.HubEventRoomMemberRemoved,
+		HallID:   hallID,
+		RoomID:   roomID,
+		MemberID: memberID,
+		UserID:   member.UserID,
+	})
 
 	return &dto.RoomAccessMemberRes{
 		RoomID:   roomID,
@@ -1020,6 +1075,13 @@ func (s *roomService) SyncRoomMembersToFloor(c context.Context, userInfo *auth.U
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:   realtime.HubEventHallAccessResync,
+		HallID: hallID,
+		RoomID: roomID,
+	})
 
 	res := roomToRes(updated)
 	return &res, nil

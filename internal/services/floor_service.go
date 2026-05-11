@@ -13,6 +13,7 @@ import (
 	"github.com/suck-seed/yapp/internal/database"
 	dto "github.com/suck-seed/yapp/internal/dto/floor"
 	"github.com/suck-seed/yapp/internal/models"
+	"github.com/suck-seed/yapp/internal/realtime"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/utils"
 )
@@ -38,6 +39,8 @@ type floorService struct {
 
 	IPermissionCheckerService
 
+	EventPublisher realtime.Publisher
+
 	pool    *pgxpool.Pool
 	timeout time.Duration
 	mu      sync.RWMutex
@@ -49,6 +52,7 @@ func NewFloorService(
 	roomRepo repositories.IRoomRepository,
 	banRepo repositories.IBanRepsitory,
 	permissionChecker IPermissionCheckerService,
+	eventPublisher realtime.Publisher,
 	pool *pgxpool.Pool,
 ) IFloorService {
 	return &floorService{
@@ -57,6 +61,7 @@ func NewFloorService(
 		roomRepo,
 		banRepo,
 		permissionChecker,
+		eventPublisher,
 		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
@@ -294,6 +299,18 @@ func (s *floorService) UpdateFloor(c context.Context, userInfo *auth.UserInfo, h
 		return nil, utils.ErrorInternal
 	}
 
+	// PUBLISH EVENT
+	// Only Update if is_private is changed
+	// public -> private & private -> public both
+	if req.IsPrivate != nil {
+		publishHubEvent(s.EventPublisher, realtime.HubEvent{
+			Type:      realtime.HubEventFloorPrivacyChanged,
+			HallID:    hallID,
+			FloorID:   floorID,
+			IsPrivate: *req.IsPrivate,
+		})
+	}
+
 	return &dto.UpdateFloorRes{
 		ID:        updated.ID,
 		HallID:    updated.HallID,
@@ -337,6 +354,14 @@ func (s *floorService) DeleteFloor(c context.Context, userInfo *auth.UserInfo, h
 	if err := runner.Commit(ctx); err != nil {
 		return utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:    realtime.HubEventFloorDeleted,
+		HallID:  hallID,
+		FloorID: floorID,
+	})
+
 	return nil
 }
 
@@ -431,7 +456,8 @@ func (s *floorService) AddFloorMember(c context.Context, userInfo *auth.UserInfo
 	}
 
 	// Verify member belongs to this hall
-	if _, err := s.IHallRepository.GetHallMemberByID(ctx, runner, hallID, memberID); err != nil {
+	member, err := s.IHallRepository.GetHallMemberByID(ctx, runner, hallID, memberID)
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorMemberNotFound
 		}
@@ -460,6 +486,15 @@ func (s *floorService) AddFloorMember(c context.Context, userInfo *auth.UserInfo
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:     realtime.HubEventFloorMemberAdded,
+		HallID:   hallID,
+		FloorID:  floorID,
+		MemberID: memberID,
+		UserID:   member.UserID,
+	})
 
 	return &dto.FloorAccessMemberRes{
 		FloorID:  floorID,
@@ -504,7 +539,8 @@ func (s *floorService) RemoveFloorMember(c context.Context, userInfo *auth.UserI
 	}
 
 	// Verify member belongs to this hall
-	if _, err := s.IHallRepository.GetHallMemberByID(ctx, runner, hallID, memberID); err != nil {
+	member, err := s.IHallRepository.GetHallMemberByID(ctx, runner, hallID, memberID)
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorMemberNotFound
 		}
@@ -533,6 +569,15 @@ func (s *floorService) RemoveFloorMember(c context.Context, userInfo *auth.UserI
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:     realtime.HubEventFloorMemberRemoved,
+		HallID:   hallID,
+		FloorID:  floorID,
+		MemberID: memberID,
+		UserID:   member.UserID,
+	})
 
 	return &dto.FloorAccessMemberRes{
 		FloorID:  floorID,

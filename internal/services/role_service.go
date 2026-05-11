@@ -15,6 +15,7 @@ import (
 	"github.com/suck-seed/yapp/internal/database"
 	dto "github.com/suck-seed/yapp/internal/dto/hall"
 	"github.com/suck-seed/yapp/internal/models"
+	"github.com/suck-seed/yapp/internal/realtime"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/utils"
 )
@@ -44,18 +45,29 @@ type roleService struct {
 	// Permission checker service
 	IPermissionCheckerService
 
+	EventPublisher realtime.Publisher
+
 	pool    *pgxpool.Pool
 	timeout time.Duration
 	mu      sync.RWMutex
 }
 
-func NewRoleService(roleRepo repositories.IRoleRepository, userRepo repositories.IUserRepository, hallRepo repositories.IHallRepository, banRepo repositories.IBanRepsitory, permissionChecker IPermissionCheckerService, pool *pgxpool.Pool) IRoleService {
+func NewRoleService(
+	roleRepo repositories.IRoleRepository,
+	userRepo repositories.IUserRepository,
+	hallRepo repositories.IHallRepository,
+	banRepo repositories.IBanRepsitory,
+	permissionChecker IPermissionCheckerService,
+	eventPublisher realtime.Publisher,
+	pool *pgxpool.Pool,
+) IRoleService {
 	return &roleService{
 		roleRepo,
 		userRepo,
 		hallRepo,
 		banRepo,
 		permissionChecker,
+		eventPublisher,
 		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
@@ -906,6 +918,12 @@ func (s *roleService) UpdateRolePermissions(ctx context.Context, userInfo *auth.
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:   realtime.HubEventHallAccessResync,
+		HallID: hallID,
+	})
 
 	// building response
 	permissionRes := s.buildPermissionResponse(role, permissions)

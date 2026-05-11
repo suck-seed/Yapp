@@ -2,7 +2,6 @@ package ws
 
 import (
 	"context"
-	"log"
 	"time"
 
 	dto "github.com/suck-seed/yapp/internal/dto/message"
@@ -15,8 +14,6 @@ type PersistFunction func(ctx context.Context, in *dto.InboundMessage) (*dto.Out
 // MakePresistFunction : Performs various actions and pushes it to db
 func MakePresistFunction(messageService services.IMessageService, userService services.IUserService) PersistFunction {
 	return func(ctx context.Context, in *dto.InboundMessage) (*dto.OutboundMessage, error) {
-
-		log.Print("PresistFunction hit")
 
 		// Condition where client did not send sentAt
 		if in.SentAt.IsZero() {
@@ -33,8 +30,6 @@ func MakePresistFunction(messageService services.IMessageService, userService se
 			MentionEveryone: in.MentionEveryone,
 			Mentions:        in.Mentions,
 		})
-
-		log.Print("After messageService.CreateMessage")
 
 		if err != nil {
 			return nil, err

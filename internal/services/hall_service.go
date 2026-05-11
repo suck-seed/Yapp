@@ -14,6 +14,7 @@ import (
 	"github.com/suck-seed/yapp/internal/database"
 	dto "github.com/suck-seed/yapp/internal/dto/hall"
 	"github.com/suck-seed/yapp/internal/models"
+	"github.com/suck-seed/yapp/internal/realtime"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/utils"
 )
@@ -62,6 +63,8 @@ type hallService struct {
 	// Presnece checker service
 	IPresenceService
 
+	EventPublisher realtime.Publisher
+
 	pool *pgxpool.Pool
 
 	timeout time.Duration
@@ -75,6 +78,7 @@ func NewHallService(
 	banRepo repositories.IBanRepsitory,
 	permissionChecker IPermissionCheckerService,
 	presenceService IPresenceService,
+	eventPublisher realtime.Publisher,
 	pool *pgxpool.Pool,
 
 ) IHallService {
@@ -85,6 +89,7 @@ func NewHallService(
 		banRepo,
 		permissionChecker,
 		presenceService,
+		eventPublisher,
 		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
@@ -340,6 +345,14 @@ func (s *hallService) JoinHall(c context.Context, userInfo *auth.UserInfo, hallI
 			return nil, utils.ErrorInternal
 		}
 
+		// PUBLISH EVENT
+		// Public Hall Joined
+		publishHubEvent(s.EventPublisher, realtime.HubEvent{
+			Type:   realtime.HubEventUserJoinedHall,
+			HallID: hallID,
+			UserID: userInfo.ID,
+		})
+
 		return &dto.JoinHallRes{
 			Status:    "joined",
 			MemberID:  &createdMember.ID,
@@ -526,6 +539,13 @@ func (s *hallService) DeleteHall(c context.Context, userInfo *auth.UserInfo, hal
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:   realtime.HubEventHallDeleted,
+		HallID: hallID,
+		UserID: userInfo.ID,
+	})
 
 	return deletedHall, nil
 }
@@ -847,6 +867,15 @@ func (s *hallService) UpdateHallMemberRole(c context.Context, userInfo *auth.Use
 		return nil, utils.ErrorInternal
 	}
 
+	// PUBLISH EVENT
+	// TODO : If later role is also used for room access
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:     realtime.HubEventUserAccessResync,
+		HallID:   hallID,
+		UserID:   target.UserID,
+		MemberID: target.ID,
+	})
+
 	return &dto.UpdateHallMemberRes{
 		ID:        updated.ID,
 		HallID:    updated.HallID,
@@ -1006,6 +1035,14 @@ func (s *hallService) KickHallMember(c context.Context, userInfo *auth.UserInfo,
 		return nil, utils.ErrorInternal
 	}
 
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:     realtime.HubEventUserKickedFromHall,
+		HallID:   hallID,
+		UserID:   target.UserID,
+		MemberID: target.ID,
+	})
+
 	return res, nil
 }
 
@@ -1152,6 +1189,14 @@ func (s *hallService) AcceptJoinRequest(c context.Context, userInfo *auth.UserIn
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:     realtime.HubEventUserJoinedHall,
+		HallID:   hallID,
+		UserID:   member.UserID,
+		MemberID: member.ID,
+	})
 
 	return &dto.AcceptJoinRequestRes{
 		RequestID: request.ID,

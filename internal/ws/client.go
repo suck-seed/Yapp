@@ -97,7 +97,6 @@ func (c *Client) SubscribedRoomsSnapshot() map[uuid.UUID]uuid.UUID {
 // The client must now send room_id in the JSON payload because /ws is a global gateway.
 func (c *Client) readPump(hub *Hub) {
 
-	log.Print("Read Pump Hit")
 	defer func() {
 		hub.Unregister <- c
 		c.Conn.Close()
@@ -128,20 +127,17 @@ func (c *Client) readPump(hub *Hub) {
 			break
 
 		}
-		log.Printf("Inbound Message readPump: \n %v\n", inboundMessage)
 		// Server-owned identity. Never trust these from frontend.
 		inboundMessage.UserID = c.UserID
 		inboundMessage.ClientID = c.ID
 
 		// Validate if RoomID field is empty or not (should never be empty)
 		if inboundMessage.RoomID == uuid.Nil {
-			log.Print("Issue Here 1")
 			hub.sendErrorToClient(c.ID, uuid.Nil, c.UserID, "room_id is required")
 			continue
 		}
 
 		if !c.IsSubscribedToRoom(inboundMessage.RoomID) {
-			log.Print("Issue Here 2")
 			hub.sendErrorToClient(c.ID, inboundMessage.RoomID, c.UserID, "you are not subscribed to this room")
 			continue
 		}
@@ -149,8 +145,6 @@ func (c *Client) readPump(hub *Hub) {
 		if hub.PresenceService != nil {
 			_ = hub.PresenceService.RefreshConnection(context.Background(), c.UserID, c.ID)
 		}
-
-		log.Printf("Inbound Message: \n %v\n", inboundMessage)
 
 		hub.Inbound <- inboundMessage
 	}
@@ -176,8 +170,6 @@ func (c *Client) writePump() {
 				_ = c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-
-			log.Printf("Out Message writePump() : \n %v\n", out)
 
 			if err := c.Conn.WriteJSON(out); err != nil {
 				log.Printf("Websocket write wrror %v", err)

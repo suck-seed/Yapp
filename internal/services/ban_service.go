@@ -13,6 +13,7 @@ import (
 	"github.com/suck-seed/yapp/internal/database"
 	dto "github.com/suck-seed/yapp/internal/dto/hall"
 	"github.com/suck-seed/yapp/internal/models"
+	"github.com/suck-seed/yapp/internal/realtime"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/utils"
 )
@@ -29,17 +30,27 @@ type banService struct {
 	repositories.IHallRepository
 	IPermissionCheckerService
 
+	EventPublisher realtime.Publisher
+
 	pool    *pgxpool.Pool
 	timeout time.Duration
 	mu      sync.RWMutex
 }
 
-func NewBanService(banRepo repositories.IBanRepsitory, userRepo repositories.IUserRepository, hallRepo repositories.IHallRepository, permissionChecker IPermissionCheckerService, pool *pgxpool.Pool) IBanService {
+func NewBanService(
+	banRepo repositories.IBanRepsitory,
+	userRepo repositories.IUserRepository,
+	hallRepo repositories.IHallRepository,
+	permissionChecker IPermissionCheckerService,
+	eventPublisher realtime.Publisher,
+	pool *pgxpool.Pool,
+) IBanService {
 	return &banService{
 		banRepo,
 		userRepo,
 		hallRepo,
 		permissionChecker,
+		eventPublisher,
 		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
@@ -214,6 +225,13 @@ func (s *banService) BanUser(ctx context.Context, userInfo *auth.UserInfo, hallI
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:   realtime.HubEventUserBannedFromHall,
+		HallID: hallID,
+		UserID: req.UserID,
+	})
 
 	return &dto.BanUserRes{
 		ID:     saved.ID,

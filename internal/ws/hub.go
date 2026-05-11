@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	dto "github.com/suck-seed/yapp/internal/dto/message"
+	"github.com/suck-seed/yapp/internal/realtime"
 	"github.com/suck-seed/yapp/internal/services"
 	"github.com/suck-seed/yapp/internal/utils"
 )
@@ -38,6 +39,10 @@ type Hub struct {
 	// Presence Service
 	PresenceService services.IPresenceService
 
+	// Event Mapping
+	EventBus       *realtime.EventBus
+	AccessResolver AccessResolver
+
 	// One lock protects Rooms, Clients, and UserClients.
 	mu sync.RWMutex
 }
@@ -47,6 +52,8 @@ func NewHub(
 	p PersistFunction,
 	readFunc ReadReceiptFunction,
 	presenceService services.IPresenceService,
+	eventBus *realtime.EventBus,
+	accessResolver AccessResolver,
 ) Hub {
 	return Hub{
 		Rooms:           make(map[uuid.UUID]*Room),   // room_id -> room subscription bucket
@@ -59,6 +66,8 @@ func NewHub(
 		PersistFunc:     p,
 		ReadReceiptFunc: readFunc,
 		PresenceService: presenceService,
+		EventBus:        eventBus,
+		AccessResolver:  accessResolver,
 	}
 }
 
@@ -67,6 +76,9 @@ func (h *Hub) Run() {
 
 	go h.handleInboundMessage()
 	go h.handleOutbound()
+
+	// Handle EventBus
+	go h.handleEvents()
 
 	for {
 		select {
@@ -86,7 +98,6 @@ func (h *Hub) handleInboundMessage() {
 	for inboundMessage := range h.Inbound {
 		switch inboundMessage.Type {
 		case dto.MessageTypeText:
-			log.Printf("Inbound Message: handleInboundMessage() \n %v\n", inboundMessage)
 			h.processTextMessage(inboundMessage)
 		case dto.MessageTypeTyping:
 			h.processTypingIndicator(inboundMessage)
@@ -95,7 +106,6 @@ func (h *Hub) handleInboundMessage() {
 		case dto.MessageTypeRead:
 			h.processReadReciept(inboundMessage)
 		default:
-			log.Printf("unknown websocket message type %s", inboundMessage.Type)
 			h.sendErrorToClient(inboundMessage.ClientID, inboundMessage.RoomID, inboundMessage.UserID, "unknown websocket message type")
 		}
 
@@ -106,7 +116,6 @@ func (h *Hub) handleInboundMessage() {
 func (h *Hub) handleOutbound() {
 
 	for msg := range h.Outbound {
-		log.Printf("Outbound Message handleOutbound() : \n %v\n", msg)
 		h.deliverToRoom(msg.RoomID, msg)
 	}
 }
@@ -117,6 +126,8 @@ func (h *Hub) registerClient(client *Client) {
 	if client.SubscribedRooms == nil {
 		client.SubscribedRooms = make(map[uuid.UUID]uuid.UUID)
 	}
+
+	subscribedRooms := client.SubscribedRoomsSnapshot()
 
 	h.mu.Lock()
 
@@ -137,26 +148,9 @@ func (h *Hub) registerClient(client *Client) {
 	// 			\ ->->->-> ClientID2 ->->->-> Client2 (Firefox)
 
 	// Now create a suscribtion
-	for roomID, hallID := range client.SubscribedRooms {
+	for roomID, hallID := range subscribedRooms {
 
-		// Check if the subscribed room of client
-		// exist or not in the hub.Rooms
-		room, exists := h.Rooms[roomID]
-
-		// if doesnt exist, create the room and add in h.Rooms
-		if !exists {
-
-			room = &Room{
-				ID:      roomID,
-				HallID:  hallID,
-				Clients: make(map[uuid.UUID]*Client),
-			}
-
-			h.Rooms[roomID] = room
-		}
-
-		// Now assign this client in room;s client
-		room.Clients[client.ID] = client
+		h.subscribeClientToRoomLocked(client, hallID, roomID)
 
 	}
 	h.mu.Unlock()
@@ -170,14 +164,12 @@ func (h *Hub) registerClient(client *Client) {
 		}
 	}
 
-	log.Printf("Client Registered: \n %v\n", client)
-
 }
 
 func (h *Hub) unregisterClient(client *Client) {
 
 	roomIDs := client.RoomIDs()
-	roomsForPresence := cloneRoomMap(client.SubscribedRooms)
+	roomsForPresence := client.SubscribedRoomsSnapshot()
 
 	h.mu.Lock()
 
@@ -201,8 +193,6 @@ func (h *Hub) unregisterClient(client *Client) {
 		}
 	}
 
-	log.Printf("Client Unregistered: \n %v\n", client)
-
 }
 
 // removeClientLocked must only be called while h.mu is write-locked.
@@ -216,7 +206,9 @@ func (h *Hub) removeClientLocked(client *Client) {
 		}
 	}
 
-	for roomID := range client.SubscribedRooms {
+	subscribedRooms := client.SubscribedRoomsSnapshot()
+
+	for roomID := range subscribedRooms {
 		room, exists := h.Rooms[roomID]
 		if !exists {
 			continue
@@ -229,6 +221,7 @@ func (h *Hub) removeClientLocked(client *Client) {
 	}
 }
 
+// TODO : add mutex lock here too
 func cloneRoomMap(in map[uuid.UUID]uuid.UUID) map[uuid.UUID]uuid.UUID {
 	out := make(map[uuid.UUID]uuid.UUID, len(in))
 	for roomID, hallID := range in {
@@ -344,7 +337,6 @@ func (h *Hub) processReadReciept(msg *dto.InboundMessage) {
 func (h *Hub) deliverToRoom(roomID uuid.UUID, msg *dto.OutboundMessage) {
 	var disconnectedClients []uuid.UUID
 
-	log.Print(" Hit: deliverToRoom")
 	h.mu.RLock()
 	room, exists := h.Rooms[roomID]
 	if !exists {

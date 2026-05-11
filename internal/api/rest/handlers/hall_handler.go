@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -248,23 +247,17 @@ func (h *HallHandler) GetHallProfile(c *gin.Context) {
 		return
 	}
 
-	log.Println(hallID)
-
 	userInfo, err := auth.CurrentUserFromGinContext(c)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
 	}
 
-	log.Println(userInfo)
-
 	res, err := h.IHallService.GetHallProfile(c.Request.Context(), userInfo, hallID)
 	if err != nil {
 		utils.WriteError(c, err)
 		return
 	}
-
-	log.Println(res)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
