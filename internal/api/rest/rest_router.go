@@ -64,6 +64,11 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 		halls.GET("", hallHandler.GetUserHalls)
 		halls.POST("", hallHandler.CreateHall)
 
+		// HALL SIDEBAR PINNING
+		halls.PUT("/:hallID/pin", hallHandler.PinHall)
+		halls.DELETE("/:hallID/pin", hallHandler.UnpinHall)
+		halls.PUT("/:hallID/pin/move", hallHandler.MovePinnedHall)
+
 		// JOIN HALL
 		halls.POST("/:hallID/join", hallHandler.JoinHall)
 

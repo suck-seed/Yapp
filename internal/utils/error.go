@@ -251,6 +251,26 @@ var (
 	ErrorRoomIsNotPrivate   = &AppError{Code: http.StatusBadRequest, Message: "Room has to be private to add members"}
 	ErrorDeletingRoomMember = &AppError{Code: http.StatusBadRequest, Message: "Error occured while removing member from room"}
 	ErrorRoomNotInFloor     = &AppError{Code: http.StatusBadRequest, Message: "Room does not exist in floor"}
+
+	ErrorMaxPinnedHallsReached = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Only 11 halls can be pinned",
+	}
+
+	ErrorHallNotPinned = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Hall is not pinned",
+	}
+
+	ErrorInvalidPinnedHallTarget = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Target hall must be pinned",
+	}
+
+	ErrorMovingHall = &AppError{
+		Code:    http.StatusInternalServerError,
+		Message: "Error occured while Moving Hall",
+	}
 )
 
 // Writing Errors from handlers to client

@@ -1157,3 +1157,125 @@ func (h *HallHandler) UnbanUser(c *gin.Context) {
 		"data":    res,
 	})
 }
+
+// PinHall godoc
+// @Summary      Pin a hall
+// @Description  Pins a hall to the current user's sidebar. Max 11 pinned halls.
+// @Tags         halls
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string  true  "Hall ID (UUID)"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/pin [put]
+func (h *HallHandler) PinHall(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IHallService.PinHall(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"success": true,
+		"message": "Hall pinned successfully",
+		"data":    res,
+	})
+}
+
+// UnpinHall godoc
+// @Summary      Unpin a hall
+// @Description  Removes a hall from the current user's pinned sidebar.
+// @Tags         halls
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string  true  "Hall ID (UUID)"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/pin [delete]
+func (h *HallHandler) UnpinHall(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	res, err := h.IHallService.UnpinHall(c.Request.Context(), userInfo, hallID)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"success": true,
+		"message": "Hall unpinned successfully",
+		"data":    res,
+	})
+}
+
+// MovePinnedHall godoc
+// @Summary      Move a pinned hall
+// @Description  Reorders a pinned hall in the current user's pinned sidebar.
+// @Tags         halls
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        hallID  path      string                 true  "Hall ID (UUID)"
+// @Param        body    body      dto.MovePinnedHallReq  true  "Move target"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      400     {object}  map[string]interface{}
+// @Failure      401     {object}  map[string]interface{}
+// @Router       /halls/{hallID}/pin/move [put]
+func (h *HallHandler) MovePinnedHall(c *gin.Context) {
+	userInfo, err := auth.CurrentUserFromGinContext(c)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	hallID, err := uuid.Parse(c.Param("hallID"))
+	if err != nil {
+		utils.WriteError(c, utils.ErrorInvalidIDFormart)
+		return
+	}
+
+	var req dto.MovePinnedHallReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.WriteError(c, utils.ErrorInvalidInput)
+		return
+	}
+
+	res, err := h.IHallService.MovePinnedHall(c.Request.Context(), userInfo, hallID, &req)
+	if err != nil {
+		utils.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    http.StatusOK,
+		"success": true,
+		"message": "Pinned hall moved successfully",
+		"data":    res,
+	})
+}

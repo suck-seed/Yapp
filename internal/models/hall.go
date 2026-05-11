@@ -30,7 +30,27 @@ type HallMember struct {
 	JoinedAt  time.Time `db:"joined_at" json:"joined_at"`
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+
+	IsPinned       bool     `db:"is_pinned" json:"is_pinned"`
+	PinnedPosition *float64 `db:"pinned_position" json:"pinned_position,omitempty"`
 }
+
+type UserHall struct {
+	ID               uuid.UUID `json:"id" db:"id"`
+	Name             string    `json:"name" db:"name"`
+	IsPrivate        bool      `json:"is_private" db:"is_private"`
+	IconURL          *string   `json:"icon_url,omitempty" db:"icon_url"`
+	IconThumbnailURL *string   `json:"icon_thumbnail_url,omitempty" db:"icon_thumbnail_url"`
+	BannerColor      *string   `json:"banner_color,omitempty" db:"banner_color"`
+	Description      *string   `json:"description,omitempty" db:"description"`
+	CreatedAt        time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at" db:"updated_at"`
+	OwnerID          uuid.UUID `json:"owner_id" db:"owner_id"`
+
+	IsPinned bool     `json:"is_pinned" db:"is_pinned"`
+	Position *float64 `json:"position" db:"pinned_position"`
+}
+
 type HallRequest struct {
 	ID        uuid.UUID `db:"id" json:"id"`
 	HallID    uuid.UUID `db:"hall_id" json:"hall_id"`
