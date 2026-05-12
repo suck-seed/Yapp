@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"context"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -54,21 +56,26 @@ var (
 	// =========================
 	// REQUEST VALIDATION ERRORS
 	// =========================
-	ErrorInvalidInput                    = &AppError{Code: http.StatusBadRequest, Message: "Invalid Data"}
-	ErrorCannotBeBothDefaultAndAdminRole = &AppError{Code: http.StatusBadRequest, Message: "A role cannot be both default and admin"}
-	ErrorInvalidUserName                 = &AppError{Code: http.StatusBadRequest, Message: "Invalid Username"}
-	ErrorInvalidHallName                 = &AppError{Code: http.StatusBadRequest, Message: "Invalid Hall Name"}
-	ErrorInvalidFloorName                = &AppError{Code: http.StatusBadRequest, Message: "Invalid Floor Name"}
-	ErrorInvalidEmail                    = &AppError{Code: http.StatusBadRequest, Message: "Invalid Email"}
-	ErrorInvalidPhoneNumber              = &AppError{Code: http.StatusBadRequest, Message: "Invalid Phone Number"}
-	ErrorInvalidDisplayName              = &AppError{Code: http.StatusBadRequest, Message: "Invalid Display Name"}
-	ErrorInvalidPassword                 = &AppError{Code: http.StatusBadRequest, Message: "Invalid Password Format"}
-	ErrorPasswordWhiteSpace              = &AppError{Code: http.StatusBadRequest, Message: "Password has whitespace"}
-	ErrorInvalidIDFormart                = &AppError{Code: http.StatusBadRequest, Message: "Error, Invalid ID format"}
-	ErrorInvalidRoomType                 = &AppError{Code: http.StatusBadRequest, Message: "Invalid Room Type"}
-	ErrorInvalidBannerColor              = &AppError{Code: http.StatusBadRequest, Message: "Invalid banner color"}
-	ErrorInvalidCursorCombination        = &AppError{Code: http.StatusBadRequest, Message: "Invalid cursor combination, Only 1 cursor is to be sent !"}
-	ErrorInvalidCursorLimit              = &AppError{Code: http.StatusBadRequest, Message: "Invalid cursor Limit, Has to be > 0 !"}
+	ErrorInvalidMoveRoomPayload = &AppError{
+		Code:    400,
+		Message: "Cannot set both move_to_top_level and new_floor_id",
+	}
+	ErrorInvalidInput                           = &AppError{Code: http.StatusBadRequest, Message: "Invalid Data"}
+	ErrorCannotMakeRoomInsidePrivateFloorPublic = &AppError{Code: http.StatusBadRequest, Message: "Cannot make room inside a private floor public"}
+	ErrorCannotBeBothDefaultAndAdminRole        = &AppError{Code: http.StatusBadRequest, Message: "A role cannot be both default and admin"}
+	ErrorInvalidUserName                        = &AppError{Code: http.StatusBadRequest, Message: "Invalid Username"}
+	ErrorInvalidHallName                        = &AppError{Code: http.StatusBadRequest, Message: "Invalid Hall Name"}
+	ErrorInvalidFloorName                       = &AppError{Code: http.StatusBadRequest, Message: "Invalid Floor Name"}
+	ErrorInvalidEmail                           = &AppError{Code: http.StatusBadRequest, Message: "Invalid Email"}
+	ErrorInvalidPhoneNumber                     = &AppError{Code: http.StatusBadRequest, Message: "Invalid Phone Number"}
+	ErrorInvalidDisplayName                     = &AppError{Code: http.StatusBadRequest, Message: "Invalid Display Name"}
+	ErrorInvalidPassword                        = &AppError{Code: http.StatusBadRequest, Message: "Invalid Password Format"}
+	ErrorPasswordWhiteSpace                     = &AppError{Code: http.StatusBadRequest, Message: "Password has whitespace"}
+	ErrorInvalidIDFormart                       = &AppError{Code: http.StatusBadRequest, Message: "Error, Invalid ID format"}
+	ErrorInvalidRoomType                        = &AppError{Code: http.StatusBadRequest, Message: "Invalid Room Type"}
+	ErrorInvalidBannerColor                     = &AppError{Code: http.StatusBadRequest, Message: "Invalid banner color"}
+	ErrorInvalidCursorCombination               = &AppError{Code: http.StatusBadRequest, Message: "Invalid cursor combination, Only 1 cursor is to be sent !"}
+	ErrorInvalidCursorLimit                     = &AppError{Code: http.StatusBadRequest, Message: "Invalid cursor Limit, Has to be > 0 !"}
 
 	// =========================
 	// RESOURCE CREATION ERRORS
@@ -77,6 +84,7 @@ var (
 	ErrorCreatingHall       = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall"}
 	ErrorCreatingFloor      = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while creating Floor"}
 	ErrorCreatingRoom       = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while creating Room"}
+	ErrorCreatingRoomMember = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while creating Room Member"}
 	ErrorCreatingHallRole   = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Role"}
 	ErrorCreatingHallMember = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while creating Hall Member"}
 
@@ -92,6 +100,11 @@ var (
 	ErrorFetchingBan         = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Ban Information"}
 	ErrorFetchingRole        = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Role Information"}
 	ErrorFetchingPermission  = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while fetching Permissions Information"}
+
+	// =========================
+	// MOVING ISSUES
+	// =========================
+	ErrorMovingRoom = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while Moving Room"}
 
 	// ========================= RESOURCE UPDATING ERRORS
 	// =========================
@@ -126,6 +139,8 @@ var (
 	ErrorCreatingJoinRequest = &AppError{Code: http.StatusInternalServerError, Message: "Error occurred while creating Join Request"}
 	ErrorDeletingJoinRequest = &AppError{Code: http.StatusInternalServerError, Message: "Error occurred while deleting Join Request"}
 	ErrorJoinRequestNotFound = &AppError{Code: http.StatusNotFound, Message: "Join Request not found"}
+
+	ErrorConnectingWebsocket = &AppError{Code: http.StatusInternalServerError, Message: "Error occured while connecting to websocket"}
 
 	// =========================
 	// RELATION / OWNERSHIP ERRORS
@@ -227,6 +242,35 @@ var (
 	ErrorFriendRequestNotFound             = &AppError{Code: http.StatusNotFound, Message: "Friend request not found"}
 	ErrorAppLinkNotFound                   = &AppError{Code: http.StatusNotFound, Message: "App link not found"}
 	ErrorUnauthorizedToHandleFriendRequest = &AppError{Code: http.StatusNotFound, Message: "Cannot handle other user's Friend Requests"}
+
+	// Room / Floor Membership
+	ErrorFloorIsNotPrivate   = &AppError{Code: http.StatusBadRequest, Message: "Floor has to be private to add members"}
+	ErrorCreatingFloorMember = &AppError{Code: http.StatusBadRequest, Message: "Error occured while assigning member to floor"}
+	ErrorDeletingFloorMember = &AppError{Code: http.StatusBadRequest, Message: "Error occured while removing member from floor"}
+
+	ErrorRoomIsNotPrivate   = &AppError{Code: http.StatusBadRequest, Message: "Room has to be private to add members"}
+	ErrorDeletingRoomMember = &AppError{Code: http.StatusBadRequest, Message: "Error occured while removing member from room"}
+	ErrorRoomNotInFloor     = &AppError{Code: http.StatusBadRequest, Message: "Room does not exist in floor"}
+
+	ErrorMaxPinnedHallsReached = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Only 11 halls can be pinned",
+	}
+
+	ErrorHallNotPinned = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Hall is not pinned",
+	}
+
+	ErrorInvalidPinnedHallTarget = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Target hall must be pinned",
+	}
+
+	ErrorMovingHall = &AppError{
+		Code:    http.StatusInternalServerError,
+		Message: "Error occured while Moving Hall",
+	}
 )
 
 // Writing Errors from handlers to client
@@ -248,4 +292,9 @@ func WriteError(c *gin.Context, err error) {
 		"error":   err.Error(),
 		"success": false,
 	})
+}
+
+// is Deadline error checker
+func IsDeadline(err error) bool {
+	return errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
 }

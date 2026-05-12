@@ -13,6 +13,7 @@ import (
 	"github.com/suck-seed/yapp/internal/database"
 	dto "github.com/suck-seed/yapp/internal/dto/floor"
 	"github.com/suck-seed/yapp/internal/models"
+	"github.com/suck-seed/yapp/internal/realtime"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/utils"
 )
@@ -24,6 +25,12 @@ type IFloorService interface {
 	UpdateFloor(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, req *dto.UpdateFloorReq) (*dto.UpdateFloorRes, error)
 	DeleteFloor(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID) error
 	MoveFloor(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, req *dto.MoveFloorReq) (*dto.GetFloorRes, error)
+
+	// Floor member management
+	GetFloorMembers(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID) (*dto.GetFloorMembersRes, error)
+	GetFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.GetFloorMemberRes, error)
+	AddFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.FloorAccessMemberRes, error)
+	RemoveFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.FloorAccessMemberRes, error)
 }
 
 type floorService struct {
@@ -33,6 +40,8 @@ type floorService struct {
 	repositories.IBanRepsitory
 
 	IPermissionCheckerService
+
+	EventPublisher realtime.Publisher
 
 	pool    *pgxpool.Pool
 	timeout time.Duration
@@ -45,6 +54,7 @@ func NewFloorService(
 	roomRepo repositories.IRoomRepository,
 	banRepo repositories.IBanRepsitory,
 	permissionChecker IPermissionCheckerService,
+	eventPublisher realtime.Publisher,
 	pool *pgxpool.Pool,
 ) IFloorService {
 	return &floorService{
@@ -53,6 +63,7 @@ func NewFloorService(
 		roomRepo,
 		banRepo,
 		permissionChecker,
+		eventPublisher,
 		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
@@ -73,6 +84,19 @@ func floorToGetRes(f *models.Floor) dto.GetFloorRes {
 	}
 }
 
+func floorMemberToRes(m *models.HallMember) *dto.FloorMemberRes {
+	return &dto.FloorMemberRes{
+		ID:        m.ID,
+		HallID:    m.HallID,
+		UserID:    m.UserID,
+		RoleID:    m.RoleID,
+		Nickname:  m.Nickname,
+		JoinedAt:  m.JoinedAt,
+		CreatedAt: m.CreatedAt,
+		UpdatedAt: m.UpdatedAt,
+	}
+}
+
 func (s *floorService) requireManageServers(ctx context.Context, runner database.DBRunner, userID, hallID uuid.UUID) error {
 	ok, err := s.IPermissionCheckerService.CanManageServers(ctx, runner, userID, hallID)
 	if err != nil {
@@ -82,12 +106,6 @@ func (s *floorService) requireManageServers(ctx context.Context, runner database
 		return utils.ErrorUserCannotManageServer
 	}
 	return nil
-}
-
-// add this alongside the other helpers in floor_service.go, below floorToGetRes
-
-func isDeadline(err error) bool {
-	return errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
 }
 
 // ── CreateFloor ───────────────────────────────────────────────────────────────
@@ -117,7 +135,7 @@ func (s *floorService) CreateFloor(c context.Context, userInfo *auth.UserInfo, h
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorHallNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingHall
@@ -125,7 +143,7 @@ func (s *floorService) CreateFloor(c context.Context, userInfo *auth.UserInfo, h
 
 	maxPos, err := s.IFloorRepository.GetMaxPosition(ctx, runner, hallID)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingFloor
@@ -136,26 +154,67 @@ func (s *floorService) CreateFloor(c context.Context, userInfo *auth.UserInfo, h
 		return nil, utils.ErrorInternal
 	}
 
+	isPrivate := false
+	if req.IsPrivate != nil {
+		isPrivate = *req.IsPrivate
+	}
+
 	floor := &models.Floor{
 		ID:        floorID,
 		HallID:    hallID,
 		Name:      canonName,
 		Position:  maxPos + 1000.0,
-		IsPrivate: *req.IsPrivate,
+		IsPrivate: isPrivate,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
 
 	created, err := s.IFloorRepository.CreateFloor(ctx, runner, floor)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorCreatingFloor
 	}
 
+	var creatorMemberID uuid.UUID
+
+	// If creator creates a private floor, creator must automatically be a floor member.
+	// Otherwise creator can create private rooms inside the floor but cannot message in them.
+	if created.IsPrivate {
+		creatorMemberID, err = s.IHallRepository.GetHallMemberID(ctx, runner, hallID, userInfo.ID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, utils.ErrorMemberNotFound
+			}
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingHallMembers
+		}
+
+		if err := s.IFloorRepository.AddFloorMember(ctx, runner, created.ID, creatorMemberID); err != nil {
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorCreatingFloorMember
+		}
+	}
+
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
+	}
+
+	// PUBLISH EVENT
+	// This resyncs the creator's connected WS clients.
+	if created.IsPrivate {
+		publishHubEvent(s.EventPublisher, realtime.HubEvent{
+			Type:     realtime.HubEventFloorMemberAdded,
+			HallID:   hallID,
+			FloorID:  created.ID,
+			MemberID: creatorMemberID,
+			UserID:   userInfo.ID,
+		})
 	}
 
 	return &dto.CreateFloorRes{
@@ -192,7 +251,7 @@ func (s *floorService) GetFloors(c context.Context, userInfo *auth.UserInfo, hal
 
 	floors, err := s.IFloorRepository.GetFloorsByHallID(ctx, runner, hallID)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingFloor
@@ -231,7 +290,7 @@ func (s *floorService) GetFloor(c context.Context, userInfo *auth.UserInfo, hall
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorFloorNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingFloor
@@ -286,7 +345,7 @@ func (s *floorService) UpdateFloor(c context.Context, userInfo *auth.UserInfo, h
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorFloorNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingFloor
@@ -294,6 +353,18 @@ func (s *floorService) UpdateFloor(c context.Context, userInfo *auth.UserInfo, h
 
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
+	}
+
+	// PUBLISH EVENT
+	// Only Update if is_private is changed
+	// public -> private & private -> public both
+	if req.IsPrivate != nil {
+		publishHubEvent(s.EventPublisher, realtime.HubEvent{
+			Type:      realtime.HubEventFloorPrivacyChanged,
+			HallID:    hallID,
+			FloorID:   floorID,
+			IsPrivate: *req.IsPrivate,
+		})
 	}
 
 	return &dto.UpdateFloorRes{
@@ -326,11 +397,26 @@ func (s *floorService) DeleteFloor(c context.Context, userInfo *auth.UserInfo, h
 	// Verify floor belongs to this hall before deleting
 	exists, err := s.IFloorRepository.DoesFloorExistInHall(ctx, runner, floorID, hallID)
 	if err != nil || !exists {
+		if utils.IsDeadline(err) {
+			return utils.ErrorRequestTimeout
+		}
 		return utils.ErrorFloorNotFound
 	}
 
+	// Important:
+	// When floor is deleted, rooms are moved to top-level by FK ON DELETE SET NULL.
+	// So rooms should no longer claim they are synced with floor members.
+	if err := s.IRoomRepository.DisableFloorMemberSyncForRoomsInFloor(ctx, runner, hallID, floorID); err != nil {
+		if utils.IsDeadline(err) {
+			return utils.ErrorRequestTimeout
+		}
+		return utils.ErrorFetchingRoom
+	}
+
+	// Now delete the floor.
+	// DB will set rooms.floor_id = NULL because of ON DELETE SET NULL.
 	if err := s.IFloorRepository.DeleteFloor(ctx, runner, floorID); err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return utils.ErrorRequestTimeout
 		}
 		return utils.ErrorInternal
@@ -339,6 +425,14 @@ func (s *floorService) DeleteFloor(c context.Context, userInfo *auth.UserInfo, h
 	if err := runner.Commit(ctx); err != nil {
 		return utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:    realtime.HubEventFloorDeleted,
+		HallID:  hallID,
+		FloorID: floorID,
+	})
+
 	return nil
 }
 
@@ -362,7 +456,7 @@ func (s *floorService) MoveFloor(c context.Context, userInfo *auth.UserInfo, hal
 	// Verify floor belongs to this hall
 	exists, err := s.IFloorRepository.DoesFloorExistInHall(ctx, runner, floorID, hallID)
 	if err != nil || !exists {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFloorNotFound
@@ -370,7 +464,7 @@ func (s *floorService) MoveFloor(c context.Context, userInfo *auth.UserInfo, hal
 
 	lower, upper, err := s.IFloorRepository.GetFloorPositionBounds(ctx, runner, hallID, req.AfterID)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingFloor
@@ -380,7 +474,7 @@ func (s *floorService) MoveFloor(c context.Context, userInfo *auth.UserInfo, hal
 
 	updated, err := s.IFloorRepository.UpdateFloorPosition(ctx, runner, floorID, newPos)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingFloor
@@ -392,4 +486,273 @@ func (s *floorService) MoveFloor(c context.Context, userInfo *auth.UserInfo, hal
 
 	res := floorToGetRes(updated)
 	return &res, nil
+}
+
+// ── Floor Members ─────────────────────────────────────────────────────────────
+
+func (s *floorService) AddFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.FloorAccessMemberRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
+
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return nil, err
+	}
+
+	// Verify floor belongs to this hall
+	floor, err := s.IFloorRepository.GetFloorByID(ctx, runner, floorID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorFloorNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingFloor
+	}
+
+	if floor.HallID != hallID {
+		return nil, utils.ErrorFloorNotFound
+	}
+
+	// Got to be private for adding members
+	if !floor.IsPrivate {
+		return nil, utils.ErrorFloorIsNotPrivate
+	}
+
+	// Verify member belongs to this hall
+	member, err := s.IHallRepository.GetHallMemberByID(ctx, runner, hallID, memberID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorMemberNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorInternal
+	}
+
+	if err := s.IFloorRepository.AddFloorMember(ctx, runner, floorID, memberID); err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorCreatingFloorMember
+	}
+
+	// Adding a member to a private floor will fetch/sync all rooms in that floor.
+	// Rooms manually edited through room member endpoints are not updated.
+	if err := s.IRoomRepository.SyncRoomsInFloorFromFloorMembers(ctx, runner, floorID); err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorCreatingRoomMember
+	}
+
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:     realtime.HubEventFloorMemberAdded,
+		HallID:   hallID,
+		FloorID:  floorID,
+		MemberID: memberID,
+		UserID:   member.UserID,
+	})
+
+	return &dto.FloorAccessMemberRes{
+		FloorID:  floorID,
+		MemberID: memberID,
+	}, nil
+}
+
+func (s *floorService) RemoveFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.FloorAccessMemberRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
+
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return nil, err
+	}
+
+	// Verify floor belongs to this hall
+	floor, err := s.IFloorRepository.GetFloorByID(ctx, runner, floorID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorFloorNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingFloor
+	}
+
+	if floor.HallID != hallID {
+		return nil, utils.ErrorFloorNotFound
+	}
+
+	// Got to be private for removing members
+	if !floor.IsPrivate {
+		return nil, utils.ErrorFloorIsNotPrivate
+	}
+
+	// Verify member belongs to this hall
+	member, err := s.IHallRepository.GetHallMemberByID(ctx, runner, hallID, memberID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorMemberNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorInternal
+	}
+
+	if err := s.IFloorRepository.RemoveFloorMember(ctx, runner, floorID, memberID); err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorDeletingFloorMember
+	}
+
+	// Removing a member from a private floor will sync all rooms in that floor.
+	// Rooms manually edited through room member endpoints are not updated.
+	if err := s.IRoomRepository.SyncRoomsInFloorFromFloorMembers(ctx, runner, floorID); err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorCreatingRoomMember
+	}
+
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:     realtime.HubEventFloorMemberRemoved,
+		HallID:   hallID,
+		FloorID:  floorID,
+		MemberID: memberID,
+		UserID:   member.UserID,
+	})
+
+	return &dto.FloorAccessMemberRes{
+		FloorID:  floorID,
+		MemberID: memberID,
+	}, nil
+}
+
+func (s *floorService) GetFloorMembers(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID) (*dto.GetFloorMembersRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return nil, err
+	}
+
+	floor, err := s.IFloorRepository.GetFloorByID(ctx, runner, floorID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorFloorNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingFloor
+	}
+
+	if floor.HallID != hallID {
+		return nil, utils.ErrorFloorNotFound
+	}
+
+	if !floor.IsPrivate {
+		return nil, utils.ErrorFloorIsNotPrivate
+	}
+
+	members, err := s.IFloorRepository.ListFloorMembers(ctx, runner, hallID, floorID)
+	if err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHallMembers
+	}
+
+	out := make([]*dto.FloorMemberRes, 0, len(members))
+	for _, m := range members {
+		out = append(out, floorMemberToRes(m))
+	}
+
+	return &dto.GetFloorMembersRes{
+		Members: out,
+		Total:   len(out),
+	}, nil
+}
+
+func (s *floorService) GetFloorMember(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, floorID uuid.UUID, memberID uuid.UUID) (*dto.GetFloorMemberRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+	defer conn.Release()
+	runner := database.NewConnWrapper(conn)
+
+	if err := s.requireManageServers(ctx, runner, userInfo.ID, hallID); err != nil {
+		return nil, err
+	}
+
+	floor, err := s.IFloorRepository.GetFloorByID(ctx, runner, floorID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorFloorNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingFloor
+	}
+
+	if floor.HallID != hallID {
+		return nil, utils.ErrorFloorNotFound
+	}
+
+	if !floor.IsPrivate {
+		return nil, utils.ErrorFloorIsNotPrivate
+	}
+
+	member, err := s.IFloorRepository.GetFloorMember(ctx, runner, hallID, floorID, memberID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorMemberNotFound
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHallMembers
+	}
+
+	return floorMemberToRes(member), nil
 }

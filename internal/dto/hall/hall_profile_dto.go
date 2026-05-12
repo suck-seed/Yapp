@@ -38,7 +38,7 @@ type HallProfileUpdateRes struct {
 	IsPrivate        bool      `json:"is_private"`
 	IconURL          *string   `json:"icon_url"`
 	IconThumbnailURL *string   `json:"icon_thumbnail_url"`
-	BannerColor      string    `json:"banner_color"`
+	BannerColor      *string   `json:"banner_color"`
 	Description      *string   `json:"description"`
 	OwnerID          uuid.UUID `json:"owner_id"`
 	UpdatedAt        time.Time `json:"updated_at"`

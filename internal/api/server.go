@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,6 +13,7 @@ import (
 	"github.com/suck-seed/yapp/config"
 	"github.com/suck-seed/yapp/internal/api/rest"
 	"github.com/suck-seed/yapp/internal/auth"
+	"github.com/suck-seed/yapp/internal/realtime"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/services"
 	"github.com/suck-seed/yapp/internal/ws"
@@ -62,22 +62,107 @@ func StartServer(cfg config.AppConfig) {
 	presenceRepository := repositories.NewPresenceRepository(cfg.RedisClient)
 
 	// Checker services
-	permissionCheckerService := services.NewPermissionCheckerService(roleRepository, userRepository, hallRepository, banRepository, cfg.PostgresPool)
+	permissionCheckerService := services.NewPermissionCheckerService(
+		roleRepository,
+		userRepository,
+		hallRepository,
+		banRepository,
+		cfg.PostgresPool,
+	)
+
 	presenceService := services.NewPresenceService(presenceRepository)
+
+	eventBus := realtime.NewEventBus(1024)
 
 	// Usual Services
 	userService := services.NewUserService(userRepository, cfg.PostgresPool)
-	hallService := services.NewHallService(hallRepository, userRepository, roleRepository, banRepository, permissionCheckerService, presenceService, cfg.PostgresPool)
-	floorService := services.NewFloorService(hallRepository, floorRepository, roomRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
-	roomService := services.NewRoomService(hallRepository, floorRepository, roomRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
-	roleService := services.NewRoleService(roleRepository, userRepository, hallRepository, banRepository, permissionCheckerService, cfg.PostgresPool)
-	banService := services.NewBanService(banRepository, userRepository, hallRepository, permissionCheckerService, cfg.PostgresPool)
-	messageService := services.NewMessageService(hallRepository, roomRepository, messageRepository, userRepository, permissionCheckerService, cfg.PostgresPool)
-	inviteService := services.NewInviteService(inviteRepository, hallRepository, roleRepository, permissionCheckerService, cfg.PostgresPool)
 
-	presistFunction := ws.MakePresistFunction(messageService, userService)
+	hallService := services.NewHallService(
+		hallRepository,
+		userRepository,
+		roleRepository,
+		roomRepository,
+		banRepository,
+		permissionCheckerService,
+		presenceService,
+		eventBus,
+		cfg.PostgresPool,
+	)
+
+	floorService := services.NewFloorService(
+		hallRepository,
+		floorRepository,
+		roomRepository,
+		banRepository,
+		permissionCheckerService,
+		eventBus,
+		cfg.PostgresPool,
+	)
+
+	roomService := services.NewRoomService(
+		hallRepository,
+		floorRepository,
+		roomRepository,
+		banRepository,
+		permissionCheckerService,
+		eventBus,
+		cfg.PostgresPool,
+	)
+
+	roleService := services.NewRoleService(
+		roleRepository,
+		userRepository,
+		hallRepository,
+		banRepository,
+		permissionCheckerService,
+		eventBus,
+		cfg.PostgresPool,
+	)
+
+	banService := services.NewBanService(
+		banRepository,
+		userRepository,
+		hallRepository,
+		permissionCheckerService,
+		eventBus,
+		cfg.PostgresPool,
+	)
+
+	messageService := services.NewMessageService(
+		hallRepository,
+		roomRepository,
+		messageRepository,
+		userRepository,
+		permissionCheckerService,
+		cfg.PostgresPool,
+	)
+
+	inviteService := services.NewInviteService(
+		inviteRepository,
+		hallRepository,
+		roleRepository,
+		permissionCheckerService,
+		eventBus,
+		cfg.PostgresPool,
+	)
+
+	presistFunction := ws.MakePresistFunction(
+		messageService,
+		userService,
+	)
+
 	readRecieptFunction := ws.MakeReadReceiptFunction(messageService)
-	hub := ws.NewHub(presistFunction, readRecieptFunction, presenceService)
+
+	accessRevolver := ws.MakeAccessResolver(roomService)
+
+	hub := ws.NewHub(
+		presistFunction,
+		readRecieptFunction,
+		presenceService,
+		eventBus,
+		accessRevolver,
+	)
+
 	go hub.Run()
 
 	// Routes
@@ -94,14 +179,33 @@ func StartServer(cfg config.AppConfig) {
 	protectedv1 := apiv1.Group("", auth.AuthMiddleware())
 	{
 		rest.RegisterUserRoutes(protectedv1, userService)
-		rest.RegisterHallRoutes(protectedv1, hallService, roleService, banService, inviteService, floorService, roomService, messageService)
+
+		rest.RegisterHallRoutes(
+			protectedv1,
+			hallService,
+			roleService,
+			banService,
+			inviteService,
+			floorService,
+			roomService,
+			messageService,
+		)
+
 		rest.RegisterMessageRoutes(protectedv1, messageService)
 		rest.RegisterInvitePrivateRoutes(protectedv1, inviteService)
+		rest.RegisterPresenceRoutes(protectedv1, presenceService)
 	}
 
 	wsHandler := router.Group("/ws", auth.AuthMiddleware())
 	{
-		rest.RegisterWebSocketRoutes(wsHandler, &hub, messageService, hallService, roomService, userService)
+		ws.RegisterWebSocketRoutes(
+			wsHandler,
+			&hub,
+			messageService,
+			hallService,
+			roomService,
+			userService,
+		)
 	}
 
 	startGracefully(router, cfg, &hub)
@@ -126,12 +230,10 @@ func startGracefully(router *gin.Engine, cfg config.AppConfig, hub *ws.Hub) {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutdown signal received, starting graceful shutdown...")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	hub.Close()
 	server.Shutdown(ctx)
 	cfg.PostgresPool.Close()
-	log.Printf("Gracefully stopped server")
 }

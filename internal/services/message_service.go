@@ -73,7 +73,7 @@ func (s *messageService) resolveRoom(ctx context.Context, runner database.DBRunn
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorRoomNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingRoom
@@ -123,6 +123,16 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 	}
 	runner := database.NewTxWrapper(tx)
 	defer runner.Rollback(ctx)
+
+	// Checking if the author of message belongs in the room or not (if private)
+	if _, err := s.resolveRoomWithPrivateCheck(ctx, runner, req.RoomID, req.AuthorID); err != nil {
+		return nil, utils.ErrorUserDoesntBelongRoom
+	}
+
+	// Checking if the author belongs to the hall Or not, using the room.ID
+	if _, err := s.resolveRoom(ctx, runner, req.RoomID, req.AuthorID); err != nil {
+		return nil, utils.ErrorUserDoesntBelongHall
+	}
 
 	normalizedContent := utils.SanitizeMessageContent(req.Content)
 
@@ -312,7 +322,7 @@ func (s *messageService) GetMessage(c context.Context, userInfo *auth.UserInfo, 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorMessageNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingMessages
@@ -349,7 +359,7 @@ func (s *messageService) UpdateMessage(c context.Context, userInfo *auth.UserInf
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorMessageNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingMessages
@@ -369,7 +379,7 @@ func (s *messageService) UpdateMessage(c context.Context, userInfo *auth.UserInf
 	}
 
 	if _, err := s.IMessageRepository.UpdateMessageContent(ctx, runner, messageID, *content); err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorInternal
@@ -419,7 +429,7 @@ func (s *messageService) DeleteMessage(c context.Context, userInfo *auth.UserInf
 		if errors.Is(err, pgx.ErrNoRows) {
 			return utils.ErrorMessageNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return utils.ErrorRequestTimeout
 		}
 		return utils.ErrorFetchingMessages
@@ -441,7 +451,7 @@ func (s *messageService) DeleteMessage(c context.Context, userInfo *auth.UserInf
 	}
 
 	if err := s.IMessageRepository.SoftDeleteMessage(ctx, runner, messageID); err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return utils.ErrorRequestTimeout
 		}
 		return utils.ErrorInternal
@@ -474,7 +484,7 @@ func (s *messageService) AddReaction(c context.Context, userInfo *auth.UserInfo,
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorMessageNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingMessages
@@ -490,7 +500,7 @@ func (s *messageService) AddReaction(c context.Context, userInfo *auth.UserInfo,
 
 	// ON CONFLICT DO NOTHING — duplicate reactions are silently ignored
 	if err := s.IMessageRepository.AddReaction(ctx, runner, reactionID, messageID, userInfo.ID, emoji); err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorInternal
@@ -529,7 +539,7 @@ func (s *messageService) RemoveReaction(c context.Context, userInfo *auth.UserIn
 		if errors.Is(err, pgx.ErrNoRows) {
 			return utils.ErrorMessageNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return utils.ErrorRequestTimeout
 		}
 		return utils.ErrorFetchingMessages
@@ -540,7 +550,7 @@ func (s *messageService) RemoveReaction(c context.Context, userInfo *auth.UserIn
 
 	deleted, err := s.IMessageRepository.RemoveReaction(ctx, runner, messageID, userInfo.ID, emoji)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return utils.ErrorRequestTimeout
 		}
 		return utils.ErrorInternal
@@ -580,7 +590,7 @@ func (s *messageService) MarkMessageRead(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, utils.ErrorMessageNotFound
 		}
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 		return nil, utils.ErrorFetchingMessages
@@ -592,7 +602,7 @@ func (s *messageService) MarkMessageRead(
 
 	read, err := s.IMessageRepository.MarkMessageRead(ctx, runner, roomID, userInfo.ID, messageID)
 	if err != nil {
-		if isDeadline(err) {
+		if utils.IsDeadline(err) {
 			return nil, utils.ErrorRequestTimeout
 		}
 

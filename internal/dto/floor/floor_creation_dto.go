@@ -71,3 +71,28 @@ type MoveFloorReq struct {
 	HallID  uuid.UUID  `json:"hall_id" binding:"required"`
 	AfterID *uuid.UUID `json:"after_id" binding:"omitempty"`
 }
+
+// FloorAccessMemberRes is returned after adding/removing one hall member
+// from a private floor access list.
+type FloorAccessMemberRes struct {
+	FloorID  uuid.UUID `json:"floor_id"`
+	MemberID uuid.UUID `json:"member_id"`
+}
+
+type FloorMemberRes struct {
+	ID        uuid.UUID `json:"id"`
+	HallID    uuid.UUID `json:"hall_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	RoleID    uuid.UUID `json:"role_id"`
+	Nickname  *string   `json:"nickname"`
+	JoinedAt  time.Time `json:"joined_at"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type GetFloorMembersRes struct {
+	Members []*FloorMemberRes `json:"members"`
+	Total   int               `json:"total"`
+}
+
+type GetFloorMemberRes = FloorMemberRes

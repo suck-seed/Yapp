@@ -14,19 +14,30 @@ import (
 
 type IHallRepository interface {
 	// -------------------------- HALL
-	// core cud
-	CreateHall(ctx context.Context, db database.DBRunner, hall *models.Hall) (*models.Hall, error)                         // C
-	CreateHallMember(ctx context.Context, db database.DBRunner, hallMember *models.HallMember) (*models.HallMember, error) // C
-	DeleteHall(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error)                          // D
+	CreateHall(ctx context.Context, db database.DBRunner, hall *models.Hall) (*models.Hall, error)
+	CreateHallMember(ctx context.Context, db database.DBRunner, hallMember *models.HallMember) (*models.HallMember, error)
+	DeleteHall(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error)
 
 	// list operation
-	GetUserHallIDs(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]uuid.UUID, error) // R
-	GetHallByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error)   // R
-	GetHallOwnerID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (uuid.UUID, error)   // R
+	GetUserHallIDs(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]uuid.UUID, error)
+	GetUserHallsOrdered(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]*models.UserHall, error)
+
+	GetHallByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (*models.Hall, error)
+	GetHallOwnerID(ctx context.Context, db database.DBRunner, hallID uuid.UUID) (uuid.UUID, error)
 	GetHallMemberByUserID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (*models.HallMember, error)
+	GetHallMemberID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (uuid.UUID, error)
 	GetHallMemberByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, memberID uuid.UUID) (*models.HallMember, error)
 	ListHallMembers(ctx context.Context, db database.DBRunner, hallID uuid.UUID) ([]*models.HallMember, error)
 	UpdateHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID, fields map[string]any) (*models.HallMember, error)
+
+	// hall sidebar pinning
+	LockUserHallMemberships(ctx context.Context, db database.DBRunner, userID uuid.UUID) error
+	GetUserHallPinMeta(ctx context.Context, db database.DBRunner, userID uuid.UUID, hallID uuid.UUID) (bool, *float64, error)
+	CountPinnedHalls(ctx context.Context, db database.DBRunner, userID uuid.UUID) (int, error)
+	GetMaxPinnedHallPosition(ctx context.Context, db database.DBRunner, userID uuid.UUID) (float64, error)
+	GetPinnedHallPositionBounds(ctx context.Context, db database.DBRunner, userID uuid.UUID, afterID *uuid.UUID) (float64, *float64, error)
+	UpdateHallPinState(ctx context.Context, db database.DBRunner, userID uuid.UUID, hallID uuid.UUID, isPinned bool, position *float64) error
+	UpdatePinnedHallPosition(ctx context.Context, db database.DBRunner, userID uuid.UUID, hallID uuid.UUID, position float64) error
 
 	// ---------------- USER MANAGEMENT
 	KickHallMember(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) error
@@ -46,7 +57,6 @@ type IHallRepository interface {
 	DeleteJoinRequest(ctx context.Context, db database.DBRunner, requestID uuid.UUID) (*models.HallRequest, error)
 	DoesPendingJoinRequestExist(ctx context.Context, db database.DBRunner, hallID, userID uuid.UUID) (bool, error)
 }
-
 type hallRepository struct {
 }
 
@@ -256,6 +266,21 @@ func (r *hallRepository) GetHallMemberByUserID(ctx context.Context, db database.
 
 	return m, nil
 }
+func (r *hallRepository) GetHallMemberID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, userID uuid.UUID) (uuid.UUID, error) {
+	query := `
+		SELECT id
+		FROM hall_members
+		WHERE hall_id = $1 AND user_id = $2
+	`
+
+	var memberID uuid.UUID
+	err := db.QueryRow(ctx, query, hallID, userID).Scan(&memberID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return memberID, nil
+}
 
 func (r *hallRepository) GetHallMemberByID(ctx context.Context, db database.DBRunner, hallID uuid.UUID, memberID uuid.UUID) (*models.HallMember, error) {
 	query := `
@@ -361,6 +386,263 @@ func (r *hallRepository) UpdateHallMember(ctx context.Context, db database.DBRun
 	}
 
 	return m, nil
+}
+
+// Hall sidebar pinning
+func (r *hallRepository) GetUserHallsOrdered(ctx context.Context, db database.DBRunner, userID uuid.UUID) ([]*models.UserHall, error) {
+	query := `
+		SELECT
+			h.id,
+			h.name,
+			h.is_private,
+			h.icon_url,
+			h.icon_thumbnail_url,
+			h.banner_color,
+			h.description,
+			h.created_at,
+			h.updated_at,
+			h.owner_id,
+			hm.is_pinned,
+			hm.pinned_position
+		FROM hall_members hm
+		INNER JOIN halls h ON h.id = hm.hall_id
+		WHERE hm.user_id = $1
+		ORDER BY
+			CASE WHEN hm.is_pinned THEN 0 ELSE 1 END ASC,
+			hm.pinned_position ASC NULLS LAST,
+			lower(h.name) ASC,
+			h.created_at ASC
+	`
+
+	rows, err := db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	halls := make([]*models.UserHall, 0)
+
+	for rows.Next() {
+		h := &models.UserHall{}
+
+		if err := rows.Scan(
+			&h.ID,
+			&h.Name,
+			&h.IsPrivate,
+			&h.IconURL,
+			&h.IconThumbnailURL,
+			&h.BannerColor,
+			&h.Description,
+			&h.CreatedAt,
+			&h.UpdatedAt,
+			&h.OwnerID,
+			&h.IsPinned,
+			&h.Position,
+		); err != nil {
+			return nil, err
+		}
+
+		halls = append(halls, h)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return halls, nil
+}
+
+func (r *hallRepository) LockUserHallMemberships(ctx context.Context, db database.DBRunner, userID uuid.UUID) error {
+	query := `
+		SELECT id
+		FROM hall_members
+		WHERE user_id = $1
+		FOR UPDATE
+	`
+
+	rows, err := db.Query(ctx, query, userID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
+	}
+
+	return rows.Err()
+}
+
+func (r *hallRepository) GetUserHallPinMeta(
+	ctx context.Context,
+	db database.DBRunner,
+	userID uuid.UUID,
+	hallID uuid.UUID,
+) (bool, *float64, error) {
+	query := `
+		SELECT is_pinned, pinned_position
+		FROM hall_members
+		WHERE user_id = $1
+		  AND hall_id = $2
+	`
+
+	var isPinned bool
+	var position *float64
+
+	err := db.QueryRow(ctx, query, userID, hallID).Scan(&isPinned, &position)
+	if err != nil {
+		return false, nil, err
+	}
+
+	return isPinned, position, nil
+}
+
+func (r *hallRepository) CountPinnedHalls(ctx context.Context, db database.DBRunner, userID uuid.UUID) (int, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM hall_members
+		WHERE user_id = $1
+		  AND is_pinned = true
+	`
+
+	var count int
+	if err := db.QueryRow(ctx, query, userID).Scan(&count); err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+func (r *hallRepository) GetMaxPinnedHallPosition(ctx context.Context, db database.DBRunner, userID uuid.UUID) (float64, error) {
+	query := `
+		SELECT COALESCE(MAX(pinned_position), 0)
+		FROM hall_members
+		WHERE user_id = $1
+		  AND is_pinned = true
+	`
+
+	var max float64
+	if err := db.QueryRow(ctx, query, userID).Scan(&max); err != nil {
+		return 0, err
+	}
+
+	return max, nil
+}
+
+func (r *hallRepository) GetPinnedHallPositionBounds(
+	ctx context.Context,
+	db database.DBRunner,
+	userID uuid.UUID,
+	afterID *uuid.UUID,
+) (float64, *float64, error) {
+	if afterID == nil {
+		query := `
+			SELECT MIN(pinned_position)
+			FROM hall_members
+			WHERE user_id = $1
+			  AND is_pinned = true
+		`
+
+		var upper *float64
+		if err := db.QueryRow(ctx, query, userID).Scan(&upper); err != nil {
+			return 0, nil, err
+		}
+
+		return 0, upper, nil
+	}
+
+	query := `
+		WITH anchor AS (
+			SELECT pinned_position
+			FROM hall_members
+			WHERE user_id = $1
+			  AND hall_id = $2
+			  AND is_pinned = true
+		)
+		SELECT
+			anchor.pinned_position,
+			(
+				SELECT pinned_position
+				FROM hall_members
+				WHERE user_id = $1
+				  AND is_pinned = true
+				  AND pinned_position > anchor.pinned_position
+				ORDER BY pinned_position ASC
+				LIMIT 1
+			)
+		FROM anchor
+	`
+
+	var lower float64
+	var upper *float64
+
+	if err := db.QueryRow(ctx, query, userID, *afterID).Scan(&lower, &upper); err != nil {
+		return 0, nil, err
+	}
+
+	return lower, upper, nil
+}
+
+func (r *hallRepository) UpdateHallPinState(
+	ctx context.Context,
+	db database.DBRunner,
+	userID uuid.UUID,
+	hallID uuid.UUID,
+	isPinned bool,
+	position *float64,
+) error {
+	query := `
+		UPDATE hall_members
+		SET
+			is_pinned = $1,
+			pinned_position = $2,
+			updated_at = now()
+		WHERE user_id = $3
+		  AND hall_id = $4
+	`
+
+	tag, err := db.Exec(ctx, query, isPinned, position, userID, hallID)
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
+	return nil
+}
+
+func (r *hallRepository) UpdatePinnedHallPosition(
+	ctx context.Context,
+	db database.DBRunner,
+	userID uuid.UUID,
+	hallID uuid.UUID,
+	position float64,
+) error {
+	query := `
+		UPDATE hall_members
+		SET
+			pinned_position = $1,
+			updated_at = now()
+		WHERE user_id = $2
+		  AND hall_id = $3
+		  AND is_pinned = true
+	`
+
+	tag, err := db.Exec(ctx, query, position, userID, hallID)
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
+	return nil
 }
 
 // DeleteHallMember — same swap

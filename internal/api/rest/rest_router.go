@@ -5,7 +5,6 @@ import (
 	"github.com/suck-seed/yapp/internal/api/rest/handlers"
 	"github.com/suck-seed/yapp/internal/auth"
 	"github.com/suck-seed/yapp/internal/services"
-	"github.com/suck-seed/yapp/internal/ws"
 )
 
 // TODO Make router for halls, messages
@@ -64,6 +63,11 @@ func RegisterHallRoutes(r *gin.RouterGroup, hallService services.IHallService, r
 		// TOP LEVEL HALL OPERATIONS
 		halls.GET("", hallHandler.GetUserHalls)
 		halls.POST("", hallHandler.CreateHall)
+
+		// HALL SIDEBAR PINNING
+		halls.PUT("/:hallID/pin", hallHandler.PinHall)
+		halls.DELETE("/:hallID/pin", hallHandler.UnpinHall)
+		halls.PUT("/:hallID/pin/move", hallHandler.MovePinnedHall)
 
 		// JOIN HALL
 		halls.POST("/:hallID/join", hallHandler.JoinHall)
@@ -162,14 +166,6 @@ func RegisterInvitePrivateRoutes(r *gin.RouterGroup, inviteService services.IInv
 	}
 }
 
-func RegisterWebSocketRoutes(r *gin.RouterGroup, hub *ws.Hub, messageService services.IMessageService, hallService services.IHallService, roomService services.IRoomService, userService services.IUserService) {
-	wsHandler := ws.NewWebsocketHandler(hub, messageService, hallService, roomService, userService)
-
-	r.GET("/rooms/:room_id", wsHandler.JoinRoom)
-	r.GET("/clients/:room_id")
-
-}
-
 func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService) {
 
 	floorHandler := handlers.NewFloorHandler(floorService)
@@ -181,6 +177,12 @@ func RegisterFloorRoutes(r *gin.RouterGroup, floorService services.IFloorService
 		floorGroup.GET("/:id", floorHandler.GetFloor)
 		floorGroup.DELETE("/:id", floorHandler.DeleteFloor)
 		floorGroup.PUT("/:id/move", floorHandler.MoveFloor)
+
+		// Private floor member access
+		floorGroup.GET("/:id/members", floorHandler.GetFloorMembers)
+		floorGroup.GET("/:id/members/:memberID", floorHandler.GetFloorMember)
+		floorGroup.PUT("/:id/members/:memberID", floorHandler.AddFloorMember)
+		floorGroup.DELETE("/:id/members/:memberID", floorHandler.RemoveFloorMember)
 	}
 
 }
@@ -195,6 +197,15 @@ func RegisterRoomRoutes(r *gin.RouterGroup, roomService services.IRoomService, m
 		roomGroup.PATCH("/:roomID", roomHandler.UpdateRoom)
 		roomGroup.DELETE("/:roomID", roomHandler.DeleteRoom)
 		roomGroup.PUT("/:roomID/move", roomHandler.MoveRoom)
+
+		// Private room member access
+		roomGroup.GET("/:roomID/members", roomHandler.GetRoomMembers)
+		roomGroup.GET("/:roomID/members/:memberID", roomHandler.GetRoomMember)
+		roomGroup.PUT("/:roomID/members/:memberID", roomHandler.AddRoomMember)
+		roomGroup.DELETE("/:roomID/members/:memberID", roomHandler.RemoveRoomMember)
+
+		// sync room members to floor members
+		roomGroup.PUT("/:roomID/sync-floor-members", roomHandler.SyncRoomMembersToFloor)
 
 		// Room scoped routes
 		roomScoped := roomGroup.Group("/:roomID")

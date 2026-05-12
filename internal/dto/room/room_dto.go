@@ -8,15 +8,16 @@ import (
 
 // Shared response shape
 type RoomRes struct {
-	ID        uuid.UUID  `json:"id"`
-	HallID    uuid.UUID  `json:"hall_id"`
-	FloorID   *uuid.UUID `json:"floor_id"`
-	Name      string     `json:"name"`
-	RoomType  string     `json:"room_type"`
-	Position  float64    `json:"position"`
-	IsPrivate bool       `json:"is_private"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
+	ID                   uuid.UUID  `json:"id"`
+	HallID               uuid.UUID  `json:"hall_id"`
+	FloorID              *uuid.UUID `json:"floor_id"`
+	Name                 string     `json:"name"`
+	RoomType             string     `json:"room_type"`
+	Position             float64    `json:"position"`
+	IsPrivate            bool       `json:"is_private"`
+	SyncWithFloorMembers bool       `json:"sync_with_floor_members"`
+	CreatedAt            time.Time  `json:"created_at"`
+	UpdatedAt            time.Time  `json:"updated_at"`
 }
 
 type CreateRoomReq struct {
@@ -65,7 +66,45 @@ type UpdateRoomReq struct {
 // after_id = uuid →  insert immediately after that room
 
 type MoveRoomReq struct {
-	HallID     uuid.UUID  `json:"hall_id"     binding:"required"`
-	NewFloorID *uuid.UUID `json:"new_floor_id" binding:"omitempty"` // nil = top-level
-	AfterID    *uuid.UUID `json:"after_id"    binding:"omitempty"`  // nil = place at top
+	HallID uuid.UUID `json:"hall_id" binding:"required"`
+
+	// nil = do not change current floor
+	// true = move room to top-level / outside floor
+	MoveToTopLevel *bool `json:"move_to_top_level" binding:"omitempty"`
+
+	// set this when moving room into a floor
+	NewFloorID *uuid.UUID `json:"new_floor_id" binding:"omitempty"`
+
+	// nil = place at top
+	AfterID *uuid.UUID `json:"after_id" binding:"omitempty"`
+
+	// If moved into a private floor, give user option to syncPrivate
+	// If true, will change the isPrivate of room = true
+	// And mirror the room_member's list to floor's member list
+	SyncPrivate *bool `json:"sync_private" binding:"omitempty"`
 }
+
+// RoomAccessMemberRes is returned after adding/removing one hall member
+// from a private room access list.
+type RoomAccessMemberRes struct {
+	RoomID   uuid.UUID `json:"room_id"`
+	MemberID uuid.UUID `json:"member_id"`
+}
+
+type RoomMemberRes struct {
+	ID        uuid.UUID `json:"id"`
+	HallID    uuid.UUID `json:"hall_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	RoleID    uuid.UUID `json:"role_id"`
+	Nickname  *string   `json:"nickname"`
+	JoinedAt  time.Time `json:"joined_at"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type GetRoomMembersRes struct {
+	Members []*RoomMemberRes `json:"members"`
+	Total   int              `json:"total"`
+}
+
+type GetRoomMemberRes = RoomMemberRes

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	dto "github.com/suck-seed/yapp/internal/dto/message"
 )
 
 type RoomType string
@@ -33,8 +32,8 @@ type Room struct {
 	ID     uuid.UUID `json:"id"`
 	HallID uuid.UUID `json:"hall_id"`
 
-	Clients   map[uuid.UUID]*Client     `json:"-"`
-	Broadcast chan *dto.OutboundMessage `json:"-"`
+	Clients map[uuid.UUID]*Client `json:"-"`
+	// Broadcast chan *dto.OutboundMessage `json:"-"`
 
 	// Metadata (fetched once, cached)
 	IsPrivate bool      `json:"is_private"`

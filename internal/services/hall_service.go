@@ -14,6 +14,7 @@ import (
 	"github.com/suck-seed/yapp/internal/database"
 	dto "github.com/suck-seed/yapp/internal/dto/hall"
 	"github.com/suck-seed/yapp/internal/models"
+	"github.com/suck-seed/yapp/internal/realtime"
 	"github.com/suck-seed/yapp/internal/repositories"
 	"github.com/suck-seed/yapp/internal/utils"
 )
@@ -22,12 +23,22 @@ import (
 const HALLCREATORROLENAME string = "creator"
 const HALLDEFAULTROLENAME string = "everyone"
 
+const DEFAULT_GENERAL_ROOM_NAME string = "general"
+const DEFAULT_GENERAL_ROOM_POSITION float64 = 1000.0
+
+const MaxPinnedHalls = 11
+
 type IHallService interface {
 
 	// -------------- HALLS
 	CreateHall(c context.Context, userInfo *auth.UserInfo, req *dto.CreateHallReq) (*dto.CreateHallRes, error)
 	JoinHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*dto.JoinHallRes, error)
-	GetUserHalls(c context.Context, userInfo *auth.UserInfo) ([]*models.Hall, error)
+
+	GetUserHalls(c context.Context, userInfo *auth.UserInfo) ([]dto.UserHallRes, error)
+	PinHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) ([]dto.UserHallRes, error)
+	UnpinHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) ([]dto.UserHallRes, error)
+	MovePinnedHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, req *dto.MovePinnedHallReq) ([]dto.UserHallRes, error)
+
 	GetCurrentHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*dto.GetCurrentHallRes, error)
 	DeleteHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*models.Hall, error)
 	IsUserHallMember(c context.Context, hallID uuid.UUID, userID uuid.UUID) (bool, error)
@@ -54,13 +65,13 @@ type hallService struct {
 	repositories.IHallRepository
 	repositories.IUserRepository
 	repositories.IRoleRepository
+	repositories.IRoomRepository
 	repositories.IBanRepsitory
 
-	// Permission checker service
 	IPermissionCheckerService
-
-	// Presnece checker service
 	IPresenceService
+
+	EventPublisher realtime.Publisher
 
 	pool *pgxpool.Pool
 
@@ -72,23 +83,54 @@ func NewHallService(
 	hallRepo repositories.IHallRepository,
 	userRepo repositories.IUserRepository,
 	roleRepo repositories.IRoleRepository,
+	roomRepo repositories.IRoomRepository,
 	banRepo repositories.IBanRepsitory,
 	permissionChecker IPermissionCheckerService,
 	presenceService IPresenceService,
+	eventPublisher realtime.Publisher,
 	pool *pgxpool.Pool,
-
 ) IHallService {
 	return &hallService{
 		hallRepo,
 		userRepo,
 		roleRepo,
+		roomRepo,
 		banRepo,
 		permissionChecker,
 		presenceService,
+		eventPublisher,
 		pool,
 		time.Duration(2) * time.Second,
 		sync.RWMutex{},
 	}
+}
+
+// helper mapper
+func userHallToRes(h *models.UserHall) dto.UserHallRes {
+	return dto.UserHallRes{
+		ID:               h.ID,
+		Name:             h.Name,
+		IsPrivate:        h.IsPrivate,
+		IconURL:          h.IconURL,
+		IconThumbnailURL: h.IconThumbnailURL,
+		BannerColor:      h.BannerColor,
+		Description:      h.Description,
+		CreatedAt:        h.CreatedAt,
+		UpdatedAt:        h.UpdatedAt,
+		OwnerID:          h.OwnerID,
+		IsPinned:         h.IsPinned,
+		Position:         h.Position,
+	}
+}
+
+func userHallsToRes(halls []*models.UserHall) []dto.UserHallRes {
+	out := make([]dto.UserHallRes, 0, len(halls))
+
+	for _, h := range halls {
+		out = append(out, userHallToRes(h))
+	}
+
+	return out
 }
 
 func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req *dto.CreateHallReq) (*dto.CreateHallRes, error) {
@@ -241,10 +283,44 @@ func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req
 		return nil, utils.ErrorCreatingHallMember
 	}
 
+	// ---------------------- DEFAULT GENERAL ROOM
+	generalRoomID, err := uuid.NewV7()
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	generalRoom := &models.Room{
+		ID:                   generalRoomID,
+		HallID:               hallCRES.ID,
+		FloorID:              nil, // top-level room
+		Name:                 DEFAULT_GENERAL_ROOM_NAME,
+		RoomType:             string(models.TextRoom),
+		Position:             DEFAULT_GENERAL_ROOM_POSITION,
+		IsPrivate:            false,
+		SyncWithFloorMembers: false,
+		CreatedAt:            time.Now(),
+		UpdatedAt:            time.Now(),
+	}
+
+	_, err = s.IRoomRepository.CreateRoom(ctx, runner, generalRoom)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorCreatingRoom
+	}
+
 	// ---------------------- COMMIT
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:   realtime.HubEventUserJoinedHall,
+		HallID: hallCRES.ID,
+		UserID: userInfo.ID,
+	})
 
 	return &dto.CreateHallRes{
 		ID:               hallCRES.ID,
@@ -259,6 +335,7 @@ func (s *hallService) CreateHall(c context.Context, userInfo *auth.UserInfo, req
 		IsPrivate:        hallCRES.IsPrivate,
 	}, nil
 }
+
 func (s *hallService) JoinHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*dto.JoinHallRes, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
@@ -340,6 +417,14 @@ func (s *hallService) JoinHall(c context.Context, userInfo *auth.UserInfo, hallI
 			return nil, utils.ErrorInternal
 		}
 
+		// PUBLISH EVENT
+		// Public Hall Joined
+		publishHubEvent(s.EventPublisher, realtime.HubEvent{
+			Type:   realtime.HubEventUserJoinedHall,
+			HallID: hallID,
+			UserID: userInfo.ID,
+		})
+
 		return &dto.JoinHallRes{
 			Status:    "joined",
 			MemberID:  &createdMember.ID,
@@ -402,34 +487,239 @@ func (s *hallService) JoinHall(c context.Context, userInfo *auth.UserInfo, hallI
 		UpdatedAt: createdRequest.UpdatedAt,
 	}, nil
 }
-
-func (s *hallService) GetUserHalls(c context.Context, userInfo *auth.UserInfo) ([]*models.Hall, error) {
+func (s *hallService) GetUserHalls(c context.Context, userInfo *auth.UserInfo) ([]dto.UserHallRes, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()
 
-	// --------------- CONNECTION INIT
 	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
 	defer conn.Release()
+
 	runner := database.NewConnWrapper(conn)
 
-	hallIds, err := s.IHallRepository.GetUserHallIDs(ctx, runner, userInfo.ID)
+	halls, err := s.IHallRepository.GetUserHallsOrdered(ctx, runner, userInfo.ID)
+	if err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHall
+	}
+
+	return userHallsToRes(halls), nil
+}
+
+func (s *hallService) PinHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) ([]dto.UserHallRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, utils.ErrorInternal
 	}
 
-	var halls []*models.Hall
-	for _, hallId := range hallIds {
-		hall, err := s.IHallRepository.GetHallByID(ctx, runner, hallId)
-		if err != nil {
-			return nil, utils.ErrorInternal
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
+
+	// Lock all current user's hall memberships so two pin/move requests cannot race.
+	if err := s.IHallRepository.LockUserHallMemberships(ctx, runner, userInfo.ID); err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
 		}
-		halls = append(halls, hall)
+		return nil, utils.ErrorInternal
 	}
 
-	return halls, nil
+	isPinned, _, err := s.IHallRepository.GetUserHallPinMeta(ctx, runner, userInfo.ID, hallID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorUserDoesntBelongHall
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHall
+	}
+
+	// Idempotent: if already pinned, just return sidebar list.
+	if !isPinned {
+		count, err := s.IHallRepository.CountPinnedHalls(ctx, runner, userInfo.ID)
+		if err != nil {
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingHall
+		}
+
+		if count >= MaxPinnedHalls {
+			return nil, utils.ErrorMaxPinnedHallsReached
+		}
+
+		maxPosition, err := s.IHallRepository.GetMaxPinnedHallPosition(ctx, runner, userInfo.ID)
+		if err != nil {
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorFetchingHall
+		}
+
+		newPosition := maxPosition + 1000.0
+
+		if err := s.IHallRepository.UpdateHallPinState(ctx, runner, userInfo.ID, hallID, true, &newPosition); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, utils.ErrorUserDoesntBelongHall
+			}
+			if utils.IsDeadline(err) {
+				return nil, utils.ErrorRequestTimeout
+			}
+			return nil, utils.ErrorInternal
+		}
+	}
+
+	halls, err := s.IHallRepository.GetUserHallsOrdered(ctx, runner, userInfo.ID)
+	if err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHall
+	}
+
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	return userHallsToRes(halls), nil
+}
+
+func (s *hallService) UnpinHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) ([]dto.UserHallRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
+
+	if err := s.IHallRepository.LockUserHallMemberships(ctx, runner, userInfo.ID); err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorInternal
+	}
+
+	_, _, err = s.IHallRepository.GetUserHallPinMeta(ctx, runner, userInfo.ID, hallID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorUserDoesntBelongHall
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHall
+	}
+
+	if err := s.IHallRepository.UpdateHallPinState(ctx, runner, userInfo.ID, hallID, false, nil); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorUserDoesntBelongHall
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorInternal
+	}
+
+	halls, err := s.IHallRepository.GetUserHallsOrdered(ctx, runner, userInfo.ID)
+	if err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHall
+	}
+
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	return userHallsToRes(halls), nil
+}
+
+func (s *hallService) MovePinnedHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID, req *dto.MovePinnedHallReq) ([]dto.UserHallRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+
+	if req.AfterID != nil && *req.AfterID == hallID {
+		return nil, utils.ErrorInvalidInput
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	runner := database.NewTxWrapper(tx)
+	defer runner.Rollback(ctx)
+
+	if err := s.IHallRepository.LockUserHallMemberships(ctx, runner, userInfo.ID); err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorInternal
+	}
+
+	isPinned, _, err := s.IHallRepository.GetUserHallPinMeta(ctx, runner, userInfo.ID, hallID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorUserDoesntBelongHall
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHall
+	}
+
+	if !isPinned {
+		return nil, utils.ErrorHallNotPinned
+	}
+
+	lower, upper, err := s.IHallRepository.GetPinnedHallPositionBounds(ctx, runner, userInfo.ID, req.AfterID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorInvalidPinnedHallTarget
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHall
+	}
+
+	newPosition := utils.CalcPosition(lower, upper)
+
+	if err := s.IHallRepository.UpdatePinnedHallPosition(ctx, runner, userInfo.ID, hallID, newPosition); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrorHallNotPinned
+		}
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorMovingHall
+	}
+
+	halls, err := s.IHallRepository.GetUserHallsOrdered(ctx, runner, userInfo.ID)
+	if err != nil {
+		if utils.IsDeadline(err) {
+			return nil, utils.ErrorRequestTimeout
+		}
+		return nil, utils.ErrorFetchingHall
+	}
+
+	if err := runner.Commit(ctx); err != nil {
+		return nil, utils.ErrorInternal
+	}
+
+	return userHallsToRes(halls), nil
 }
 
 func (s *hallService) GetCurrentHall(c context.Context, userInfo *auth.UserInfo, hallID uuid.UUID) (*dto.GetCurrentHallRes, error) {
@@ -526,6 +816,13 @@ func (s *hallService) DeleteHall(c context.Context, userInfo *auth.UserInfo, hal
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:   realtime.HubEventHallDeleted,
+		HallID: hallID,
+		UserID: userInfo.ID,
+	})
 
 	return deletedHall, nil
 }
@@ -688,7 +985,7 @@ func (s *hallService) UpdateHallProfile(c context.Context, userInfo *auth.UserIn
 		IsPrivate:        hall.IsPrivate,
 		IconURL:          hall.IconURL,
 		IconThumbnailURL: hall.IconThumbnailURL,
-		BannerColor:      *hall.BannerColor,
+		BannerColor:      hall.BannerColor,
 		Description:      hall.Description,
 		OwnerID:          hall.OwnerID,
 		UpdatedAt:        hall.UpdatedAt,
@@ -846,6 +1143,15 @@ func (s *hallService) UpdateHallMemberRole(c context.Context, userInfo *auth.Use
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	// TODO : If later role is also used for room access
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:     realtime.HubEventUserAccessResync,
+		HallID:   hallID,
+		UserID:   target.UserID,
+		MemberID: target.ID,
+	})
 
 	return &dto.UpdateHallMemberRes{
 		ID:        updated.ID,
@@ -1006,6 +1312,14 @@ func (s *hallService) KickHallMember(c context.Context, userInfo *auth.UserInfo,
 		return nil, utils.ErrorInternal
 	}
 
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:     realtime.HubEventUserKickedFromHall,
+		HallID:   hallID,
+		UserID:   target.UserID,
+		MemberID: target.ID,
+	})
+
 	return res, nil
 }
 
@@ -1152,6 +1466,14 @@ func (s *hallService) AcceptJoinRequest(c context.Context, userInfo *auth.UserIn
 	if err := runner.Commit(ctx); err != nil {
 		return nil, utils.ErrorInternal
 	}
+
+	// PUBLISH EVENT
+	publishHubEvent(s.EventPublisher, realtime.HubEvent{
+		Type:     realtime.HubEventUserJoinedHall,
+		HallID:   hallID,
+		UserID:   member.UserID,
+		MemberID: member.ID,
+	})
 
 	return &dto.AcceptJoinRequestRes{
 		RequestID: request.ID,

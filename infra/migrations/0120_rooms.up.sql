@@ -7,7 +7,9 @@ CREATE TABLE rooms (
     is_private boolean NOT NULL DEFAULT false,
     position double precision NOT NULL DEFAULT 0,
     created_at timestamptz NOT NULL DEFAULT now (),
-    updated_at timestamptz NOT NULL DEFAULT now ()
+    updated_at timestamptz NOT NULL DEFAULT now (),
+
+    sync_with_floor_members boolean NOT NULL DEFAULT false
 );
 
 CREATE INDEX rooms_hall_id_idx ON rooms (hall_id);

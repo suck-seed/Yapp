@@ -1,8 +1,8 @@
 CREATE TRIGGER users_set_updated_at BEFORE
 UPDATE ON users FOR EACH ROW EXECUTE FUNCTION set_updated_at ();
 
-CREATE TRIGGER user_devices_set_updated_at BEFORE
-UPDATE ON user_devices FOR EACH ROW EXECUTE FUNCTION set_updated_at ();
+CREATE TRIGGER user_metadatas_set_updated_at BEFORE
+UPDATE ON user_metadatas FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER user_app_links_set_updated_at BEFORE
 UPDATE ON user_app_links FOR EACH ROW EXECUTE FUNCTION set_updated_at ();

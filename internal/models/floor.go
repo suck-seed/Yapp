@@ -15,3 +15,8 @@ type Floor struct {
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
+
+type FloorMember struct {
+	FloorID  uuid.UUID `json:"floor_id"  db:"floor_id"`
+	MemberID uuid.UUID `json:"member_id" db:"member_id"`
+}
