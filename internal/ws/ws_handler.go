@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -36,6 +37,8 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
+
+		log.Printf("Origin: \n %v\n", origin)
 
 		return origin == "https://yapp-frontend-gamma.vercel.app" ||
 			origin == "http://localhost:3000" ||
