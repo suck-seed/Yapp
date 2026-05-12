@@ -1,4 +1,3 @@
-// internal/services/presence_service.go
 package services
 
 import (

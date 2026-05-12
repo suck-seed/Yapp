@@ -196,7 +196,7 @@ func StartServer(cfg config.AppConfig) {
 		rest.RegisterPresenceRoutes(protectedv1, presenceService)
 	}
 
-	wsHandler := router.Group("/ws", auth.AuthMiddleware())
+	wsHandler := router.Group("/ws", auth.WebSocketAuthMiddleware())
 	{
 		ws.RegisterWebSocketRoutes(
 			wsHandler,
