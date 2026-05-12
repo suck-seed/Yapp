@@ -85,8 +85,9 @@ func (h *AuthHandler) Signin(c *gin.Context) {
 
 	// filtered response (not sending accesstoken over https, so removed it)
 	res := &dto.SigninUserRes{
-		UserMe:  signInRes.UserMe,
-		Success: signInRes.Success,
+		UserMe:      signInRes.UserMe,
+		Success:     signInRes.Success,
+		AccessToken: signInRes.AccessToken,
 	}
 
 	c.JSON(http.StatusOK, gin.H{

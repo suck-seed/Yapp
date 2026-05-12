@@ -40,10 +40,12 @@ var upgrader = websocket.Upgrader{
 
 		log.Printf("Origin: \n %v\n", origin)
 
-		return origin == "https://yapp-frontend-gamma.vercel.app" ||
-			origin == "http://localhost:3000" ||
-			origin == "http://127.0.0.1:3000" ||
-			origin == "https://yappserver.onrender.com"
+		// return origin == "https://yapp-frontend-gamma.vercel.app" ||
+		// 	origin == "http://localhost:3000" ||
+		// 	origin == "http://127.0.0.1:3000" ||
+		// 	origin == "https://yappserver.onrender.com"
+
+		return true
 	},
 }
 
