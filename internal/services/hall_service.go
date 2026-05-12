@@ -487,6 +487,7 @@ func (s *hallService) JoinHall(c context.Context, userInfo *auth.UserInfo, hallI
 		UpdatedAt: createdRequest.UpdatedAt,
 	}, nil
 }
+
 func (s *hallService) GetUserHalls(c context.Context, userInfo *auth.UserInfo) ([]dto.UserHallRes, error) {
 	ctx, cancel := context.WithTimeout(c, s.timeout)
 	defer cancel()

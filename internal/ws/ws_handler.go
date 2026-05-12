@@ -35,9 +35,12 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
 
-		// Restrict by Origin here if needed; browser CORS for HTTP is set in Nginx.
-		return true
+		return origin == "https://yapp-frontend-gamma.vercel.app" ||
+			origin == "http://localhost:3000" ||
+			origin == "http://127.0.0.1:3000" ||
+			origin == "https://yappserver.onrender.com"
 	},
 }
 
