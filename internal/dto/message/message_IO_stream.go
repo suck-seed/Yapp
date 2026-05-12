@@ -29,9 +29,10 @@ const (
 	MessageTypeSubscriptionsSynced MessageType = "subscriptions_synced"
 
 	// System messages (sent by server only)
-	MessageTypeJoin  MessageType = "join"
-	MessageTypeLeave MessageType = "leave"
-	MessageTypeError MessageType = "error"
+	MessageTypeJoin          MessageType = "join"
+	MessageTypeLeave         MessageType = "leave"
+	MessageTypeError         MessageType = "error"
+	MessageTypeCannotMessage MessageType = "cannot_message_profane"
 )
 
 // InboundMessage : InboundMessage is mapped to CreateMessageReq for MessageTypeText
@@ -96,6 +97,15 @@ type OutboundMessage struct {
 	SubscribedRoomCount *int                 `json:"subscribed_room_count,omitempty"`
 	SubscribedRooms     []SubscribedRoomInfo `json:"subscribed_rooms,omitempty"`
 	SyncedAt            *time.Time           `json:"synced_at,omitempty"`
+
+	// Profanity Count
+	ProfanityCount    *int       `json:"profanity_count,omitempty"`
+	ProfanityLimit    *int       `json:"profanity_limit,omitempty"`
+	RemainingWarnings *int       `json:"remaining_warnings,omitempty"`
+	StrikeCount       *int       `json:"strike_count,omitempty"`
+	MutedUntil        *time.Time `json:"muted_until,omitempty"`
+	PermanentlyMuted  *bool      `json:"permanently_muted,omitempty"`
+	ModerationAction  *string    `json:"moderation_action,omitempty"`
 }
 
 type SubscribedRoomInfo struct {
