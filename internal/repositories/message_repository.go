@@ -50,14 +50,14 @@ func NewMessageRepository() IMessageRepository {
 
 func (r *messageRepository) CreateMessage(ctx context.Context, db database.DBRunner, message *models.Message) (*models.Message, error) {
 	query := `
-		INSERT INTO messages (id, room_id, author_id, content, sent_at, mention_everyone)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO messages (id, room_id, author_id, content, mention_everyone)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, room_id, author_id, content, sent_at, edited_at, deleted_at, mention_everyone, created_at, updated_at
 	`
 	out := &models.Message{}
 	err := db.QueryRow(ctx, query,
 		message.ID, message.RoomID, message.AuthorID,
-		message.Content, message.SentAt, message.MentionEveryone,
+		message.Content, message.MentionEveryone,
 	).Scan(
 		&out.ID, &out.RoomID, &out.AuthorID, &out.Content, &out.SentAt,
 		&out.EditedAt, &out.DeletedAt, &out.MentionEveryone,

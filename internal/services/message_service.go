@@ -146,7 +146,6 @@ func (s *messageService) CreateMessage(c context.Context, req *dto.CreateMessage
 		RoomID:   req.RoomID,
 		AuthorID: req.AuthorID,
 		Content:  normalizedContent,
-		SentAt:   req.SentAt,
 	}
 
 	message.MentionEveryone = false
