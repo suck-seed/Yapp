@@ -1,6 +1,6 @@
 // Package main is the entry point for the Yapp API server.
 //
-// @title           Yapp API
+// @title           Yappp API
 // @version         1.0
 // @description     Real-time chat + voice application API (REST & WebSocket).
 // @termsOfService  http://swagger.io/terms/
